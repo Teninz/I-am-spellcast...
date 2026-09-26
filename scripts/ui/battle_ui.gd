@@ -47,7 +47,7 @@ var _chip_buttons: Array[Button] = []
 var _bag_button: TextureButton
 var _book_cover_holder: CenterContainer
 var _luck_plans := {}  # книга -> вложения шкалы удачи на этот ход
-var _queue_label: Label
+var _queue_box: HBoxContainer  # очередь ходов: лица в кольцах
 var _prompt_label: Label
 var _spell_label: Label
 var _effects_box: HBoxContainer
@@ -560,10 +560,7 @@ func _set_state(s: State) -> void:
 func _refresh() -> void:
 	if combat == null:
 		return
-	var names: Array[String] = []
-	for u in combat.turn_queue(6):
-		names.append(u.name)
-	_queue_label.text = "Очередь: " + "  →  ".join(PackedStringArray(names))
+	_rebuild_queue()
 	for u in combat.units:
 		var card: Button = _cards[u.id]
 		_update_card(card, u)
@@ -588,6 +585,66 @@ func _refresh() -> void:
 		lines.append(ab)
 		_ability_label.text = "\n".join(lines)
 	_ability_label.tooltip_text = _ability_label.text
+
+
+## Очередь ходов: сейчас ходит — крупно в золотом кольце, дальше — следующие 6 ходов.
+func _rebuild_queue() -> void:
+	for c in _queue_box.get_children():
+		_queue_box.remove_child(c)
+		c.queue_free()
+	var title := _label("Очередь:", 15)
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_queue_box.add_child(title)
+	var list: Array[Unit] = []
+	if actor != null and actor.alive():
+		list.append(actor)
+	list.append_array(combat.turn_queue(6))
+	for i in list.size():
+		if i > 0:
+			var arrow := _label("›", 18)
+			arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			arrow.modulate = Color(1, 1, 1, 0.6)
+			_queue_box.add_child(arrow)
+		_queue_box.add_child(_queue_face(list[i], i == 0 and list[i] == actor))
+
+
+## Одно лицо очереди. Без портрета — первая буква имени в кольце.
+func _queue_face(u: Unit, now: bool) -> Control:
+	var size := 52 if now else 42
+	var kind := "wizard_active" if now and u.is_wizard() else _ring_kind(u)
+	var face: Texture2D = Art.wizard_face(u.class_id) if u.is_wizard() else Art.enemy_face(u.name)
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(size, size)
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	holder.tooltip_text = ("Сейчас ходит: " if now else "") + u.name
+	# Наведение на лицо подсвечивает карточку этого участника.
+	holder.mouse_entered.connect(func() -> void:
+		if _cards.has(u.id):
+			_cards[u.id].modulate = Color(1.35, 1.3, 0.9))
+	holder.mouse_exited.connect(_refresh)
+	if face != null and Art.ring(kind) != null:
+		var av := Art.avatar(face, kind, size)
+		av.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(av)
+	else:
+		var disc := Panel.new()
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color("2d3a52") if u.is_wizard() else Color("522d2d")
+		box.border_color = Color("ffd35a") if now else Color(0.6, 0.55, 0.45)
+		box.set_border_width_all(2)
+		box.set_corner_radius_all(size / 2)
+		disc.add_theme_stylebox_override("panel", box)
+		disc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(disc)
+		var letter := _label(u.name.substr(0, 1), 16 if now else 13)
+		letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(letter)
+	return holder
 
 
 ## Кольцо аватарки по состоянию участника.
@@ -988,12 +1045,13 @@ func _build_ui() -> void:
 	gear.text = "Настройки"
 	gear.pressed.connect(func() -> void: SettingsView.open(self))
 	top.add_child(gear)
-	_queue_label = _label("", 16)
-	_queue_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_queue_label.clip_text = true
-	_queue_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	top.add_child(_queue_label)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(spacer)
+	_queue_box = HBoxContainer.new()
+	_queue_box.add_theme_constant_override("separation", 2)
+	_queue_box.alignment = BoxContainer.ALIGNMENT_END
+	top.add_child(_queue_box)
 
 	var middle := HBoxContainer.new()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
