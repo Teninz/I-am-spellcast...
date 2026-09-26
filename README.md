@@ -5,3 +5,6 @@
 
 - Дизайн-документ: [docs/GDD.md](docs/GDD.md)
 - Бестиарий: [docs/enemies.md](docs/enemies.md)
+- Боссы: [docs/bosses.md](docs/bosses.md)
+- Баланс и эффекты: [docs/balance.md](docs/balance.md)
+- Обмундирование: [docs/equipment.md](docs/equipment.md)
