@@ -7,7 +7,9 @@ const ENEMIES := "enemies"
 
 ## Вредные статусы — их снимает Очищение, от них спасает Сопротивление.
 const DEBUFFS := ["burn", "poison", "stun", "slow", "vulnerable", "weak", "fear", "blind",
-	"disease", "confusion", "charm", "forget", "chaos_curse", "petrify", "toad"]
+	"disease", "confusion", "charm", "forget", "chaos_curse", "petrify", "toad", "aching"]
+## «Разбитость» после воскрешения: скорость −25 %.
+const ACHING_SPEED := 0.75
 const BUFFS := ["regen", "haste", "invisible", "reflect", "invulnerable", "stoneskin",
 	"inspire", "bless", "focus", "elemental", "taunt"]
 
@@ -80,6 +82,8 @@ func effective_speed() -> float:
 	var s := speed
 	if has("slow"):
 		s *= 0.7
+	if has("aching"):
+		s *= ACHING_SPEED
 	if has("haste"):
 		s *= 1.3
 	return s

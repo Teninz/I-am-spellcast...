@@ -284,7 +284,7 @@ func _refresh() -> void:
 	_queue_label.text = "Очередь: " + "  →  ".join(PackedStringArray(names))
 	for u in combat.units:
 		var card: Button = _cards[u.id]
-		card.text = _card_text(u)
+		_update_card(card, u)
 		var targetable := state == State.CHOOSE_TARGET and combat.can_target(actor, u)
 		if state == State.ITEM_TARGET:
 			targetable = combat.item_targets(actor, actor.wizard.item).has(u)
@@ -302,28 +302,20 @@ func _refresh() -> void:
 			_ability_label.text += "  Осталось: %d." % actor.ability_charges
 
 
-func _card_text(u: Unit) -> String:
-	var lines := ["%s%s" % ["▶ " if u == actor else "", u.name]]
-	var hp_line := "ЗД %s" % u.hp_text() if u.alive() else "выбыл"
-	if u.shield > 0:
-		hp_line += "   Щит %s" % Unit._num(u.shield)
-	if u.fortify > 0:
-		hp_line += "   Укр. %s (%d)" % [Unit._num(u.fortify), u.fortify_turns]
-	lines.append(hp_line)
-	var st: Array[String] = []
-	for id in u.statuses:
-		var s: Dictionary = u.statuses[id]
-		var label := Combat.status_name(id)
-		if s.turns < 99:
-			label += " %d" % s.turns
-		st.append(label)
-	if u.is_leader:
-		st.push_front("Предводитель")
-	if u.is_boss:
-		st.push_front("БОСС")
-	if not st.is_empty():
-		lines.append(", ".join(PackedStringArray(st)))
-	return "\n".join(PackedStringArray(lines))
+func _update_card(card: Button, u: Unit) -> void:
+	var name_label: Label = card.get_meta("name")
+	name_label.text = "%s%s" % ["▶ " if u == actor else "", u.name]
+	var hp_label: Label = card.get_meta("hp")
+	hp_label.text = "ЗД %s" % u.hp_text() if u.alive() else "выбыл"
+	var bar: ProgressBar = card.get_meta("bar")
+	bar.max_value = u.max_hp
+	bar.value = u.hp
+	var icons: HFlowContainer = card.get_meta("icons")
+	for c in icons.get_children():
+		c.queue_free()
+	if u.alive():
+		for icon in StatusIcon.icons_for(u, 26):
+			icons.add_child(icon)
 
 
 func _clear_chips() -> void:
@@ -402,6 +394,11 @@ func _build_ui() -> void:
 	root.add_child(top)
 	_title_label = _label("", 22)
 	top.add_child(_title_label)
+	var info := Button.new()
+	info.text = "Инфо"
+	info.tooltip_text = "Что значат иконки эффектов"
+	info.pressed.connect(func() -> void: StatusInfo.open(self))
+	top.add_child(info)
 	_queue_label = _label("", 16)
 	_queue_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -484,10 +481,17 @@ func _build_ui() -> void:
 	_ability_label.modulate = Color(1, 1, 1, 0.7)
 	center.add_child(_ability_label)
 
+	var enemy_col := VBoxContainer.new()
+	enemy_col.custom_minimum_size = Vector2(270, 0)
+	enemy_col.add_child(_label("Противники", 18))
+	middle.add_child(enemy_col)
+	var enemy_scroll := ScrollContainer.new()
+	enemy_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	enemy_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	enemy_col.add_child(enemy_scroll)
 	_enemy_box = VBoxContainer.new()
-	_enemy_box.custom_minimum_size = Vector2(260, 0)
-	_enemy_box.add_child(_label("Противники", 18))
-	middle.add_child(_enemy_box)
+	_enemy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	enemy_scroll.add_child(_enemy_box)
 
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
@@ -505,14 +509,11 @@ func _build_ui() -> void:
 
 func _make_card(u: Unit) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(260, 84)
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 15)
+	b.custom_minimum_size = Vector2(260, 74)
 	b.pressed.connect(_on_card_pressed.bind(u))
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color("2d3a52") if u.is_wizard() else Color("522d2d")
 	box.set_corner_radius_all(8)
-	box.set_content_margin_all(10)
 	var hover := box.duplicate()
 	hover.bg_color = box.bg_color.lightened(0.2)
 	b.add_theme_stylebox_override("normal", box)
@@ -522,6 +523,47 @@ func _make_card(u: Unit) -> Button:
 	var dis := box.duplicate()
 	dis.bg_color = box.bg_color.darkened(0.5)
 	b.add_theme_stylebox_override("disabled", dis)
+
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 8)
+	b.add_child(margin)
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", 3)
+	margin.add_child(col)
+	var top := HBoxContainer.new()
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(top)
+	var name_label := _label("", 15)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(name_label)
+	var hp_label := _label("", 14)
+	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(hp_label)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 7)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0, 0, 0, 0.45)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color("4cc46a") if u.is_wizard() else Color("e0413a")
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fill)
+	col.add_child(bar)
+	var icons := HFlowContainer.new()
+	icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icons.add_theme_constant_override("h_separation", 3)
+	col.add_child(icons)
+	b.set_meta("name", name_label)
+	b.set_meta("hp", hp_label)
+	b.set_meta("bar", bar)
+	b.set_meta("icons", icons)
 	return b
 
 

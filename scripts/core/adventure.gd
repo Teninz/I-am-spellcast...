@@ -4,6 +4,9 @@ extends RefCounted
 ## Порядок: start_combat() → finish_combat() → rest() → roll_loot() → действия с лутом → снова бой.
 
 const RARITY_ORDER := ["common", "rare", "epic", "legendary", "cursed"]
+## После победы выбывшие поднимаются с этой долей здоровья и Разбитостью.
+const REVIVE_HP := 0.5
+const ACHING_TURNS := 10
 
 var books: Dictionary
 var classes: Dictionary
@@ -71,10 +74,19 @@ func finish_combat(c: Combat) -> Array:
 	for u in c.units:
 		if u.wizard == null:
 			continue
-		u.wizard.hp = u.hp
-		var b := u.wizard.record_books_used(u.books_used.keys())
+		var w := u.wizard
+		w.hp = u.hp
+		w.carry_statuses.clear()
+		if u.has("aching"):
+			w.carry_statuses["aching"] = u.statuses.aching.turns
+		var b := w.record_books_used(u.books_used.keys())
 		if b != "":
-			torn.append({"wizard": u.wizard, "book": b})
+			torn.append({"wizard": w, "book": b})
+		# Победа: выбывший поднимается с 50 % ЗД и Разбитостью на 10 ходов.
+		if c.outcome == "victory" and not w.alive():
+			w.hp = w.max_hp() * REVIVE_HP
+			w.carry_statuses["aching"] = ACHING_TURNS
+			w.just_revived = true
 	if c.outcome == "victory":
 		level += 1
 	return torn
@@ -86,6 +98,10 @@ func finish_combat(c: Combat) -> Array:
 func rest() -> Array:
 	var out := []
 	for w in wizards:
+		if w.just_revived:
+			w.just_revived = false
+			out.append({"wizard": w, "healed": 0.0, "fortify": 0.0, "dead": false, "revived": true})
+			continue
 		if not w.alive():
 			out.append({"wizard": w, "healed": 0.0, "fortify": 0.0, "dead": true})
 			continue
@@ -353,6 +369,7 @@ func use_item_camp(owner: Wizard, target: Wizard) -> String:
 		target.hp = minf(target.max_hp(), float(e.revive))
 	if e.has("heal") and target.alive():
 		target.hp = minf(target.max_hp(), target.hp + float(e.heal))
+		target.carry_statuses.erase("aching")  # положительный эффект снимает Разбитость
 	if e.get("reset_wear", false):
 		target.wear_book = ""
 		target.wear_streak = 0

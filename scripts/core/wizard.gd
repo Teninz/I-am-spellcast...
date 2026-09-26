@@ -17,6 +17,10 @@ var destroys_forbidden := false
 
 var hp: float
 var fortify := 0.0  # Укрепление на следующий бой
+## Статусы, которые переходят в следующий бой: id -> сколько ходов осталось.
+var carry_statuses: Dictionary = {}
+## Поднялся после боя — на этом привале не отдыхает.
+var just_revived := false
 var books: Array[String] = []
 var item := ""
 var hat := ""

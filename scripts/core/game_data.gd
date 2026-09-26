@@ -27,6 +27,16 @@ static func load_json(path: String) -> Variant:
 	return data
 
 
+static var _statuses: Dictionary = {}
+
+
+## Справочник эффектов (названия, описания, вид) — data/statuses.json.
+static func statuses() -> Dictionary:
+	if _statuses.is_empty():
+		_statuses = load_json("res://data/statuses.json")
+	return _statuses
+
+
 static func load_classes() -> Dictionary:
 	return load_json("res://data/classes/starting.json")
 

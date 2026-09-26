@@ -43,7 +43,10 @@ func _ready() -> void:
 	for t in torn:
 		_say("[color=#ff8a8a]%s: книга «%s» порвалась от износа![/color]" % [t.wizard.name, adventure.books[t.book].name])
 	for r in rest_report:
-		if r.dead:
+		if r.get("revived", false):
+			_say("[color=#e0b04a]%s выбыл в бою, но поднялся: %s ЗД (50 %%) и Разбитость — скорость −25 %% на %d ходов. Снимается лечением, щитом, баффом или Очищением.[/color]"
+				% [r.wizard.name, Unit._num(r.wizard.hp), r.wizard.carry_statuses.get("aching", 0)])
+		elif r.dead:
 			_say("%s выбыл и не отдыхает — нужен свиток или зелье воскрешения." % r.wizard.name)
 		else:
 			var line := "%s отдыхает: +%s ЗД." % [r.wizard.name, Unit._num(r.healed)]
@@ -71,8 +74,16 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", 10)
 	margin.add_child(root)
 
+	var head := HBoxContainer.new()
+	root.add_child(head)
 	_header = _label("", 22)
-	root.add_child(_header)
+	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_header)
+	var info := Button.new()
+	info.text = "Инфо"
+	info.tooltip_text = "Что значат иконки эффектов"
+	info.pressed.connect(func() -> void: StatusInfo.open(self))
+	head.add_child(info)
 	_info = _label("", 15)
 	_info.modulate = Color(1, 1, 1, 0.75)
 	root.add_child(_info)
@@ -137,6 +148,13 @@ func _wizard_column(i: int) -> Control:
 	if w.fortify > 0.0:
 		hp_line += "   Укрепление %s" % Unit._num(w.fortify)
 	col.add_child(_label(hp_line, 16))
+	var icons := HFlowContainer.new()
+	if w.fortify > 0.0:
+		icons.add_child(StatusIcon.make("fortify", Unit._num(w.fortify), 0, 28))
+	for id in w.carry_statuses:
+		icons.add_child(StatusIcon.make(id, str(w.carry_statuses[id]), 0, 28))
+	if icons.get_child_count() > 0:
+		col.add_child(icons)
 	col.add_child(_small("Мдр %d · Защ %d · Удача %d · Сопр %d · Скор %s" % [
 		st.wisdom, st.defense, st.luck, st.resist, Unit._num(st.speed)]))
 

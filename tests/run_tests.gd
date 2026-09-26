@@ -15,6 +15,7 @@ func _initialize() -> void:
 	test_rat_pack_simulation(books)
 	test_rest_and_fortify()
 	test_loot_rules()
+	test_revive_after_battle()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -127,6 +128,41 @@ func test_rest_and_fortify() -> void:
 	for i in 5:
 		u.tick_down()
 	check(u.fortify == 0.0 and u.fortify_turns == 0, "Укрепление тает по 0.5 за ход и исчезает через 5 ходов")
+
+
+## Выбывший после победы поднимается с 50 % ЗД и Разбитостью (−25 % скорости, 10 ходов).
+func test_revive_after_battle() -> void:
+	print("Воскрешение после боя и Разбитость:")
+	var adv := Adventure.new(["pyromancer", "priest", "water"], 21)
+	var c := adv.start_combat(21)
+	var pyro_unit: Unit = c.units[0]
+	pyro_unit.hp = 0.0
+	for u in c.living(Unit.ENEMIES):
+		u.hp = 0.0
+	c._check_outcome()
+	adv.finish_combat(c)
+	var pyro := adv.wizards[0]
+	check(is_equal_approx(pyro.hp, 5.0), "поднялся с 50 %% ЗД (%s)" % Unit._num(pyro.hp))
+	check(pyro.carry_statuses.get("aching", 0) == 10, "Разбитость на 10 ходов")
+	var rest := adv.rest()
+	check(rest[0].get("revived", false) and is_equal_approx(pyro.hp, 5.0) and pyro.fortify == 0.0,
+		"на этом привале не отдыхает и не получает Укрепление")
+	var c2 := adv.start_combat(22)
+	var u: Unit = c2.units[0]
+	check(u.has("aching") and is_equal_approx(u.effective_speed(), 7.5), "в следующем бою: скорость 10 → 7.5")
+	for i in 3:
+		u.tick_down()
+	c2.outcome = "victory"
+	adv.finish_combat(c2)
+	check(pyro.carry_statuses.get("aching", 0) == 7, "недоигранные ходы переходят дальше (осталось 7)")
+	var c3 := adv.start_combat(23)
+	var u3: Unit = c3.units[0]
+	c3._restore(u3, 1.0)
+	check(not u3.has("aching"), "лечение снимает Разбитость")
+	var c4 := adv.start_combat(24)
+	var u4: Unit = c4.units[0]
+	c4._apply_status(u4, {"id": "haste", "turns": 2}, c4.units[1])
+	check(not u4.has("aching"), "бафф снимает Разбитость")
 
 
 ## Лут: правила выпадения и инвентаря.

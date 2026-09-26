@@ -1,7 +1,7 @@
 extends SceneTree
 ## Снимки экранов (нужен дисплей, например xvfb-run):
 ##   godot --path . --script res://tests/screenshot.gd -- out=/tmp/shots
-## Сохраняет camp.png (первый привал) и battle.png (середина 2-го боя, после отдыха).
+## Сохраняет camp.png (первый привал), battle.png (середина 2-го боя) и info.png (окно «Инфо»).
 
 const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
@@ -56,10 +56,12 @@ func _play(ui: Node) -> void:
 		ui.State.READY:
 			if camp_shot:
 				casts_in_second += 1
-				if casts_in_second == 2:
+				if casts_in_second == 5:
 					busy = true
 					ui.fast = false
-					_shot("battle.png", func() -> void: quit())
+					_shot("battle.png", func() -> void:
+						StatusInfo.open(ui)
+						_shot("info.png", func() -> void: quit()))
 					return
 			ui._on_cast_pressed()
 

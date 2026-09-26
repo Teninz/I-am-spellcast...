@@ -64,6 +64,8 @@ func _add_wizard(w: Wizard, fortify_turns: int, fortify_decay: float) -> void:
 	w.fortify = 0.0  # Укрепление действует только на следующий бой
 	for s in st.start_status:
 		u.add_status(s.id, int(s.turns))
+	for id in w.carry_statuses:  # например, Разбитость после воскрешения
+		u.add_status(id, int(w.carry_statuses[id]))
 
 
 func add_enemy(cfg: Dictionary) -> Unit:
@@ -316,6 +318,7 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		if spec.shield > 0 and who.alive():
 			who.shield += maxi(0, spec.shield + bonus)
 			_log("%s получает Щит %d." % [who.name, spec.shield + bonus])
+			_cheer(who)
 		if spec.cleanse:
 			who.remove_debuffs()
 			_log("%s очищен." % who.name)
@@ -418,12 +421,15 @@ func use_item(owner: Unit, target: Unit) -> void:
 	if e.has("shield"):
 		target.shield += float(e.shield)
 		_log("%s получает Щит %d." % [target.name, e.shield])
+		_cheer(target)
 	if e.get("no_chaos", false):
 		target.no_chaos = true
 		_log("Из мешочков %s высыпаны фишки Хаоса." % target.name)
 	if e.has("status"):
 		target.add_status(e.status, int(e.turns))
 		_log("%s: %s." % [target.name, status_name(e.status)])
+		if Unit.BUFFS.has(e.status):
+			_cheer(target)
 	if e.has("extra_cast"):
 		target.extra_casts += int(e.extra_cast)
 	_check_outcome()
@@ -448,6 +454,8 @@ func _apply_status(who: Unit, s: Dictionary, source: Unit) -> void:
 		return
 	who.add_status(id, int(s.turns), int(s.get("stacks", 1)), source)
 	_log("%s: %s." % [who.name, status_name(id)])
+	if Unit.BUFFS.has(id):
+		_cheer(who)
 
 
 func _shift_meter(who: Unit, percent: int) -> void:
@@ -522,12 +530,21 @@ func _revive(who: Unit, hp: float) -> void:
 
 
 func _restore(who: Unit, amount: float) -> void:
+	if amount > 0.0:
+		_cheer(who)
 	if who.has("disease"):
 		amount *= 0.5
 	var before := who.hp
 	who.hp = minf(who.max_hp, who.hp + amount)
 	if who.hp > before:
 		_log("%s лечится на %s (%s)." % [who.name, Unit._num(who.hp - before), who.hp_text()])
+
+
+## Любой положительный эффект (лечение, щит, бафф) снимает Разбитость.
+func _cheer(who: Unit) -> void:
+	if who.has("aching"):
+		who.statuses.erase("aching")
+		_log("%s приходит в себя — Разбитость снята." % who.name)
 
 
 ## Предводитель погиб — банда боится того, кто его добил.
@@ -665,13 +682,4 @@ func _log(text: String) -> void:
 
 
 static func status_name(id: String) -> String:
-	return {
-		"burn": "Горение", "poison": "Яд", "stun": "Оглушение", "slow": "Замедление",
-		"vulnerable": "Уязвимость", "weak": "Слабость", "regen": "Регенерация",
-		"haste": "Ускорение", "fear": "Страх", "blind": "Ослепление", "disease": "Болезнь",
-		"confusion": "Путаница", "charm": "Очарование", "forget": "Забывчивость",
-		"invisible": "Невидимость", "reflect": "Отражение", "invulnerable": "Неуязвимость",
-		"stoneskin": "Каменная кожа", "inspire": "Вдохновение", "bless": "Благословение",
-		"chaos_curse": "Проклятие Хаоса", "petrify": "Окаменение", "toad": "Жаба",
-		"focus": "Сосредоточенность", "elemental": "Водный элементаль", "taunt": "Провокация",
-	}.get(id, id)
+	return GameData.statuses().get(id, {}).get("name", id)
