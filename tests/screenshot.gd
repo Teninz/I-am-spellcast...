@@ -101,8 +101,12 @@ func _play(ui: Node) -> void:
 							ui._show_effects(ui.combat.spell_for("pact", "DDT"))
 							ui._stamp(ui.combat.living(Unit.ENEMIES)[0], "burn")
 							_shot("stamp.png", func() -> void:
-								StatusInfo.open(ui)
-								_shot("info.png", func() -> void: quit()), 0.25)))
+								ui._log.key_only = true
+								ui._log._sync_buttons()
+								ui._log._render()
+								_shot("log_key.png", func() -> void:
+									StatusInfo.open(ui)
+									_shot("info.png", func() -> void: quit())), 0.25)))
 					return
 			ui._on_cast_pressed()
 

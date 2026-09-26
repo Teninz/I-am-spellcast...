@@ -61,7 +61,7 @@ var _auto_check: CheckBox
 var _item_button: Button
 var _ability_button: Button
 var _title_label: Label
-var _log: RichTextLabel
+var _log: BattleLog
 var _auto_timer: Timer
 
 
@@ -79,15 +79,18 @@ func _ready() -> void:
 func start_battle() -> void:
 	combat = adventure.start_combat()
 	combat.logged.connect(_on_log)
+	combat.turn_started.connect(func(u: Unit) -> void: _log.start_turn(u))
+	combat.hp_changed.connect(_float_number)
 	combat.unit_added.connect(_add_card)
 	combat.status_applied.connect(_stamp)
 	var enc := adventure.encounter()
 	_title_label.text = "Уровень %d из %d — %s" % [adventure.level, adventure.level_count(), enc.name]
 	_log.clear()
-	_on_log("[b]Бой начинается: %s![/b]" % enc.name)
+	_log.set_units(combat.units)
+	_on_log("Бой начинается: %s!" % enc.name, "title")
 	for u in combat.units:
 		if u.fortify > 0.0:
-			_on_log("%s в Укреплении: +%s временного ЗД на 5 ходов." % [u.name, Unit._num(u.fortify)])
+			_on_log("%s в Укреплении: +%s временного ЗД на 5 ходов." % [u.name, Unit._num(u.fortify)], "shield", "fortify")
 		if u.passive != "":
 			_on_log("%s: %s" % [u.name, enc.members[0].get("passive_text", "")])
 	for c in _cards.values():
@@ -192,7 +195,7 @@ func _on_chip_pressed(slot: int) -> void:
 		return
 	var old := bag.chips[slot]
 	combat.reroll_chip(actor, bag, slot)
-	_on_log("«%s» → «%s»." % [ELEMENT_NAMES[old], ELEMENT_NAMES[bag.chips[slot]]])
+	_on_log("«%s» → «%s»." % [ELEMENT_NAMES[old], ELEMENT_NAMES[bag.chips[slot]]], "luck")
 	_update_chips()
 	if state == State.READY:
 		_show_preview()
@@ -217,7 +220,7 @@ func _on_cast_pressed() -> void:
 	if combat.outcome != "":
 		_game_over()
 	elif again and actor.alive():
-		_on_log("%s кастует ещё раз!" % actor.name)
+		_on_log("%s кастует ещё раз!" % actor.name, "buff")
 		_clear_chips()
 		_set_state(State.CHOOSE_TARGET)
 		_prompt_label.text = "%s, второй каст: выбери цель." % actor.name
@@ -289,7 +292,7 @@ func _game_over() -> void:
 	_set_state(State.OVER)
 	var win := combat.outcome == "victory"
 	_prompt_label.text = "ПОБЕДА!" if win else "Поражение… Отряд выбыл."
-	_on_log("[b]%s[/b]" % _prompt_label.text)
+	_on_log(_prompt_label.text, "outcome")
 	await _wait(1.2)
 	finished.emit(combat.outcome)
 
@@ -514,8 +517,39 @@ func _shout() -> void:
 	tw.parallel().tween_property(_shout_banner, "modulate:a", 0.0, 0.4)
 
 
-func _on_log(text: String) -> void:
-	_log.append_text(text + "\n")
+func _on_log(text: String, kind: String = "info", icon: String = "") -> void:
+	_log.add(text, kind, icon)
+
+
+## Всплывающее число над карточкой: −урон красным, +лечение зелёным, поглощение — голубым.
+func _float_number(u: Unit, amount: float, kind: String) -> void:
+	if fast or not _cards.has(u.id) or amount <= 0.0:
+		return
+	var card: Control = _cards[u.id]
+	var l := Label.new()
+	l.top_level = true
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var big := amount >= Combat.BIG_HIT
+	l.text = {"damage": "−%s", "heal": "+%s", "block": "(−%s)"}[kind] % Unit._num(amount)
+	l.add_theme_font_size_override("font_size", 40 if big else 30)
+	l.add_theme_color_override("font_color", {"damage": Color("ff5a4a"), "heal": Color("6cf07a"), "block": Color("8fc0ff")}[kind])
+	l.add_theme_color_override("font_outline_color", Color(0.05, 0.02, 0.02))
+	l.add_theme_constant_override("outline_size", 10)
+	add_child(l)
+	var rect := card.get_global_rect()
+	# Несколько чисел подряд по одной карточке — лесенкой, чтобы не слипались.
+	var stack: int = card.get_meta("floats", 0)
+	card.set_meta("floats", stack + 1)
+	l.global_position = Vector2(rect.position.x + rect.size.x * 0.55 + 18 * (stack % 3), rect.position.y + 6)
+	l.scale = Vector2(0.6, 0.6)
+	var tw := create_tween()
+	tw.tween_property(l, "scale", Vector2(1.0, 1.0), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "global_position:y", l.global_position.y - 42, 0.9).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.9).set_delay(0.35)
+	tw.tween_callback(func() -> void:
+		l.queue_free()
+		if is_instance_valid(card):
+			card.set_meta("floats", maxi(0, int(card.get_meta("floats", 1)) - 1)))
 
 
 func _wait(seconds: float) -> Signal:
@@ -637,9 +671,17 @@ func _build_ui() -> void:
 	_effects_box.custom_minimum_size = Vector2(0, 76)
 	center.add_child(_effects_box)
 
+	# Баннер «Я кастую!» — накладка: мелькает на полсекунды и не занимает места в раскладке.
+	var shout_slot := Control.new()
+	shout_slot.custom_minimum_size = Vector2(0, 36)
+	shout_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(shout_slot)
 	var shout_holder := CenterContainer.new()
-	shout_holder.custom_minimum_size = Vector2(0, 72)
-	center.add_child(shout_holder)
+	shout_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shout_slot.add_child(shout_holder)
+	shout_holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shout_holder.offset_top = -40
+	shout_holder.offset_bottom = 40
 	_shout_banner = TextureRect.new()
 	_shout_banner.texture = Art.texture("res://assets/ui/shout_banner.png")
 	_shout_banner.custom_minimum_size = Vector2(420, 105)
@@ -714,17 +756,8 @@ func _build_ui() -> void:
 	_enemy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	enemy_scroll.add_child(_enemy_box)
 
-	_log = RichTextLabel.new()
-	_log.bbcode_enabled = true
-	_log.scroll_following = true
-	_log.custom_minimum_size = Vector2(0, 170)
-	var log_box := StyleBoxFlat.new()
-	log_box.bg_color = Color(0.06, 0.05, 0.09, 0.75)
-	log_box.set_corner_radius_all(6)
-	log_box.set_content_margin_all(8)
-	_log.add_theme_stylebox_override("normal", log_box)
-	_log.add_theme_font_size_override("normal_font_size", 14)
-	_log.add_theme_font_size_override("bold_font_size", 14)
+	_log = BattleLog.new()
+	_log.custom_minimum_size = Vector2(0, 150)
 	root.add_child(_log)
 
 	_auto_timer = Timer.new()
