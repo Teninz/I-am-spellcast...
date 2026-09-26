@@ -106,14 +106,14 @@ func _left_column() -> Control:
 	title_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title_col)
 	var name_l := _label(book.name, 20)
-	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	title_col.add_child(name_l)
 	var rarity := _label({"common": "Обычная", "rare": "Редкая", "epic": "Эпическая",
 		"legendary": "Легендарная", "cursed": "Проклятая"}.get(book.get("rarity", ""), ""), 13)
 	rarity.modulate = Color(1, 1, 1, 0.7)
 	title_col.add_child(rarity)
 	var flavor := _label(book.get("flavor", ""), 12)
-	flavor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	flavor.autowrap_mode = TextServer.AUTOWRAP_WORD
 	flavor.modulate = Color(1, 1, 1, 0.65)
 	title_col.add_child(flavor)
 
@@ -194,7 +194,7 @@ func _luck_panel() -> Control:
 	_meter.add_theme_stylebox_override("background", bg)
 	v.add_child(_meter)
 	_meter_label = _label("", 13)
-	_meter_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_meter_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	v.add_child(_meter_label)
 	if not luck:
 		panel.modulate = Color(1, 1, 1, 0.7)
@@ -302,7 +302,7 @@ func _spell_row(sp: Dictionary, base: float, now: float) -> Control:
 	name_l.add_theme_color_override("font_color", Color("ffd35a") if sp.category == "damage" else Color.WHITE)
 	text.add_child(name_l)
 	var eff := _label("%s · %s" % [Luck.CATEGORY_NAMES.get(sp.category, sp.category), sp.effect], 12)
-	eff.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	eff.autowrap_mode = TextServer.AUTOWRAP_WORD
 	eff.modulate = Color(1, 1, 1, 0.8)
 	text.add_child(eff)
 	row.add_child(text)

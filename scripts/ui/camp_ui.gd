@@ -185,7 +185,7 @@ func _wizard_column(i: int) -> Control:
 	head_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(head_text)
 	var name_l := _label(w.name + ("  (зомби)" if w.zombie else ""), 19)
-	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	head_text.add_child(name_l)
 	var st := w.stats()
 	var hp_line := "ЗД %s/%s" % [Unit._num(w.hp), Unit._num(w.max_hp())] if w.alive() else "ВЫБЫЛ"
@@ -459,7 +459,7 @@ func _row() -> HFlowContainer:
 func _label(text: String, size: int) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.add_theme_font_size_override("font_size", size)
 	return l
 

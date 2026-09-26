@@ -87,7 +87,7 @@ static func big_card(id: String, counter_text: String = "", source: String = "",
 	col.add_child(kind)
 	var desc := Label.new()
 	desc.text = info_d.desc
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD
 	desc.custom_minimum_size = Vector2(260, 0)
 	desc.add_theme_font_size_override("font_size", 14)
 	col.add_child(desc)

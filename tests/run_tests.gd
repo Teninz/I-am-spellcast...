@@ -91,6 +91,23 @@ func test_art_assets(books: Dictionary) -> void:
 				lost.append("%s_%s" % [cid, st])
 	check(lost.is_empty(), "персонажи: %d из %d%s" % [total - lost.size(), total,
 		"" if lost.is_empty() else " — нет: " + ", ".join(PackedStringArray(lost))])
+	# Портреты врагов акта I и кольца аватарок — ждут картинок (docs/art_prompts_enemies.md).
+	var enemy_ids: Dictionary = GameData.load_json("res://data/enemy_portraits.json")
+	var uniq := {}
+	for n in enemy_ids:
+		uniq[enemy_ids[n]] = true
+	var have := uniq.keys().filter(func(id): return ResourceLoader.exists("res://assets/enemies/%s.png" % id)).size()
+	var rings := ["wizard", "wizard_active", "wizard_critical", "wizard_zombie", "enemy", "enemy_leader", "enemy_boss", "enemy_summon"]
+	var have_rings := rings.filter(func(r): return Art.ring(r) != null).size()
+	print("       портреты врагов: %d из %d, кольца аватарок: %d из %d (ждут картинок)" % [have, uniq.size(), have_rings, rings.size()])
+	var names_ok := true
+	for f in DirAccess.get_files_at("res://data/encounters"):
+		if f.ends_with(".json"):
+			for m in GameData.load_json("res://data/encounters/" + f).members:
+				if not enemy_ids.has(m.name):
+					names_ok = false
+					print("       нет id портрета: ", m.name)
+	check(names_ok, "у каждого врага акта I есть id портрета")
 	check(Art.portrait_state(9.0, 10.0) == "healthy" and Art.portrait_state(4.0, 10.0) == "hurt"
 		and Art.portrait_state(3.0, 10.0) == "critical" and Art.portrait_state(9.0, 10.0, true) == "zombie",
 		"портрет по здоровью: >1/2 здоров, от 1/3 ранен, <1/3 при смерти, зомби отдельно")

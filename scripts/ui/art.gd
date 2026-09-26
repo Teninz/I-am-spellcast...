@@ -58,16 +58,22 @@ static func portrait_head(class_id: String, state: String = "healthy") -> Textur
 	if _cache.has(key):
 		return _cache[key]
 	var full := portrait(class_id, state)
-	var out: Texture2D = null
-	if full:
-		var a := AtlasTexture.new()
-		a.atlas = full
-		var w := full.get_width()
-		var h := full.get_height()
-		a.region = Rect2(w * 0.17, h * 0.03, w * 0.66, w * 0.66 * 4.0 / 3.0)
-		out = a
+	var out: Texture2D = _head_of(full, key) if full else null
 	_cache[key] = out
 	return out
+
+
+## Верхняя часть картинки 3:4 — голова и плечи.
+static func _head_of(full: Texture2D, key: String) -> Texture2D:
+	if _cache.has("atlas:" + key):
+		return _cache["atlas:" + key]
+	var a := AtlasTexture.new()
+	a.atlas = full
+	var w := full.get_width()
+	var h := full.get_height()
+	a.region = Rect2(w * 0.17, h * 0.03, w * 0.66, minf(h * 0.97, w * 0.66 * 4.0 / 3.0))
+	_cache["atlas:" + key] = a
+	return a
 
 
 ## Картинка портрета нужного размера (или пустое место, если файла нет).
@@ -82,6 +88,66 @@ static func portrait_rect(tex: Texture2D, size: Vector2) -> TextureRect:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return tr
+
+
+static var _enemy_ids: Dictionary = {}
+
+
+## Портрет врага по имени (data/enemy_portraits.json): assets/enemies/<id>.png или null.
+static func enemy_portrait(enemy_name: String) -> Texture2D:
+	if _enemy_ids.is_empty():
+		_enemy_ids = GameData.load_json("res://data/enemy_portraits.json")
+	var id: String = _enemy_ids.get(enemy_name, "")
+	return texture("res://assets/enemies/%s.png" % id) if id != "" else null
+
+
+static func enemy_head(enemy_name: String) -> Texture2D:
+	var full := enemy_portrait(enemy_name)
+	return _head_of(full, "enemy:" + enemy_name) if full else null
+
+
+## Кольцо аватарки: assets/ui/ring_<вид>.png (ring_wizard, ring_wizard_active, ring_enemy_boss…).
+static func ring(kind: String) -> Texture2D:
+	return texture("res://assets/ui/ring_%s.png" % kind)
+
+
+## Аватарка: лицо в круге и кольцо поверх. Без файла кольца — прямоугольное лицо.
+## Возвращает Control; лицо и кольцо лежат в мете "face" и "ring", чтобы их можно было менять.
+static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
+	var ring_tex := Art.ring(ring_kind)
+	if ring_tex == null:
+		var rect := portrait_rect(face, Vector2(px * 0.76, px))
+		rect.set_meta("face", rect)
+		return rect
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(px, px)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var f := TextureRect.new()
+	f.texture = face
+	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	f.material = circle_material()
+	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var inset := px * 0.15  # лицо — внутри кольца (внутренний диаметр ≈ 70 %)
+	f.offset_left = inset
+	f.offset_top = inset
+	f.offset_right = -inset
+	f.offset_bottom = -inset
+	holder.add_child(f)
+	var r := TextureRect.new()
+	r.texture = ring_tex
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(r)
+	holder.set_meta("face", f)
+	holder.set_meta("ring", r)
+	return holder
 
 
 static func book(id: String) -> Texture2D:
@@ -128,7 +194,7 @@ static func book_cover(book: Dictionary, width: int) -> Control:
 		var l := Label.new()
 		l.text = book.name
 		l.custom_minimum_size = Vector2(width, h)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		l.add_theme_font_size_override("font_size", 11)

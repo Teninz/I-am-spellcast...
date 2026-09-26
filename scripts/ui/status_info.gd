@@ -59,7 +59,7 @@ func _ready() -> void:
 	head.add_child(close)
 	var hint := Label.new()
 	hint.text = "Число в правом нижнем углу — сколько ходов эффект ещё продержится (у Щита и Укрепления — сколько осталось). Наведи мышь на иконку в бою, чтобы увидеть подсказку."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.modulate = Color(1, 1, 1, 0.7)
 	col.add_child(hint)
@@ -100,7 +100,7 @@ func _ready() -> void:
 			text_col.add_child(name_l)
 			var text := Label.new()
 			text.text = all[id].desc
-			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			text.autowrap_mode = TextServer.AUTOWRAP_WORD
 			text.custom_minimum_size = Vector2(380, 0)
 			text.add_theme_font_size_override("font_size", 13)
 			text.modulate = Color(1, 1, 1, 0.85)

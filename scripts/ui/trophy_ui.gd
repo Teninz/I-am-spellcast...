@@ -151,7 +151,7 @@ func _kind_card(kind: String, data: Dictionary) -> Button:
 	box.add_child(name_l)
 	var text := Label.new()
 	text.text = data.text
-	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD
 	text.add_theme_font_size_override("font_size", 14)
 	box.add_child(text)
 	return b

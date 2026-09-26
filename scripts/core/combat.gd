@@ -1216,6 +1216,7 @@ func _split(who: Unit, amount: float) -> void:
 		acc -= float(cfg.every)
 		var u := add_enemy(cfg.unit)
 		u.set_meta("spawned_by", who.id)
+		u.set_meta("summoned", true)
 		_log("От %s отделяется %s!" % [who.name, u.name], "summon")
 		unit_added.emit(u)
 	who.set_meta("split_acc", acc)
@@ -1317,6 +1318,7 @@ func _use_special(enemy: Unit, sp: Dictionary) -> void:
 		"summon":
 			for i in int(sp.count):
 				var u := add_enemy(sp.unit)
+				u.set_meta("summoned", true)
 				_log("Появляется: %s." % u.name, "summon")
 				unit_added.emit(u)
 		_:

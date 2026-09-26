@@ -41,7 +41,7 @@ func _ready() -> void:
 	var hint := Label.new()
 	hint.text = "Уровень %d из %d. Выбери дорогу — вторая ветка и всё, что за ней, закроются. Банды видно на два шага вперёд." % [
 		adventure.level, adventure.level_count()]
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.modulate = Color(1, 1, 1, 0.8)
 	col.add_child(hint)
@@ -125,14 +125,14 @@ func _choice_card(n: Dictionary) -> Control:
 	box.add_child(gang)
 	var members := Label.new()
 	members.text = _members_text(enc.members)
-	members.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	members.autowrap_mode = TextServer.AUTOWRAP_WORD
 	members.add_theme_font_size_override("font_size", 13)
 	box.add_child(members)
 	for m in enc.members:
 		for sp in m.get("specials", []):
 			var special := Label.new()
 			special.text = "★ %s: «%s» — %s (раз в %d хода)" % [m.name, sp.name, sp.text, int(sp.cooldown)]
-			special.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			special.autowrap_mode = TextServer.AUTOWRAP_WORD
 			special.add_theme_font_size_override("font_size", 13)
 			special.add_theme_color_override("font_color", GOLD)
 			box.add_child(special)
@@ -145,7 +145,7 @@ func _choice_card(n: Dictionary) -> Control:
 		var further := Label.new()
 		var boss_next: bool = adventure.map_nodes[n.children[0]].level == adventure.level_count()
 		further.text = ("Дальше — босс: " if boss_next else "Дальше по этой дороге: ") + " или ".join(ahead)
-		further.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		further.autowrap_mode = TextServer.AUTOWRAP_WORD
 		further.add_theme_font_size_override("font_size", 13)
 		further.modulate = Color(1, 1, 1, 0.7)
 		box.add_child(further)

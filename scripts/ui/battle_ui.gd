@@ -490,7 +490,7 @@ func _set_state(s: State) -> void:
 			var l := Label.new()
 			l.text = books[b].name
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD
 			l.add_theme_font_size_override("font_size", 11)
 			col.add_child(l)
 			btn.add_child(col)
@@ -544,15 +544,41 @@ func _refresh() -> void:
 	_ability_label.tooltip_text = _ability_label.text
 
 
+## Кольцо аватарки по состоянию участника.
+func _ring_kind(u: Unit) -> String:
+	if u.is_wizard():
+		if u.wizard != null and u.wizard.zombie:
+			return "wizard_zombie"
+		if u == actor:
+			return "wizard_active"
+		if u.alive() and u.hp < u.max_hp / 3.0:
+			return "wizard_critical"
+		return "wizard"
+	if u.is_boss:
+		return "enemy_boss"
+	if u.is_leader:
+		return "enemy_leader"
+	if u.has_meta("summoned"):
+		return "enemy_summon"
+	return "enemy"
+
+
 func _update_card(card: Button, u: Unit) -> void:
 	var name_label: Label = card.get_meta("name")
 	name_label.text = "%s%s" % ["▶ " if u == actor else "", u.name]
 	var hp_label: Label = card.get_meta("hp")
 	hp_label.text = "ЗД %s" % u.hp_text() if u.alive() else "выбыл"
-	if card.has_meta("face"):
-		var face: TextureRect = card.get_meta("face")
-		var zombie := u.wizard != null and u.wizard.zombie
-		face.texture = Art.portrait_head(u.class_id, Art.portrait_state(u.hp, u.max_hp, zombie))
+	if card.has_meta("avatar"):
+		var av: Control = card.get_meta("avatar")
+		if u.is_wizard():
+			var zombie := u.wizard != null and u.wizard.zombie
+			var face: TextureRect = av.get_meta("face")
+			face.texture = Art.portrait_head(u.class_id, Art.portrait_state(u.hp, u.max_hp, zombie))
+		if av.has_meta("ring"):
+			var r: TextureRect = av.get_meta("ring")
+			var t := Art.ring(_ring_kind(u))
+			if t:
+				r.texture = t
 	var bar: ProgressBar = card.get_meta("bar")
 	bar.max_value = u.max_hp
 	bar.value = u.hp
@@ -940,7 +966,7 @@ func _build_ui() -> void:
 
 	_prompt_label = _label("", 18)
 	_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	center.add_child(_prompt_label)
 
 	var chips := HBoxContainer.new()
@@ -948,16 +974,33 @@ func _build_ui() -> void:
 	chips.add_theme_constant_override("separation", 18)
 	center.add_child(chips)
 	# Мешочек: клик по нему тоже достаёт фишку.
+	# Мешочек лежит в такой же ячейке, как фишки: гнездо сзади, мешочек обрезан по кругу.
+	var bag_cell := Control.new()
+	bag_cell.custom_minimum_size = Vector2(96, 96)
+	bag_cell.visible = Art.bag() != null
+	chips.add_child(bag_cell)
+	var bag_socket := TextureRect.new()
+	bag_socket.texture = Art.texture("res://assets/ui/chip_socket.png")
+	bag_socket.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bag_socket.offset_left = -6
+	bag_socket.offset_top = -6
+	bag_socket.offset_right = 6
+	bag_socket.offset_bottom = 6
+	bag_socket.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bag_socket.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bag_socket.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	bag_socket.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bag_cell.add_child(bag_socket)
 	_bag_button = TextureButton.new()
 	_bag_button.texture_normal = Art.bag()
 	_bag_button.ignore_texture_size = true
 	_bag_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-	_bag_button.custom_minimum_size = Vector2(96, 96)
+	_bag_button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bag_button.material = Art.circle_material()
 	_bag_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_bag_button.tooltip_text = "Мешочек: достать фишку"
 	_bag_button.pressed.connect(_on_draw_pressed)
-	_bag_button.visible = Art.bag() != null
-	chips.add_child(_bag_button)
+	bag_cell.add_child(_bag_button)
 	for i in ChipBag.CHIPS_PER_CAST:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(96, 96)
@@ -996,7 +1039,7 @@ func _build_ui() -> void:
 
 	_spell_label = _label("", 18)
 	_spell_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_spell_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_spell_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	center.add_child(_spell_label)
 
 	_effects_box = HBoxContainer.new()
@@ -1081,7 +1124,7 @@ func _build_ui() -> void:
 
 	_ability_label = _label("", 14)
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_ability_label.modulate = Color(1, 1, 1, 0.7)
 	# Не больше двух строк, полный текст — в подсказке (иначе журнал уезжает за край).
 	_ability_label.max_lines_visible = 2
@@ -1150,10 +1193,11 @@ func _make_card(u: Unit) -> Button:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 8)
 	margin.add_child(row)
-	if u.is_wizard() and Art.portrait_head(u.class_id) != null:
-		var face := Art.portrait_rect(Art.portrait_head(u.class_id), Vector2(56, 74))
-		row.add_child(face)
-		b.set_meta("face", face)
+	var face_tex := Art.portrait_head(u.class_id) if u.is_wizard() else Art.enemy_head(u.name)
+	if face_tex != null:
+		var av := Art.avatar(face_tex, _ring_kind(u), 74)
+		row.add_child(av)
+		b.set_meta("avatar", av)
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1164,15 +1208,21 @@ func _make_card(u: Unit) -> Button:
 	col.add_child(top)
 	var name_label := _label("", 14 if u.is_wizard() else 15)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.clip_text = true
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD  # длинное имя — на вторую строку целыми словами
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(name_label)
 	var hp_label := _label("", 13 if u.is_wizard() else 14)
 	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(hp_label)
+	# ЗД — справа от полоски здоровья, чтобы имени досталась вся ширина строки.
+	var bar_row := HBoxContainer.new()
+	bar_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_row.add_theme_constant_override("separation", 6)
+	col.add_child(bar_row)
 	var bar := ProgressBar.new()
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(0, 7)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0, 0, 0, 0.45)
@@ -1180,7 +1230,8 @@ func _make_card(u: Unit) -> Button:
 	fill.bg_color = Color("4cc46a") if u.is_wizard() else Color("e0413a")
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
-	col.add_child(bar)
+	bar_row.add_child(bar)
+	bar_row.add_child(hp_label)
 	var icons := HFlowContainer.new()
 	icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icons.add_theme_constant_override("h_separation", 3)

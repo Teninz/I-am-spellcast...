@@ -165,12 +165,13 @@ func _card(cid: String) -> Control:
 	var name_l := Label.new()
 	name_l.text = ("✔ " if on else "") + cfg.name + ("" if open else "  🔒")
 	name_l.add_theme_font_size_override("font_size", 18)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	text.add_child(name_l)
 	var info := Label.new()
 	var book_name: String = GameData.load_books_cached().get(book, {}).get("name", book)
 	info.text = "ЗД %s · %s · %s" % [Unit._num(float(cfg.hp)), book_name, cfg.ability_text] if open else "Закрыт. " + String(cfg.get("unlock", {}).get("text", ""))
-	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.custom_minimum_size = Vector2(280, 0)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # текст — в ширину карточки, перенос целыми словами
 	info.add_theme_font_size_override("font_size", 12)
 	info.modulate = Color(1, 1, 1, 0.85 if open else 0.6)
 	text.add_child(info)
