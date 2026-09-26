@@ -47,6 +47,7 @@ python3 tools/gen_spells.py
 
 ![Иконки эффектов](docs/images/status-icons.png)
 
+Промпты для фишек стихий и обложек книг: [docs/art_prompts_chips_books.md](docs/art_prompts_chips_books.md).
 Промпты, по которым сделаны иконки: [docs/icon_prompts.md](docs/icon_prompts.md);
 готовые PNG клади в `assets/icons/status/<id>.png` — игра подхватит их сама
 (подходит любой размер, лучше 512×512: картинка сглаженно уменьшается до маленьких иконок).
