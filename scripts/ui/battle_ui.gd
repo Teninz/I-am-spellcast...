@@ -10,8 +10,10 @@ signal finished(outcome: String)
 
 enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, ITEM_TARGET, ABILITY_TARGET, REWIND, OVER }
 
-const AUTO_DRAW_DELAY := 2.0
-const AUTO_CAST_DELAY := 1.2
+## Не нажал сам — через столько секунд фишка вытянется (и «Я кастую!» нажмётся) автоматически.
+const AUTO_DELAY := 5.0
+## Столько секунд на выбор книги, потом — случайная.
+const BOOK_TIME := 30.0
 const ENEMY_DELAY := 0.8
 
 const ELEMENT_NAMES := {
@@ -29,7 +31,6 @@ const ELEMENT_COLORS := {
 ## Для тестов: ускоряет все задержки.
 var fast := false
 ## Сохраняется между боями.
-var auto_draw := false
 
 var adventure: Adventure
 var books: Dictionary
@@ -56,9 +57,10 @@ var _ability_label: Label
 var _party_box: VBoxContainer
 var _enemy_box: VBoxContainer
 var _book_box: HBoxContainer
-var _draw_button: Button
 var _cast_button: Button
-var _auto_check: CheckBox
+## Подсказка с обратным отсчётом (автотяга, выбор книги).
+var _timer_label: Label
+var _deadline := 0.0     # когда сработает автонажатие (время в секундах, 0 — нет)
 var _item_button: Button
 var _ability_button: Button
 ## Ряд под кнопками: видения Прорицателя, выбор фишки для Сделки, Перемотка.
@@ -187,14 +189,14 @@ func _select_book(id: String) -> void:
 	_set_state(State.DRAWING)
 	_prompt_label.text = "%s → %s. Книга: %s. Доставай фишки!" % [actor.name, target.name, books[id].name]
 	_update_chips()
-	if _auto_check.button_pressed:
-		_auto_step()
+	_auto_step()
 
 
-func _on_draw_pressed() -> void:
+## Клик по мешочку (manual) или автотяга: достаёт следующую фишку.
+func _on_draw_pressed(manual: bool = true) -> void:
 	if state != State.DRAWING:
 		return
-	var chip := bag.draw(combat.rng)
+	var chip := combat.draw_chip(actor, target, book_id, bag, manual)
 	if not fast:
 		Sfx.play("chip_chaos" if chip == ChipBag.CHAOS else "chip_draw")
 	_update_chips()
@@ -203,8 +205,7 @@ func _on_draw_pressed() -> void:
 		_show_preview()
 	else:
 		_ability_button.visible = _ability_available()
-	if _auto_check.button_pressed:
-		_auto_step()
+	_auto_step()
 
 
 func _on_chip_pressed(slot: int) -> void:
@@ -239,7 +240,7 @@ func _on_cast_pressed() -> void:
 	if state == State.OVER:
 		return
 	# Хрономант: неудачный каст можно отмотать.
-	if combat.outcome == "" and combat.last_cast.get("bad", false) and combat.can_rewind() and not _auto_check.button_pressed:
+	if combat.outcome == "" and combat.last_cast.get("bad", false) and combat.can_rewind():
 		_rewind_again = again
 		_set_state(State.REWIND)
 		_prompt_label.text = "Каст вышел неудачным. Хрономант может отмотать время (1 раз за бой)."
@@ -425,18 +426,63 @@ func _after_item() -> void:
 	_prompt_label.text = "%s, выбери цель: противника или союзника." % actor.name
 
 
+## Запускает обратный отсчёт автонажатия для текущего состояния.
 func _auto_step() -> void:
-	var delay := AUTO_DRAW_DELAY if state == State.DRAWING else AUTO_CAST_DELAY
-	_auto_timer.start(0.01 if fast else Settings.delay(delay))
+	_auto_timer.stop()
+	_deadline = 0.0
+	if fast:
+		return  # в тестах интерфейс ведёт сам тест
+	var wait := 0.0
+	match state:
+		State.DRAWING, State.READY, State.REWIND:
+			wait = AUTO_DELAY
+		State.CHOOSE_BOOK:
+			wait = BOOK_TIME
+		_:
+			return
+	_deadline = Time.get_ticks_msec() / 1000.0 + wait
+	_auto_timer.start(wait)
 
 
 func _on_auto_timer() -> void:
-	if not _auto_check.button_pressed or state == State.OVER:
+	_deadline = 0.0
+	match state:
+		State.DRAWING:
+			_on_draw_pressed(false)
+		State.READY:
+			_on_cast_pressed()
+		State.REWIND:
+			_on_rewind_skip()
+		State.CHOOSE_BOOK:
+			# Время на выбор вышло — книга выбирается случайно (открытая книга закрывается).
+			for c in get_children():
+				if c is BookView:
+					c.queue_free()
+			var pick: String = actor.books[combat.rng.randi_range(0, actor.books.size() - 1)]
+			_on_log("Время вышло — %s хватает первую попавшуюся книгу: «%s»." % [actor.name, books[pick].name], "info")
+			_select_book(pick)
+
+
+## Обратный отсчёт в подсказке.
+func _process(_delta: float) -> void:
+	if _timer_label == null:
 		return
-	if state == State.DRAWING:
-		_on_draw_pressed()
-	elif state == State.READY:
-		_on_cast_pressed()
+	var left := _deadline - Time.get_ticks_msec() / 1000.0
+	if _deadline <= 0.0 or left <= 0.0:
+		_timer_label.text = ""
+		return
+	var sec := ceili(left)
+	match state:
+		State.DRAWING:
+			_timer_label.text = "Кликни по мешочку, чтобы достать фишку — сама вытянется через %d с. Вручную шанс на нужное заклинание чуть выше." % sec
+		State.READY:
+			_timer_label.text = "«Я кастую!» нажмётся само через %d с." % sec
+		State.CHOOSE_BOOK:
+			_timer_label.text = "На выбор книги — %d с, потом книга выберется случайно." % sec
+		State.REWIND:
+			_timer_label.text = "Через %d с каст останется как есть." % sec
+		_:
+			_timer_label.text = ""
 
 
 func _game_over() -> void:
@@ -459,10 +505,9 @@ func _game_over() -> void:
 func _set_state(s: State) -> void:
 	_stop_pulse()
 	state = s
-	_draw_button.disabled = s != State.DRAWING
 	if _bag_button:
 		_bag_button.disabled = s != State.DRAWING
-		_bag_button.modulate = Color(1, 1, 1, 1.0 if s == State.DRAWING else 0.45)
+		_bag_button.modulate = Color(1, 1, 1) if s == State.DRAWING else Color(0.6, 0.6, 0.6)
 	_cast_button.disabled = s != State.READY
 	_item_button.visible = s in [State.CHOOSE_TARGET, State.ITEM_TARGET] and actor != null \
 		and actor.is_wizard() and combat.can_use_item(actor)
@@ -507,6 +552,7 @@ func _set_state(s: State) -> void:
 	_rebuild_extra()
 	_refresh()
 	_tutorial_step()
+	_auto_step()
 
 
 # --- Отрисовка -----------------------------------------------------------
@@ -812,8 +858,8 @@ func _wait(seconds: float) -> Signal:
 
 const TUTORIAL := {
 	State.CHOOSE_TARGET: "[b]Шаг 1 из 4 · Выбери цель.[/b] Кликни по карточке врага (справа) или союзника (слева). [color=#ffd35a]Цель выбирается до фишек[/color] — поэтому лечение может достаться врагу, а удар своему. В этом весь «Я кастую!».",
-	State.CHOOSE_BOOK: "[b]Шаг 2 из 4 · Выбери книгу.[/b] У каждой книги свои 30 заклинаний. Кнопка [color=#ffd35a]«Открыть»[/color] под обложкой покажет их все с шансами.",
-	State.DRAWING: "[b]Шаг 3 из 4 · Тяни фишки.[/b] Нажми [color=#ffd35a]«Достать фишку»[/color] или по мешочку — три раза. Порядок фишек определяет заклинание, чёрная фишка — Хаос. Щёлкни по обложке книги, чтобы подсмотреть шансы.",
+	State.CHOOSE_BOOK: "[b]Шаг 2 из 4 · Выбери книгу.[/b] У каждой книги свои 30 заклинаний. Кнопка [color=#ffd35a]«Открыть»[/color] под обложкой покажет их все с шансами. На выбор — 30 секунд.",
+	State.DRAWING: "[b]Шаг 3 из 4 · Тяни фишки.[/b] Кликай по [color=#ffd35a]мешочку[/color] — три раза. Порядок фишек определяет заклинание, чёрная фишка — Хаос. Не успеешь за 5 секунд — фишка вытянется сама, но вручную шанс на нужное заклинание чуть выше.",
 	State.READY: "[b]Шаг 4 из 4 · Кричи![/b] Над кнопкой видно, что получилось. Жми [color=#ffd35a]«Я кастую!»[/color].",
 	State.ENEMY_TURN: "[b]Ходят враги.[/b] Кто ходит следующим — в строке «Очередь» сверху: быстрые ходят чаще. Наведи мышь на иконку эффекта или жми «Инфо», чтобы узнать, что она значит.",
 	State.ITEM_TARGET: "[b]Предмет.[/b] Выбери, на кого его использовать. Предмет не тратит ход.",
@@ -876,7 +922,7 @@ func _tutorial_step() -> void:
 		State.CHOOSE_BOOK:
 			_pulse([_book_box])
 		State.DRAWING:
-			_pulse([_draw_button, _bag_button])
+			_pulse([_bag_button])
 		State.READY:
 			_pulse([_cast_button])
 		_:
@@ -973,6 +1019,12 @@ func _build_ui() -> void:
 	chips.alignment = BoxContainer.ALIGNMENT_CENTER
 	chips.add_theme_constant_override("separation", 18)
 	center.add_child(chips)
+	_timer_label = _label("", 13)
+	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_timer_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_timer_label.modulate = Color(1, 0.9, 0.6, 0.85)
+	_timer_label.custom_minimum_size = Vector2(0, 18)
+	center.add_child(_timer_label)
 	# Мешочек: клик по нему тоже достаёт фишку.
 	# Мешочек лежит в такой же ячейке, как фишки: гнездо сзади, мешочек обрезан по кругу.
 	var bag_cell := Control.new()
@@ -999,7 +1051,7 @@ func _build_ui() -> void:
 	_bag_button.material = Art.circle_material()
 	_bag_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_bag_button.tooltip_text = "Мешочек: достать фишку"
-	_bag_button.pressed.connect(_on_draw_pressed)
+	_bag_button.pressed.connect(_on_draw_pressed.bind(true))
 	bag_cell.add_child(_bag_button)
 	for i in ChipBag.CHIPS_PER_CAST:
 		var b := Button.new()
@@ -1085,8 +1137,6 @@ func _build_ui() -> void:
 	controls.add_theme_constant_override("h_separation", 12)
 	controls.add_theme_constant_override("v_separation", 6)
 	center.add_child(controls)
-	_draw_button = _button("Достать фишку", _on_draw_pressed)
-	controls.add_child(_draw_button)
 	_cast_button = _button("Я кастую!", _on_cast_pressed)
 	var cast_box := Art.frame("button_cast", 56, 0.4, -1.0, Color.WHITE, 22)
 	if cast_box:
@@ -1112,15 +1162,7 @@ func _build_ui() -> void:
 	_extra_box.add_theme_constant_override("h_separation", 8)
 	_extra_box.add_theme_constant_override("v_separation", 6)
 	center.add_child(_extra_box)
-	_auto_check = CheckBox.new()
-	_auto_check.text = "Авто"
-	_auto_check.tooltip_text = "Автотяга: фишка раз в 2 секунды, затем «Я кастую!»"
-	_auto_check.button_pressed = auto_draw
-	_auto_check.toggled.connect(func(on: bool) -> void:
-		auto_draw = on
-		if on and (state == State.DRAWING or state == State.READY):
-			_auto_step())
-	controls.add_child(_auto_check)
+
 
 	_ability_label = _label("", 14)
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -9,7 +9,6 @@ const DEFAULTS := {
 	"master": 0.8,       # общая громкость 0..1
 	"sfx": 1.0,          # звуки 0..1
 	"music": 0.6,        # музыка 0..1 (музыка появится позже)
-	"auto_draw": false,  # автотяга фишек включена с начала боя
 	"tutorial": true,    # подсказки обучения в бою
 }
 
@@ -44,7 +43,7 @@ static func save() -> void:
 		f.store_string(JSON.stringify(_data, "  "))
 
 
-static func reload() -> void:
+static func load_from_disk() -> void:
 	_data = DEFAULTS.duplicate()
 	if FileAccess.file_exists(path):
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
@@ -57,7 +56,7 @@ static func reload() -> void:
 
 static func _ensure() -> void:
 	if _data.is_empty():
-		reload()
+		load_from_disk()
 
 
 ## Громкость шин: Master, SFX и Music (шины создаются при первом вызове).

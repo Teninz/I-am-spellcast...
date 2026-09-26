@@ -207,8 +207,9 @@ static func book_cover(book: Dictionary, width: int) -> Control:
 
 ## Картинка без сплошного фона по краям: пиксели цвета угла, связанные с краем, становятся
 ## прозрачными. Нужно для рамок, у которых вокруг нарисован тёмный фон вместо прозрачности.
-static func keyed(path: String) -> Texture2D:
-	var key := path + "@keyed"
+## threshold — насколько цвет может отличаться от фона; soft — мягкий край (для картинок с плавным фоном).
+static func keyed(path: String, threshold: float = 0.12, soft: bool = false) -> Texture2D:
+	var key := "%s@keyed%s%s" % [path, threshold, soft]
 	if _cache.has(key):
 		return _cache[key]
 	var tex := Art.texture(path)
@@ -243,17 +244,40 @@ static func keyed(path: String) -> Texture2D:
 		var px := idx % w
 		var py := idx / w
 		var c := img.get_pixel(px, py)
-		if absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b) > 0.12:
+		if absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b) > threshold:
 			continue
 		img.set_pixel(px, py, Color(c.r, c.g, c.b, 0.0))
 		if px > 0: stack.append(idx - 1)
 		if px < w - 1: stack.append(idx + 1)
 		if py > 0: stack.append(idx - w)
 		if py < h - 1: stack.append(idx + w)
+	if soft:
+		_feather(img, w, h)
 	img.generate_mipmaps()
 	var out := ImageTexture.create_from_image(img)
 	_cache[key] = out
 	return out
+
+
+## Мягкий край: непрозрачные пиксели рядом с вырезанным фоном становятся полупрозрачными (2 пикселя).
+static func _feather(img: Image, w: int, h: int) -> void:
+	for pass_i in 2:
+		var alpha := PackedFloat32Array()
+		alpha.resize(w * h)
+		for i in w * h:
+			alpha[i] = img.get_pixel(i % w, i / w).a
+		for y in range(1, h - 1):
+			for x in range(1, w - 1):
+				var i := y * w + x
+				if alpha[i] < 0.99:
+					continue
+				var clear := 0.0
+				for d in [-1, 1, -w, w]:
+					clear += 1.0 - alpha[i + d]
+				if clear > 0.0:
+					var c := img.get_pixel(x, y)
+					c.a = clampf(1.0 - clear * 0.3, 0.25, 1.0)
+					img.set_pixel(x, y, c)
 
 
 ## Уменьшенная копия картинки (для рамок: углы 9-slice рисуются в «родном» размере).

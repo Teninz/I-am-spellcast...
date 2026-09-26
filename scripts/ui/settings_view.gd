@@ -46,7 +46,7 @@ func _ready() -> void:
 	col.add_child(title)
 
 	# Скорость боя — четыре кнопки-переключателя.
-	col.add_child(_caption("Скорость боя (паузы, ход врагов, автотяга)"))
+	col.add_child(_caption("Скорость боя (паузы и ход врагов)"))
 	var speeds := HBoxContainer.new()
 	speeds.add_theme_constant_override("separation", 8)
 	col.add_child(speeds)
@@ -69,11 +69,11 @@ func _ready() -> void:
 	col.add_child(_slider("Звуки", "sfx"))
 	col.add_child(_slider("Музыка (появится позже)", "music"))
 
-	var auto := _check()
-	auto.text = "Автотяга фишек по умолчанию (фишка раз в 2 с)"
-	auto.button_pressed = bool(Settings.value("auto_draw"))
-	auto.toggled.connect(func(on: bool) -> void: Settings.set_value("auto_draw", on))
-	col.add_child(auto)
+	var auto_note := _caption("Фишки тянутся сами, если 5 секунд ничего не нажимать; вручную шанс на нужное заклинание чуть выше.")
+	auto_note.autowrap_mode = TextServer.AUTOWRAP_WORD
+	auto_note.add_theme_font_size_override("font_size", 13)
+	auto_note.modulate = Color(1, 1, 1, 0.7)
+	col.add_child(auto_note)
 	var tut := _check()
 	tut.text = "Подсказки обучения в бою"
 	tut.tooltip_text = "Показываются в первом бою. Включи снова, чтобы увидеть их ещё раз."

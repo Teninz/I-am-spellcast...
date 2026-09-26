@@ -29,6 +29,7 @@ func _initialize() -> void:
 	test_save_and_load()
 	test_settings_and_sound()
 	test_class_abilities()
+	test_manual_draw_edge()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -585,15 +586,15 @@ func test_settings_and_sound() -> void:
 	print("Настройки и звук:")
 	Settings.path = "user://test_settings.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
-	Settings.reload()
+	Settings.load_from_disk()
 	check(Settings.speed() == 1.0 and Settings.value("tutorial") == true,
 		"по умолчанию: обычная скорость, обучение включено (скорость %s, обучение %s)" % [Settings.speed(), Settings.value("tutorial")])
 	Settings.set_value("speed", 2.0)
-	Settings.set_value("auto_draw", true)
+	Settings.set_value("tutorial", false)
 	Settings.set_value("sfx", 0.0)
-	Settings.reload()
-	check(Settings.speed() == 2.0 and Settings.value("auto_draw") == true and is_equal_approx(Settings.delay(0.8), 0.4),
-		"настройки сохраняются: скорость ×2 (пауза 0.8 → 0.4 с), автотяга")
+	Settings.load_from_disk()
+	check(Settings.speed() == 2.0 and Settings.value("tutorial") == false and is_equal_approx(Settings.delay(0.8), 0.4),
+		"настройки сохраняются: скорость ×2 (пауза 0.8 → 0.4 с), обучение выключено")
 	check(AudioServer.get_bus_index("SFX") != -1 and AudioServer.is_bus_mute(AudioServer.get_bus_index("SFX")),
 		"шина звуков создана, громкость 0 → звук выключен")
 	var ok := true
@@ -603,7 +604,7 @@ func test_settings_and_sound() -> void:
 			ok = false
 	check(ok, "у всех %d звуков есть файл или временный звук" % Sfx.MIX.size())
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
-	Settings.reload()
+	Settings.load_from_disk()
 
 
 func _party_fight(party: Array, enc: String = "rat_king", seed_value: int = 11) -> Combat:
@@ -619,6 +620,37 @@ func _full_bag(c: Combat, u: Unit, book: String) -> ChipBag:
 	while not bag.is_complete():
 		bag.draw(c.rng)
 	return bag
+
+
+func test_manual_draw_edge() -> void:
+	print("Ручное вытягивание:")
+	check(is_equal_approx(Combat.MANUAL_EDGE, 0.001), "бонус вручную — 0.1 %")
+	var c := _party_fight(["pyromancer", "priest", "water"], "rat_pack")
+	var pyro: Unit = c.living(Unit.PARTY)[0]
+	var foe: Unit = c.living(Unit.ENEMIES)[0]
+	var ok_enemy := true
+	var ok_ally := true
+	for i in 200:
+		for want_enemy in [true, false]:
+			var bag := c.new_bag(pyro, "fire")
+			var tgt: Unit = foe if want_enemy else pyro
+			for k in 3:
+				var letter := c.nudged_letter(pyro, tgt, "fire", bag)
+				if letter == "":
+					break
+				var forced: Array[String] = bag.chips.duplicate()
+				forced.append(letter)
+				bag.forced = forced
+				bag.draw(c.rng)
+			if bag.is_complete():
+				var spec := EffectParser.parse(c.spell_for("fire", bag.combo_key()))
+				var dmg: bool = spec.damage > 0 or spec.splash > 0
+				if want_enemy and not dmg:
+					ok_enemy = false
+				if not want_enemy and dmg:
+					ok_ally = false
+	check(ok_enemy, "подыгрыш по врагу ведёт к заклинанию с уроном")
+	check(ok_ally, "подыгрыш по союзнику ведёт к защите, лечению или нейтральному")
 
 
 func test_class_abilities() -> void:

@@ -529,6 +529,57 @@ func use_target_ability(u: Unit, target: Unit) -> void:
 			status_applied.emit(target, "invulnerable")
 
 
+## Вытягивание вручную (клик по мешочку): с этим шансом фишка «подыгрывает» цели —
+## по врагу ведёт к заклинанию с уроном, по союзнику — к защите, лечению или нейтральному.
+const MANUAL_EDGE := 0.001
+
+
+## Тянет фишку. manual — игрок кликнул сам (а не сработала автотяга): маленький бонус к нужной фишке.
+func draw_chip(caster: Unit, target: Unit, book_id: String, bag: ChipBag, manual: bool) -> String:
+	if manual and bag.chips.size() >= bag.forced.size() and rng.randf() < MANUAL_EDGE:
+		var letter := nudged_letter(caster, target, book_id, bag)
+		if letter != "":
+			var forced: Array[String] = bag.chips.duplicate()
+			forced.append(letter)
+			bag.forced = forced
+	return bag.draw(rng)
+
+
+## Какая следующая фишка ведёт к «нужному» заклинанию (с учётом уже вытянутых). "" — такой нет.
+func nudged_letter(caster: Unit, target: Unit, book_id: String, bag: ChipBag) -> String:
+	var want_damage := target != null and target.side != caster.side
+	var prefix := "".join(PackedStringArray(bag.chips))
+	if prefix.contains(ChipBag.CHAOS):
+		return ""
+	var odds := book_odds(caster, book_id)
+	var pool := {}
+	var total := 0.0
+	for sp in books[book_id].spells:
+		var combo: String = sp.combo
+		if combo.begins_with(ChipBag.CHAOS) or not combo.begins_with(prefix) or combo.length() <= prefix.length():
+			continue
+		var letter := combo[prefix.length()]
+		if int(bag.counts.get(letter, 0)) <= 0:
+			continue
+		var spec := EffectParser.parse(sp)
+		var harmful: bool = spec.damage > 0 or spec.splash > 0 or spec.statuses.any(
+			func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id))
+		var good: bool = (spec.damage > 0 or spec.splash > 0) if want_damage else not harmful
+		if not good:
+			continue
+		var p := float(odds.get(combo, 0.0))
+		pool[letter] = float(pool.get(letter, 0.0)) + p
+		total += p
+	if total <= 0.0:
+		return ""
+	var r := rng.randf() * total
+	for letter in pool:
+		r -= pool[letter]
+		if r <= 0.0:
+			return letter
+	return pool.keys().back()
+
+
 const PACT_COST := 2.0
 const ZOMBIE_HP := 6.0
 

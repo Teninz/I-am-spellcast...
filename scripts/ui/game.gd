@@ -13,7 +13,6 @@ var adventure: Adventure
 var profile: Profile
 var classes: Dictionary
 var screen: Control
-var _auto_draw := false
 ## Достижения этого приключения (для экрана итогов).
 var _run_achievements: Array[String] = []
 var _pending_notices: Array[String] = []
@@ -22,8 +21,7 @@ var _pending_notices: Array[String] = []
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = Art.ui_theme()
-	Settings.reload()
-	_auto_draw = bool(Settings.value("auto_draw"))
+	Settings.load_from_disk()
 	new_adventure()
 
 
@@ -71,7 +69,6 @@ func _show_battle() -> void:
 	SaveGame.write(adventure, "battle")
 	var b: Control = BattleUI.new()
 	b.fast = fast
-	b.auto_draw = _auto_draw
 	b.setup(adventure)
 	b.finished.connect(_on_battle_finished)
 	Sfx.music("boss" if adventure.is_last_level() else "battle")
@@ -79,7 +76,6 @@ func _show_battle() -> void:
 
 
 func _on_battle_finished(outcome: String) -> void:
-	_auto_draw = screen.auto_draw
 	var combat: Combat = screen.combat
 	var was_last := adventure.is_last_level()
 	var torn := adventure.finish_combat(combat)

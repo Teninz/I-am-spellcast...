@@ -39,11 +39,11 @@ func _ready() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 16)
 	col.add_child(head)
-	var emblem := Art.texture("res://assets/ui/emblem.png")
+	var emblem := Art.keyed("res://assets/ui/emblem.png", 0.2, true)  # без тёмного прямоугольника фона
 	if emblem:
 		var em := TextureRect.new()
 		em.texture = emblem
-		em.custom_minimum_size = Vector2(200, 100)
+		em.custom_minimum_size = Vector2(240, 120)
 		em.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		em.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		em.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -122,15 +122,24 @@ func _card(cid: String) -> Control:
 	b.toggle_mode = true
 	b.button_pressed = on
 	b.disabled = not open
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("2d3a52") if on else Color("25283a")
-	box.border_color = Color("ffd35a") if on else Color("3a3d52")
-	box.set_border_width_all(3 if on else 1)
-	box.set_corner_radius_all(8)
-	for st in ["normal", "hover", "pressed", "focus"]:
+	# Рамки из боя: волшебник — синяя, выбранный — золотая (как у предводителя), закрытый — в тени.
+	var box: StyleBox = Art.frame("card_leader" if on else "card_party", 40, 0.42)
+	if box == null:
+		var flat := StyleBoxFlat.new()
+		flat.bg_color = Color("2d3a52") if on else Color("25283a")
+		flat.border_color = Color("ffd35a") if on else Color("3a3d52")
+		flat.set_border_width_all(3 if on else 1)
+		flat.set_corner_radius_all(8)
+		box = flat
+	var hover := box.duplicate()
+	hover.set("modulate_color", Color(1.2, 1.2, 1.2))
+	for st in ["normal", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, box)
+	b.add_theme_stylebox_override("hover", hover)
 	var dis := box.duplicate()
-	dis.bg_color = Color("1f2030")
+	dis.set("modulate_color", Color(0.45, 0.45, 0.5))
+	if dis is StyleBoxFlat:
+		dis.bg_color = Color("1f2030")
 	b.add_theme_stylebox_override("disabled", dis)
 	b.pressed.connect(func() -> void:
 		if selected.has(cid):
@@ -143,7 +152,7 @@ func _card(cid: String) -> Control:
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
-		m.add_theme_constant_override("margin_" + side, 10)
+		m.add_theme_constant_override("margin_" + side, 16 if side in ["left", "right"] else 14)
 	b.add_child(m)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE

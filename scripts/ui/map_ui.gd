@@ -53,7 +53,7 @@ func _ready() -> void:
 
 	var map_panel := PanelContainer.new()
 	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_panel.add_theme_stylebox_override("panel", _panel_box(Color(0.07, 0.06, 0.1, 0.72), Color("5a586e")))
+	map_panel.add_theme_stylebox_override("panel", _framed("panel_dialog", 80, 0.45, 40, Color(0.07, 0.06, 0.1, 0.72), Color("5a586e")))
 	row.add_child(map_panel)
 	var map_col := VBoxContainer.new()
 	map_panel.add_child(map_col)
@@ -88,6 +88,12 @@ func _panel_box(bg: Color, border: Color) -> StyleBoxFlat:
 	return box
 
 
+## Рамка из набора интерфейса (как у карточек и окон), без картинки — плоская панель.
+func _framed(frame_name: String, margin: float, factor: float, content: float, bg: Color, border: Color) -> StyleBox:
+	var sb: StyleBox = Art.frame(frame_name, margin, factor, content)
+	return sb if sb != null else _panel_box(bg, border)
+
+
 static func site_color(site: String) -> Color:
 	return SITE_COLORS.get(site, SITE_COLORS.path)
 
@@ -97,7 +103,7 @@ func _choice_card(n: Dictionary) -> Control:
 	var site := adventure.site_info(n.site)
 	var enc := adventure.node_encounter(n.id)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _panel_box(Color(0.1, 0.09, 0.14, 0.9), site_color(n.site)))
+	panel.add_theme_stylebox_override("panel", _framed("card_party", 40, 0.42, 20, Color(0.1, 0.09, 0.14, 0.9), site_color(n.site)))
 	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	panel.mouse_entered.connect(func() -> void: _view.set_hover(n.id))
 	panel.mouse_exited.connect(func() -> void: _view.set_hover(-1))
@@ -326,7 +332,11 @@ class MapView:
 			if _is_choice(id):
 				var pulse := 0.5 + 0.5 * sin(_time * 4.0)
 				draw_circle(p, r + 6.0 + 3.0 * pulse, Color(GOLD, 0.25 + 0.25 * pulse))
-			draw_circle(p, r, fill)
+			# Объём: тёмный обод, основной круг, блик сверху слева.
+			draw_circle(p + Vector2(0, 2), r + 1.5, Color(0, 0, 0, 0.45))
+			draw_circle(p, r, fill.darkened(0.25))
+			draw_circle(p + Vector2(-r * 0.12, -r * 0.12), r * 0.82, fill)
+			draw_circle(p + Vector2(-r * 0.35, -r * 0.38), r * 0.28, Color(1, 1, 1, 0.22 if not closed else 0.06))
 			var ring := Color(0, 0, 0, 0.7)
 			if adventure.path.has(id):
 				ring = GOLD
