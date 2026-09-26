@@ -1,0 +1,221 @@
+{
+  "id": "cookbook",
+  "name": "Бабушкина поваренная книга",
+  "class": null,
+  "rarity": "common",
+  "loot": true,
+  "flavor": "Рецепты на полях дописаны тремя поколениями. Пахнет пирожками.",
+  "bag": {
+    "F": 10,
+    "W": 5,
+    "E": 4,
+    "X": 1
+  },
+  "target_split": {
+    "support": 18,
+    "control": 6,
+    "damage": 6
+  },
+  "spells": [
+    {
+      "combo": "FFF",
+      "name": "Шашлык",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "FFW",
+      "name": "Горячий суп",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 и Очищение."
+    },
+    {
+      "combo": "FFE",
+      "name": "Печёная картошка",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "FWF",
+      "name": "Облил бульоном",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FWW",
+      "name": "Чай с мёдом",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "FWE",
+      "name": "Борщ",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 и Вдохновение на 2 хода."
+    },
+    {
+      "combo": "FEF",
+      "name": "Пирожок",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2."
+    },
+    {
+      "combo": "FEW",
+      "name": "Каша",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3 («сытость»)."
+    },
+    {
+      "combo": "FEE",
+      "name": "Подозрительные грибы",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "WFF",
+      "name": "Компот",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "WFW",
+      "name": "Кисель",
+      "category": "control",
+      "effect": "Замедление на 2 хода (очень вязкий)."
+    },
+    {
+      "combo": "WFE",
+      "name": "Пельмени",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "WWF",
+      "name": "Тёплое молоко",
+      "category": "control",
+      "effect": "Оглушение на 1 ход (засыпает)."
+    },
+    {
+      "combo": "WWW",
+      "name": "Водичка",
+      "category": "support",
+      "heal": 1,
+      "effect": "Лечение 1."
+    },
+    {
+      "combo": "WWE",
+      "name": "Квас",
+      "category": "support",
+      "effect": "Благословение на 2 хода."
+    },
+    {
+      "combo": "WEF",
+      "name": "Окрошка",
+      "category": "support",
+      "shield": 1,
+      "effect": "Очищение и Щит 1."
+    },
+    {
+      "combo": "WEW",
+      "name": "Холодец",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 % (дрожит)."
+    },
+    {
+      "combo": "WEE",
+      "name": "Салат",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 всем на стороне цели."
+    },
+    {
+      "combo": "EFF",
+      "name": "Сковородкой по голове",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Оглушение на 1 ход."
+    },
+    {
+      "combo": "EFW",
+      "name": "Щи",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "EFE",
+      "name": "Хлеб всему голова",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "EWF",
+      "name": "Кофе",
+      "category": "support",
+      "effect": "Разгон шкалы на 50 %."
+    },
+    {
+      "combo": "EWW",
+      "name": "Горчица",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Ослепление на 1 ход."
+    },
+    {
+      "combo": "EWE",
+      "name": "Пареная репа",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 2 и Регенерация на 2 хода."
+    },
+    {
+      "combo": "EEF",
+      "name": "Перец чили",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "EEW",
+      "name": "Чеснок",
+      "category": "control",
+      "effect": "Страх на 2 хода (запах)."
+    },
+    {
+      "combo": "EEE",
+      "name": "Скалка",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "X1",
+      "name": "Подгорело",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Горение всем на стороне цели."
+    },
+    {
+      "combo": "X2",
+      "name": "Бабушкин обед",
+      "category": "support",
+      "heal": 5,
+      "effect": "Лечение 5 всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Обжорство",
+      "category": "control",
+      "effect": "ВСЕ на арене засыпают: Оглушение на 1 ход."
+    }
+  ]
+}

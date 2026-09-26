@@ -1,0 +1,221 @@
+{
+  "id": "deadtongue",
+  "name": "Книга Мёртвого Языка",
+  "class": null,
+  "rarity": "cursed",
+  "loot": true,
+  "flavor": "Написана на языке, на котором никто не говорит уже тысячу лет. Потому что все, кто говорил, умерли.",
+  "bag": {
+    "D": 10,
+    "T": 5,
+    "F": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 20,
+    "curse": 10
+  },
+  "notes": "ПРОКЛЯТАЯ. Каждый каст стоит кастующему 1 ЗД. Книгу нельзя выбросить или передать — только снять Святой водой или Свитком очищения (книга исчезает).",
+  "spells": [
+    {
+      "combo": "DDD",
+      "name": "Слово гибели",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона."
+    },
+    {
+      "combo": "DDT",
+      "name": "Мёртвое слово",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "DDF",
+      "name": "Некроз",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Болезнь на 3 хода."
+    },
+    {
+      "combo": "DTD",
+      "name": "Проклятье рода",
+      "category": "curse",
+      "effect": "Слабость и Уязвимость на 3 хода."
+    },
+    {
+      "combo": "DTT",
+      "name": "Шёпот могилы",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Страх на 2 хода."
+    },
+    {
+      "combo": "DTF",
+      "name": "Гниение",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и 2 стака Яда."
+    },
+    {
+      "combo": "DFD",
+      "name": "Чёрное пламя",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "DFT",
+      "name": "Печать тлена",
+      "category": "curse",
+      "effect": "Болезнь и Проклятие Хаоса на 3 хода."
+    },
+    {
+      "combo": "DFF",
+      "name": "Пепел",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "TDD",
+      "name": "Забытое имя",
+      "category": "curse",
+      "effect": "Забывчивость на 3 хода."
+    },
+    {
+      "combo": "TDT",
+      "name": "Древний глагол",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "TDF",
+      "name": "Руна распада",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, игнорирует Защиту."
+    },
+    {
+      "combo": "TTD",
+      "name": "Немой крик",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона всем на стороне цели."
+    },
+    {
+      "combo": "TTT",
+      "name": "Невыразимое",
+      "category": "damage",
+      "damage": 7,
+      "effect": "7 урона. Кастующий получает Страх на 2 хода."
+    },
+    {
+      "combo": "TTF",
+      "name": "Горящие буквы",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "TFD",
+      "name": "Слог боли",
+      "category": "curse",
+      "effect": "Уязвимость на 3 хода и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "TFT",
+      "name": "Запретное слово",
+      "category": "curse",
+      "effect": "Оглушение на 2 хода."
+    },
+    {
+      "combo": "TFF",
+      "name": "Пылающий текст",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона цели и 1 урон всем на её стороне."
+    },
+    {
+      "combo": "FDD",
+      "name": "Погребальный звон",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "FDT",
+      "name": "Порча крови",
+      "category": "curse",
+      "effect": "Слабость на 3 хода."
+    },
+    {
+      "combo": "FDF",
+      "name": "Жгучая тьма",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FTD",
+      "name": "Мёртвое пламя",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FTT",
+      "name": "Проклятый огонь",
+      "category": "curse",
+      "effect": "Горение и Болезнь на 3 хода."
+    },
+    {
+      "combo": "FTF",
+      "name": "Испепеляющее слово",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона цели, 2 урона кастующему."
+    },
+    {
+      "combo": "FFD",
+      "name": "Адский слог",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFT",
+      "name": "Печать молчания",
+      "category": "curse",
+      "effect": "Забывчивость на 2 хода и Ослепление на 1 ход."
+    },
+    {
+      "combo": "FFF",
+      "name": "Геенна",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "X1",
+      "name": "Язык заплетается",
+      "category": "curse",
+      "effect": "Кастующий получает Проклятие Хаоса и Забывчивость на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Эхо мёртвых",
+      "category": "curse",
+      "effect": "Страх и Болезнь ВСЕМ на арене на 2 хода."
+    },
+    {
+      "combo": "X3",
+      "name": "Последнее слово",
+      "category": "damage",
+      "damage": 10,
+      "effect": "10 урона цели. Кастующий выбывает (ЗД падает до 0)."
+    }
+  ]
+}

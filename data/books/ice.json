@@ -1,0 +1,215 @@
+{
+  "id": "ice",
+  "name": "Книга Льда",
+  "class": null,
+  "rarity": "common",
+  "loot": true,
+  "flavor": "Холодная на ощупь даже летом. Чернила замёрзли на середине фразы.",
+  "bag": {
+    "K": 10,
+    "W": 5,
+    "H": 4,
+    "X": 1
+  },
+  "target_split": {
+    "control": 12,
+    "support": 12,
+    "damage": 6
+  },
+  "spells": [
+    {
+      "combo": "KKK",
+      "name": "Ледяной гроб",
+      "category": "control",
+      "effect": "Окаменение на 1 ход (вмёрз в лёд)."
+    },
+    {
+      "combo": "KKW",
+      "name": "Ледяная стена",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4."
+    },
+    {
+      "combo": "KKH",
+      "name": "Иней",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "KWK",
+      "name": "Сосулька",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "KWW",
+      "name": "Каток",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "KWH",
+      "name": "Ледяной панцирь",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "KHK",
+      "name": "Морозный узор",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "KHW",
+      "name": "Холодный компресс",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "KHH",
+      "name": "Северное сияние",
+      "category": "support",
+      "effect": "Благословение на 2 хода."
+    },
+    {
+      "combo": "WKK",
+      "name": "Град",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "WKW",
+      "name": "Ледяной дождь",
+      "category": "control",
+      "effect": "Замедление на 2 хода и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "WKH",
+      "name": "Охлаждение",
+      "category": "support",
+      "heal": 1,
+      "effect": "Очищение и лечение 1."
+    },
+    {
+      "combo": "WWK",
+      "name": "Ледяные оковы",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "WWW",
+      "name": "Талая вода",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "WWH",
+      "name": "Снежный щит",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "WHK",
+      "name": "Метель",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "WHW",
+      "name": "Скользкий пол",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "WHH",
+      "name": "Снежная пелена",
+      "category": "support",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "HKK",
+      "name": "Ледяное копьё",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "HKW",
+      "name": "Зимний сон",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "HKH",
+      "name": "Хрустальный лёд",
+      "category": "support",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "HWK",
+      "name": "Обморожение",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Слабость на 2 хода."
+    },
+    {
+      "combo": "HWW",
+      "name": "Мозги замёрзли",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "HWH",
+      "name": "Свежесть",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2."
+    },
+    {
+      "combo": "HHK",
+      "name": "Ледяной осколок",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "HHW",
+      "name": "Туман над льдом",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "HHH",
+      "name": "Полярная ночь",
+      "category": "control",
+      "effect": "Ослепление на 1 ход и Слабость на 2 хода."
+    },
+    {
+      "combo": "X1",
+      "name": "Ледниковый период",
+      "category": "control",
+      "effect": "Замедление ВСЕМ на арене на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Ледяная крепость",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4 всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Абсолютный ноль",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона всем врагам и Окаменение ВСЕМ на арене на 1 ход."
+    }
+  ]
+}

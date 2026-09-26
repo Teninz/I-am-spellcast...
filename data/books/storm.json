@@ -1,0 +1,219 @@
+{
+  "id": "storm",
+  "name": "Книга Молний",
+  "class": null,
+  "rarity": "common",
+  "loot": true,
+  "flavor": "Обложка слегка бьёт током. Страницы стоят дыбом.",
+  "bag": {
+    "L": 10,
+    "F": 5,
+    "W": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 15,
+    "control": 10,
+    "support": 5
+  },
+  "spells": [
+    {
+      "combo": "LLL",
+      "name": "Удар молнии",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "LLF",
+      "name": "Шаровая молния",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "LLW",
+      "name": "Разряд в лужу",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Оглушение на 1 ход."
+    },
+    {
+      "combo": "LFL",
+      "name": "Искра",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "LFF",
+      "name": "Пылающий разряд",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "LFW",
+      "name": "Статика",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "LWL",
+      "name": "Электрошок",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "LWF",
+      "name": "Ионизация",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "LWW",
+      "name": "Электролит",
+      "category": "control",
+      "effect": "Уязвимость на 2 хода."
+    },
+    {
+      "combo": "FLL",
+      "name": "Громовой раскат",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "FLF",
+      "name": "Огненная дуга",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FLW",
+      "name": "Вспышка",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "FFL",
+      "name": "Плазма",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFF",
+      "name": "Жаркая гроза",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FFW",
+      "name": "Грозовой пар",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "FWL",
+      "name": "Пробой брони",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона, игнорирует Защиту, и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "FWF",
+      "name": "Короткий импульс",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона."
+    },
+    {
+      "combo": "FWW",
+      "name": "Грозовая туча",
+      "category": "control",
+      "effect": "Замедление на 2 хода и Ослепление на 1 ход."
+    },
+    {
+      "combo": "WLL",
+      "name": "Цепная молния",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона цели и 1 урон двум случайным участникам на её стороне."
+    },
+    {
+      "combo": "WLF",
+      "name": "Подзарядка",
+      "category": "support",
+      "effect": "Разгон шкалы на 50 %."
+    },
+    {
+      "combo": "WLW",
+      "name": "Заземление",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "WFL",
+      "name": "Кипящий разряд",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WFF",
+      "name": "Паровой удар",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "WFW",
+      "name": "Магнитное поле",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "WWL",
+      "name": "Угорь в воде",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "WWF",
+      "name": "Тучи сгущаются",
+      "category": "control",
+      "effect": "Слабость на 2 хода."
+    },
+    {
+      "combo": "WWW",
+      "name": "Дождь после грозы",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "X1",
+      "name": "Молния в никуда",
+      "category": "control",
+      "effect": "Оглушение случайному участнику боя (цель игнорируется)."
+    },
+    {
+      "combo": "X2",
+      "name": "Грозовой щит",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3 и Отражение всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Гнев неба",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона всем врагам и 2 урона каждому союзнику."
+    }
+  ]
+}

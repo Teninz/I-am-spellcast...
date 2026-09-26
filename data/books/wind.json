@@ -1,0 +1,211 @@
+{
+  "id": "wind",
+  "name": "Книга Ветров",
+  "class": null,
+  "rarity": "rare",
+  "loot": true,
+  "flavor": "Страницы перелистываются сами, особенно у открытого окна.",
+  "bag": {
+    "A": 10,
+    "L": 5,
+    "W": 4,
+    "X": 1
+  },
+  "target_split": {
+    "support": 12,
+    "control": 12,
+    "damage": 6
+  },
+  "spells": [
+    {
+      "combo": "AAA",
+      "name": "Попутный ветер",
+      "category": "support",
+      "effect": "Ускорение всем на стороне цели на 2 хода."
+    },
+    {
+      "combo": "AAL",
+      "name": "Ураганный разряд",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "AAW",
+      "name": "Шквал",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "ALA",
+      "name": "Порыв",
+      "category": "support",
+      "effect": "Разгон шкалы на 50 %."
+    },
+    {
+      "combo": "ALL",
+      "name": "Грозовой вихрь",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "ALW",
+      "name": "Ветер перемен",
+      "category": "support",
+      "effect": "Очищение."
+    },
+    {
+      "combo": "AWA",
+      "name": "Сквозняк",
+      "category": "control",
+      "effect": "Замедление на 2 хода. Старики очень боятся сквозняков."
+    },
+    {
+      "combo": "AWL",
+      "name": "Буря",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "AWW",
+      "name": "Морской бриз",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "LAA",
+      "name": "Вихрь",
+      "category": "control",
+      "effect": "Цель теряет все баффы."
+    },
+    {
+      "combo": "LAL",
+      "name": "Молния на крыльях",
+      "category": "support",
+      "effect": "Разгон шкалы на 100 % — дополнительный ход."
+    },
+    {
+      "combo": "LAW",
+      "name": "Турбулентность",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "LLA",
+      "name": "Громкий хлопок",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "LLL",
+      "name": "Небесный разряд",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "LLW",
+      "name": "Грозовой фронт",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 % и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "LWA",
+      "name": "Воздушная подушка",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "LWL",
+      "name": "Электрический ветер",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "LWW",
+      "name": "Ливень со шквалом",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "WAA",
+      "name": "Лёгкость",
+      "category": "support",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "WAL",
+      "name": "Смерч",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "WAW",
+      "name": "Дыхание",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 всем на стороне цели."
+    },
+    {
+      "combo": "WLA",
+      "name": "Штиль",
+      "category": "control",
+      "effect": "Замедление и Слабость на 2 хода."
+    },
+    {
+      "combo": "WLL",
+      "name": "Шторм",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WLW",
+      "name": "Свежий воздух",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "WWA",
+      "name": "Затишье",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "WWL",
+      "name": "Прилив сил",
+      "category": "support",
+      "effect": "Вдохновение на 2 хода."
+    },
+    {
+      "combo": "WWW",
+      "name": "Мёртвый штиль",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "X1",
+      "name": "Ураган",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 % ВСЕМ на арене."
+    },
+    {
+      "combo": "X2",
+      "name": "Крылья",
+      "category": "support",
+      "effect": "Ускорение и Разгон шкалы на 30 % всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Торнадо",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона всем врагам. Кастующего уносит: он пропускает следующий ход."
+    }
+  ]
+}

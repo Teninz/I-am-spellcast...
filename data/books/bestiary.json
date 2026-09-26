@@ -1,0 +1,212 @@
+{
+  "id": "bestiary",
+  "name": "Бестиарий",
+  "class": null,
+  "rarity": "rare",
+  "loot": true,
+  "flavor": "Энциклопедия чудовищ. Если открыть не на той странице, чудовище выходит погулять.",
+  "bag": {
+    "E": 10,
+    "D": 5,
+    "F": 4,
+    "X": 1
+  },
+  "target_split": {
+    "summon": 12,
+    "damage": 10,
+    "control": 8
+  },
+  "notes": "Призывает противников акта I из бестиария (enemies.md) на сторону кастующего. Их характеристики — в balance.md.",
+  "spells": [
+    {
+      "combo": "EEE",
+      "name": "Волк-переросток",
+      "category": "summon",
+      "effect": "Призывает Волка-переростка."
+    },
+    {
+      "combo": "EED",
+      "name": "Кусачий гриб",
+      "category": "summon",
+      "effect": "Призывает Кусачий гриб."
+    },
+    {
+      "combo": "EEF",
+      "name": "Кабан-таран",
+      "category": "summon",
+      "effect": "Призывает Кабана-тарана."
+    },
+    {
+      "combo": "EDE",
+      "name": "Слизень",
+      "category": "summon",
+      "effect": "Призывает Слизня."
+    },
+    {
+      "combo": "EDD",
+      "name": "Ядовитый укус",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и 2 стака Яда."
+    },
+    {
+      "combo": "EDF",
+      "name": "Пьяный гоблин",
+      "category": "summon",
+      "effect": "Призывает Пьяного гоблина."
+    },
+    {
+      "combo": "EFE",
+      "name": "Бешеный гусь",
+      "category": "summon",
+      "effect": "Призывает Бешеного гуся."
+    },
+    {
+      "combo": "EFD",
+      "name": "Рёв зверя",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "EFF",
+      "name": "Когти",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "DEE",
+      "name": "Скелет-недоучка",
+      "category": "summon",
+      "effect": "Призывает Скелета-недоучку."
+    },
+    {
+      "combo": "DED",
+      "name": "Кровавый след",
+      "category": "control",
+      "effect": "Уязвимость на 2 хода."
+    },
+    {
+      "combo": "DEF",
+      "name": "Ведьмина кошка",
+      "category": "summon",
+      "effect": "Призывает Ведьмину кошку."
+    },
+    {
+      "combo": "DDE",
+      "name": "Укус оборотня",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Болезнь на 3 хода."
+    },
+    {
+      "combo": "DDD",
+      "name": "Тень твари",
+      "category": "control",
+      "effect": "Ослепление на 1 ход и Страх на 2 хода."
+    },
+    {
+      "combo": "DDF",
+      "name": "Адская пасть",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "DFE",
+      "name": "Гоблин-метатель тарелок",
+      "category": "summon",
+      "effect": "Призывает Гоблина-метателя тарелок."
+    },
+    {
+      "combo": "DFD",
+      "name": "Паутина",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "DFF",
+      "name": "Огненный плевок",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FEE",
+      "name": "Рой ос",
+      "category": "summon",
+      "effect": "Призывает Рой ос."
+    },
+    {
+      "combo": "FED",
+      "name": "Дикий вой",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "FEF",
+      "name": "Таран",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Оглушение на 1 ход."
+    },
+    {
+      "combo": "FDE",
+      "name": "Кобольд",
+      "category": "summon",
+      "effect": "Призывает Кобольда-копателя."
+    },
+    {
+      "combo": "FDD",
+      "name": "Взгляд василиска",
+      "category": "control",
+      "effect": "Окаменение на 1 ход."
+    },
+    {
+      "combo": "FDF",
+      "name": "Драконий чих",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "FFE",
+      "name": "Жгучий яд",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и 1 стак Яда."
+    },
+    {
+      "combo": "FFD",
+      "name": "Дымовое облако",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "FFF",
+      "name": "Огненное дыхание",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "X1",
+      "name": "Звериный рёв",
+      "category": "control",
+      "effect": "Страх ВСЕМ на арене на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Зоопарк",
+      "category": "summon",
+      "effect": "Призывает 3 случайных существа из Бестиария, каждое на случайную сторону."
+    },
+    {
+      "combo": "X3",
+      "name": "Дракон на обложке",
+      "category": "damage",
+      "damage": 7,
+      "effect": "7 урона цели и Горение ВСЕМ на арене."
+    }
+  ]
+}

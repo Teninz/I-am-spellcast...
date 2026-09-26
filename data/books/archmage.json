@@ -1,0 +1,222 @@
+{
+  "id": "archmage",
+  "name": "Гримуар Архимага",
+  "class": null,
+  "rarity": "legendary",
+  "loot": true,
+  "flavor": "Личный гримуар великого архимага. На форзаце: «Если нашёл — верни. Или не возвращай, я всё равно умер».",
+  "bag": {
+    "F": 10,
+    "H": 5,
+    "L": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 12,
+    "support": 12,
+    "control": 6
+  },
+  "spells": [
+    {
+      "combo": "FFF",
+      "name": "Метеоритный дождь",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона цели и 2 урона всем на её стороне."
+    },
+    {
+      "combo": "FFH",
+      "name": "Солнечное копьё",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "FFL",
+      "name": "Огненная буря",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FHF",
+      "name": "Пламя феникса",
+      "category": "support",
+      "heal": 5,
+      "effect": "Лечение 5."
+    },
+    {
+      "combo": "FHH",
+      "name": "Божественный огонь",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, против нежити 7."
+    },
+    {
+      "combo": "FHL",
+      "name": "Сила архимага",
+      "category": "support",
+      "effect": "Вдохновение +2 на 2 хода."
+    },
+    {
+      "combo": "FLF",
+      "name": "Испепеление",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона."
+    },
+    {
+      "combo": "FLH",
+      "name": "Огненный щит",
+      "category": "support",
+      "shield": 5,
+      "effect": "Щит 5."
+    },
+    {
+      "combo": "FLL",
+      "name": "Разряд плазмы",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Оглушение на 1 ход."
+    },
+    {
+      "combo": "HFF",
+      "name": "Святой огонь",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4 и Очищение."
+    },
+    {
+      "combo": "HFH",
+      "name": "Ореол архимага",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3 всем на стороне цели."
+    },
+    {
+      "combo": "HFL",
+      "name": "Слово силы",
+      "category": "control",
+      "effect": "Оглушение на 2 хода."
+    },
+    {
+      "combo": "HHF",
+      "name": "Исцеление",
+      "category": "support",
+      "heal": 6,
+      "effect": "Лечение 6."
+    },
+    {
+      "combo": "HHH",
+      "name": "Воскрешение",
+      "category": "support",
+      "heal": 4,
+      "effect": "Если цель выбыла — поднимает её с 5 ЗД, иначе лечение 4."
+    },
+    {
+      "combo": "HHL",
+      "name": "Небесный разряд",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "HLF",
+      "name": "Благословение архимага",
+      "category": "support",
+      "effect": "Благословение и Ускорение на 2 хода."
+    },
+    {
+      "combo": "HLH",
+      "name": "Святая молния",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона цели и 2 урона всем на её стороне."
+    },
+    {
+      "combo": "HLL",
+      "name": "Слово страха",
+      "category": "control",
+      "effect": "Страх и Слабость на 2 хода."
+    },
+    {
+      "combo": "LFF",
+      "name": "Цепная молния архимага",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона цели и 2 урона всем на её стороне."
+    },
+    {
+      "combo": "LFH",
+      "name": "Слово ускорения",
+      "category": "support",
+      "effect": "Разгон шкалы на 100 % — дополнительный ход."
+    },
+    {
+      "combo": "LFL",
+      "name": "Грозовой удар",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "LHF",
+      "name": "Небесный щит",
+      "category": "support",
+      "shield": 2,
+      "effect": "Неуязвимость и Щит 2."
+    },
+    {
+      "combo": "LHH",
+      "name": "Слово ослепления",
+      "category": "control",
+      "effect": "Ослепление на 2 хода."
+    },
+    {
+      "combo": "LHL",
+      "name": "Молния правосудия",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, игнорирует Защиту."
+    },
+    {
+      "combo": "LLF",
+      "name": "Слово остановки",
+      "category": "control",
+      "effect": "Окаменение на 1 ход."
+    },
+    {
+      "combo": "LLH",
+      "name": "Дар молний",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода и Ускорение на 2 хода."
+    },
+    {
+      "combo": "LLL",
+      "name": "Слово смерти",
+      "category": "control",
+      "effect": "Сбив шкалы на 100 %."
+    },
+    {
+      "combo": "X1",
+      "name": "Архимаг задумался",
+      "category": "control",
+      "effect": "Цель получает Оглушение, кастующий пропускает следующий ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Великое исцеление",
+      "category": "support",
+      "heal": 5,
+      "effect": "Лечение 5 и Очищение всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Звездопад",
+      "category": "damage",
+      "damage": 8,
+      "effect": "8 урона всем врагам."
+    }
+  ]
+}

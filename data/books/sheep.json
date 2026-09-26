@@ -2,40 +2,223 @@
   "id": "sheep",
   "name": "Механическая овца",
   "class": "Учёный",
+  "rarity": "rare",
+  "loot": false,
   "flavor": "Паровая овца на заклёпках. Блеет через свисток, пахнет машинным маслом.",
-  "bag": {"M": 10, "F": 5, "W": 4, "X": 1},
-  "target_split": {"damage": 12, "support": 12, "glitch": 6},
+  "bag": {
+    "M": 10,
+    "F": 5,
+    "W": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 12,
+    "support": 12,
+    "glitch": 6
+  },
   "notes": "Занимает 2 слота книг. Хаос II и Хаос III (2+ чёрные метки) ЛОМАЮТ овцу после срабатывания.",
   "spells": [
-    {"combo": "MMM", "name": "Таран", "category": "damage", "damage": 4, "effect": "4 урона."},
-    {"combo": "MMF", "name": "Огнемёт в носу", "category": "damage", "damage": 3, "effect": "3 урона и Горение на 2 хода."},
-    {"combo": "MMW", "name": "Паровой щит", "category": "support", "shield": 3, "effect": "Щит 3."},
-    {"combo": "MFM", "name": "Укус шестерёнками", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "MFF", "name": "Перегрев котла", "category": "glitch", "effect": "Овца пыхтит. Кастующий получает 1 урон, больше ничего."},
-    {"combo": "MFW", "name": "Стальная шерсть", "category": "support", "effect": "Каменная кожа на 2 хода (+2 Защита)."},
-    {"combo": "MWM", "name": "Клёпки-снаряды", "category": "damage", "damage": 2, "effect": "2 урона цели и 1 урон всем на её стороне."},
-    {"combo": "MWF", "name": "Дымовая шашка", "category": "support", "effect": "Невидимость на 1 ход."},
-    {"combo": "MWW", "name": "Ремкомплект", "category": "support", "heal": 3, "effect": "Лечение 3."},
-    {"combo": "FMM", "name": "Пружинный лягач", "category": "damage", "damage": 3, "effect": "3 урона и Сбив шкалы на 30 %."},
-    {"combo": "FMF", "name": "Искрящий провод", "category": "damage", "damage": 2, "effect": "2 урона и Уязвимость на 2 хода."},
-    {"combo": "FMW", "name": "Горячая смазка", "category": "support", "heal": 3, "effect": "Регенерация на 3 хода."},
-    {"combo": "FFM", "name": "Паровая пушка", "category": "damage", "damage": 4, "effect": "4 урона."},
-    {"combo": "FFF", "name": "Короткое замыкание", "category": "glitch", "effect": "Овца зависла. Ничего не происходит."},
-    {"combo": "FFW", "name": "Свист котла", "category": "glitch", "effect": "Сбив шкалы на 30 % всему отряду кастующего."},
-    {"combo": "FWM", "name": "Щит-зонтик", "category": "support", "shield": 2, "effect": "Щит 2 всем на стороне цели."},
-    {"combo": "FWF", "name": "Паровой хлыст", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "FWW", "name": "Ржавый скрип", "category": "glitch", "effect": "Кастующий получает Замедление на 2 хода."},
-    {"combo": "WMM", "name": "Гидроудар", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "WMF", "name": "Зеркальный бок", "category": "support", "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."},
-    {"combo": "WMW", "name": "Охладитель", "category": "support", "heal": 1, "effect": "Очищение и лечение 1."},
-    {"combo": "WFM", "name": "Котёл под давлением", "category": "damage", "damage": 5, "effect": "5 урона цели, 2 урона кастующему."},
-    {"combo": "WFF", "name": "Паровой купол", "category": "support", "shield": 4, "effect": "Щит 4."},
-    {"combo": "WFW", "name": "Пар из ушей", "category": "glitch", "effect": "Кастующий получает Ослепление на 1 ход."},
-    {"combo": "WWM", "name": "Водяная пушка", "category": "damage", "damage": 2, "effect": "2 урона и Сбив шкалы на 50 %."},
-    {"combo": "WWF", "name": "Техобслуживание", "category": "support", "heal": 2, "shield": 2, "effect": "Лечение 2 и Щит 2."},
-    {"combo": "WWW", "name": "Поплавок", "category": "support", "shield": 2, "effect": "Щит 2 и Очищение от Горения."},
-    {"combo": "X1", "name": "Сбой программы", "category": "glitch", "effect": "Овца выбирает случайную цель и наносит ей 2 урона."},
-    {"combo": "X2", "name": "Перегрузка", "category": "damage", "damage": 4, "effect": "4 урона цели. Овца ЛОМАЕТСЯ."},
-    {"combo": "X3", "name": "Овца-титан", "category": "support", "shield": 6, "effect": "Щит 6 всем на стороне цели. Овца ЛОМАЕТСЯ."}
+    {
+      "combo": "MMM",
+      "name": "Таран",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "MMF",
+      "name": "Огнемёт в носу",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "MMW",
+      "name": "Паровой щит",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "MFM",
+      "name": "Укус шестерёнками",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "MFF",
+      "name": "Перегрев котла",
+      "category": "glitch",
+      "effect": "Овца пыхтит. Кастующий получает 1 урон, больше ничего."
+    },
+    {
+      "combo": "MFW",
+      "name": "Стальная шерсть",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "MWM",
+      "name": "Клёпки-снаряды",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона цели и 1 урон всем на её стороне."
+    },
+    {
+      "combo": "MWF",
+      "name": "Дымовая шашка",
+      "category": "support",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "MWW",
+      "name": "Ремкомплект",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "FMM",
+      "name": "Пружинный лягач",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "FMF",
+      "name": "Искрящий провод",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "FMW",
+      "name": "Горячая смазка",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "FFM",
+      "name": "Паровая пушка",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFF",
+      "name": "Короткое замыкание",
+      "category": "glitch",
+      "effect": "Овца зависла. Ничего не происходит."
+    },
+    {
+      "combo": "FFW",
+      "name": "Свист котла",
+      "category": "glitch",
+      "effect": "Сбив шкалы на 30 % всему отряду кастующего."
+    },
+    {
+      "combo": "FWM",
+      "name": "Щит-зонтик",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "FWF",
+      "name": "Паровой хлыст",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FWW",
+      "name": "Ржавый скрип",
+      "category": "glitch",
+      "effect": "Кастующий получает Замедление на 2 хода."
+    },
+    {
+      "combo": "WMM",
+      "name": "Гидроудар",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WMF",
+      "name": "Зеркальный бок",
+      "category": "support",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "WMW",
+      "name": "Охладитель",
+      "category": "support",
+      "heal": 1,
+      "effect": "Очищение и лечение 1."
+    },
+    {
+      "combo": "WFM",
+      "name": "Котёл под давлением",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона цели, 2 урона кастующему."
+    },
+    {
+      "combo": "WFF",
+      "name": "Паровой купол",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4."
+    },
+    {
+      "combo": "WFW",
+      "name": "Пар из ушей",
+      "category": "glitch",
+      "effect": "Кастующий получает Ослепление на 1 ход."
+    },
+    {
+      "combo": "WWM",
+      "name": "Водяная пушка",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "WWF",
+      "name": "Техобслуживание",
+      "category": "support",
+      "heal": 2,
+      "shield": 2,
+      "effect": "Лечение 2 и Щит 2."
+    },
+    {
+      "combo": "WWW",
+      "name": "Поплавок",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 и Очищение от Горения."
+    },
+    {
+      "combo": "X1",
+      "name": "Сбой программы",
+      "category": "glitch",
+      "effect": "Овца выбирает случайную цель и наносит ей 2 урона."
+    },
+    {
+      "combo": "X2",
+      "name": "Перегрузка",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона цели. Овца ЛОМАЕТСЯ."
+    },
+    {
+      "combo": "X3",
+      "name": "Овца-титан",
+      "category": "support",
+      "shield": 6,
+      "effect": "Щит 6 всем на стороне цели. Овца ЛОМАЕТСЯ."
+    }
   ]
 }

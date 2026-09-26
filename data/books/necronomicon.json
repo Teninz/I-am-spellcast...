@@ -2,40 +2,221 @@
   "id": "necronomicon",
   "name": "Некрономикон",
   "class": "Некромант",
+  "rarity": "rare",
+  "loot": true,
   "flavor": "Переплёт из чего-то подозрительно мягкого. Иногда страницы переворачиваются сами.",
-  "bag": {"D": 10, "F": 5, "W": 4, "X": 1},
-  "target_split": {"damage": 15, "summon": 5, "disease": 5, "support": 5},
+  "bag": {
+    "D": 10,
+    "F": 5,
+    "W": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 15,
+    "summon": 5,
+    "disease": 5,
+    "support": 5
+  },
   "notes": "Призванная нежить встаёт на сторону кастующего и первым делом атакует цель (или защищает её, если цель — союзник). Характеристики нежити — в balance.md.",
   "spells": [
-    {"combo": "DDD", "name": "Поцелуй смерти", "category": "damage", "damage": 5, "effect": "5 урона."},
-    {"combo": "DDF", "name": "Адское пламя", "category": "damage", "damage": 4, "effect": "4 урона и Горение на 2 хода."},
-    {"combo": "DDW", "name": "Стылая могила", "category": "damage", "damage": 3, "effect": "3 урона и Замедление на 2 хода."},
-    {"combo": "DFD", "name": "Вытягивание жизни", "category": "damage", "damage": 3, "effect": "3 урона, кастующий лечится на 2."},
-    {"combo": "DFF", "name": "Чёрный огонь", "category": "damage", "damage": 3, "effect": "3 урона, игнорирует Защиту."},
-    {"combo": "DFW", "name": "Трупный пар", "category": "disease", "effect": "Чума: Болезнь и 1 урон в начале хода, 3 хода."},
-    {"combo": "DWD", "name": "Костяные шипы", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "DWF", "name": "Подъём скелета", "category": "summon", "effect": "Призывает Скелета."},
-    {"combo": "DWW", "name": "Гнилая вода", "category": "disease", "effect": "Трупный яд: 2 стака Яда."},
-    {"combo": "FDD", "name": "Могильный огонь", "category": "damage", "damage": 4, "effect": "4 урона."},
-    {"combo": "FDF", "name": "Пепел предков", "category": "summon", "effect": "Призывает Костяного пса."},
-    {"combo": "FDW", "name": "Кровавый пир", "category": "support", "heal": 3, "effect": "Лечение 3."},
-    {"combo": "FFD", "name": "Огненный череп", "category": "damage", "damage": 3, "effect": "3 урона и Страх на 2 хода."},
-    {"combo": "FFF", "name": "Погребальный костёр", "category": "damage", "damage": 2, "effect": "2 урона цели и 1 урон всем на её стороне."},
-    {"combo": "FFW", "name": "Тёплый склеп", "category": "support", "shield": 3, "effect": "Щит 3."},
-    {"combo": "FWD", "name": "Лихорадка", "category": "disease", "effect": "Замедление и Слабость на 2 хода."},
-    {"combo": "FWF", "name": "Похоронный фейерверк", "category": "damage", "damage": 2, "effect": "2 урона и Ослепление на 1 ход."},
-    {"combo": "FWW", "name": "Бальзамирование", "category": "support", "heal": 3, "effect": "Регенерация на 3 хода. «Сохранит вас свежим»."},
-    {"combo": "WDD", "name": "Утопленник", "category": "summon", "effect": "Призывает Зомби-утопленника."},
-    {"combo": "WDF", "name": "Кислотная слизь", "category": "damage", "damage": 2, "effect": "2 урона и Уязвимость на 2 хода."},
-    {"combo": "WDW", "name": "Чёрный кашель", "category": "disease", "effect": "Болезнь и Забывчивость на 2 хода."},
-    {"combo": "WFD", "name": "Жизнь взаймы", "category": "support", "heal": 4, "effect": "Лечение 4, кастующий теряет 1 ЗД."},
-    {"combo": "WFF", "name": "Кипящая кровь", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "WFW", "name": "Ледяное касание", "category": "damage", "damage": 2, "effect": "2 урона и Замедление на 1 ход."},
-    {"combo": "WWD", "name": "Зов призрака", "category": "summon", "effect": "Призывает Призрака."},
-    {"combo": "WWF", "name": "Паровой череп", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "WWW", "name": "Холодная вечность", "category": "support", "effect": "Каменная кожа на 2 хода (+2 Защита)."},
-    {"combo": "X1", "name": "Мор", "category": "disease", "effect": "Чума ВСЕМ на арене."},
-    {"combo": "X2", "name": "Армия тьмы", "category": "summon", "effect": "Призывает 3 Скелетов, каждый встаёт на случайную сторону."},
-    {"combo": "X3", "name": "Жатва", "category": "damage", "damage": 6, "effect": "6 урона ВСЕМ на арене. Каждый погибший встаёт Скелетом на стороне кастующего."}
+    {
+      "combo": "DDD",
+      "name": "Поцелуй смерти",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "DDF",
+      "name": "Адское пламя",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "DDW",
+      "name": "Стылая могила",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Замедление на 2 хода."
+    },
+    {
+      "combo": "DFD",
+      "name": "Вытягивание жизни",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, кастующий лечится на 2."
+    },
+    {
+      "combo": "DFF",
+      "name": "Чёрный огонь",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, игнорирует Защиту."
+    },
+    {
+      "combo": "DFW",
+      "name": "Трупный пар",
+      "category": "disease",
+      "effect": "Чума: Болезнь и 1 урон в начале хода, 3 хода."
+    },
+    {
+      "combo": "DWD",
+      "name": "Костяные шипы",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "DWF",
+      "name": "Подъём скелета",
+      "category": "summon",
+      "effect": "Призывает Скелета."
+    },
+    {
+      "combo": "DWW",
+      "name": "Гнилая вода",
+      "category": "disease",
+      "effect": "Трупный яд: 2 стака Яда."
+    },
+    {
+      "combo": "FDD",
+      "name": "Могильный огонь",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FDF",
+      "name": "Пепел предков",
+      "category": "summon",
+      "effect": "Призывает Костяного пса."
+    },
+    {
+      "combo": "FDW",
+      "name": "Кровавый пир",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "FFD",
+      "name": "Огненный череп",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Страх на 2 хода."
+    },
+    {
+      "combo": "FFF",
+      "name": "Погребальный костёр",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона цели и 1 урон всем на её стороне."
+    },
+    {
+      "combo": "FFW",
+      "name": "Тёплый склеп",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "FWD",
+      "name": "Лихорадка",
+      "category": "disease",
+      "effect": "Замедление и Слабость на 2 хода."
+    },
+    {
+      "combo": "FWF",
+      "name": "Похоронный фейерверк",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Ослепление на 1 ход."
+    },
+    {
+      "combo": "FWW",
+      "name": "Бальзамирование",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода. «Сохранит вас свежим»."
+    },
+    {
+      "combo": "WDD",
+      "name": "Утопленник",
+      "category": "summon",
+      "effect": "Призывает Зомби-утопленника."
+    },
+    {
+      "combo": "WDF",
+      "name": "Кислотная слизь",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "WDW",
+      "name": "Чёрный кашель",
+      "category": "disease",
+      "effect": "Болезнь и Забывчивость на 2 хода."
+    },
+    {
+      "combo": "WFD",
+      "name": "Жизнь взаймы",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "WFF",
+      "name": "Кипящая кровь",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WFW",
+      "name": "Ледяное касание",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Замедление на 1 ход."
+    },
+    {
+      "combo": "WWD",
+      "name": "Зов призрака",
+      "category": "summon",
+      "effect": "Призывает Призрака."
+    },
+    {
+      "combo": "WWF",
+      "name": "Паровой череп",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WWW",
+      "name": "Холодная вечность",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "X1",
+      "name": "Мор",
+      "category": "disease",
+      "effect": "Чума ВСЕМ на арене."
+    },
+    {
+      "combo": "X2",
+      "name": "Армия тьмы",
+      "category": "summon",
+      "effect": "Призывает 3 Скелетов, каждый встаёт на случайную сторону."
+    },
+    {
+      "combo": "X3",
+      "name": "Жатва",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона ВСЕМ на арене. Каждый погибший встаёт Скелетом на стороне кастующего."
+    }
   ]
 }

@@ -2,40 +2,216 @@
   "id": "druid",
   "name": "Книга Друида",
   "class": "Друид",
+  "rarity": "rare",
+  "loot": true,
   "flavor": "Между страниц растёт мох. Из корешка торчит жёлудь, который никто не решается вынуть.",
-  "bag": {"E": 10, "W": 5, "H": 4, "X": 1},
-  "target_split": {"summon": 10, "roots": 10, "support": 5, "damage": 5},
+  "bag": {
+    "E": 10,
+    "W": 5,
+    "H": 4,
+    "X": 1
+  },
+  "target_split": {
+    "summon": 10,
+    "roots": 10,
+    "support": 5,
+    "damage": 5
+  },
   "notes": "Призванные звери встают на сторону кастующего. Характеристики зверей — в balance.md.",
   "spells": [
-    {"combo": "EEE", "name": "Дубовая кора", "category": "roots", "shield": 5, "effect": "Щит 5."},
-    {"combo": "EEW", "name": "Зов медведя", "category": "summon", "effect": "Призывает Медведя."},
-    {"combo": "EEH", "name": "Цепкие корни", "category": "roots", "effect": "Оглушение на 1 ход (корни держат)."},
-    {"combo": "EWE", "name": "Зов волка", "category": "summon", "effect": "Призывает Волка."},
-    {"combo": "EWW", "name": "Болотная трясина", "category": "roots", "effect": "Замедление на 2 хода."},
-    {"combo": "EWH", "name": "Зов оленя", "category": "summon", "effect": "Призывает Оленя."},
-    {"combo": "EHE", "name": "Зов кабана", "category": "summon", "effect": "Призывает Кабана."},
-    {"combo": "EHW", "name": "Лечебные травы", "category": "support", "heal": 3, "effect": "Лечение 3."},
-    {"combo": "EHH", "name": "Каменный страж", "category": "roots", "shield": 2, "effect": "Щит 2 всем на стороне цели."},
-    {"combo": "WEE", "name": "Камнепад", "category": "damage", "damage": 3, "effect": "3 урона."},
-    {"combo": "WEW", "name": "Зов змеи", "category": "summon", "effect": "Призывает Змею."},
-    {"combo": "WEH", "name": "Целебный мох", "category": "support", "heal": 3, "effect": "Регенерация на 3 хода."},
-    {"combo": "WWE", "name": "Зов барсука", "category": "summon", "effect": "Призывает Барсука."},
-    {"combo": "WWW", "name": "Плакучая ива", "category": "roots", "shield": 3, "effect": "Щит 3."},
-    {"combo": "WWH", "name": "Утренняя роса", "category": "support", "heal": 2, "effect": "Лечение 2 и Очищение."},
-    {"combo": "WHE", "name": "Зов ежа", "category": "summon", "effect": "Призывает Ежа."},
-    {"combo": "WHW", "name": "Лесной туман", "category": "roots", "effect": "Ослепление на 1 ход."},
-    {"combo": "WHH", "name": "Родник", "category": "support", "heal": 4, "effect": "Лечение 4."},
-    {"combo": "HEE", "name": "Шипы терновника", "category": "damage", "damage": 2, "effect": "2 урона и Уязвимость на 2 хода."},
-    {"combo": "HEW", "name": "Зов совы", "category": "summon", "effect": "Призывает Сову."},
-    {"combo": "HEH", "name": "Цветочная броня", "category": "roots", "effect": "Каменная кожа на 2 хода (+2 Защита)."},
-    {"combo": "HWE", "name": "Хваткие лозы", "category": "roots", "effect": "Сбив шкалы на 50 %."},
-    {"combo": "HWW", "name": "Зов пчёл", "category": "summon", "effect": "Призывает Рой пчёл."},
-    {"combo": "HWH", "name": "Солнечный цветок", "category": "support", "heal": 2, "effect": "Лечение 2 всем на стороне цели."},
-    {"combo": "HHE", "name": "Ядовитый плющ", "category": "damage", "damage": 2, "effect": "2 урона и 2 стака Яда."},
-    {"combo": "HHW", "name": "Лунный камень", "category": "roots", "shield": 4, "effect": "Щит 4."},
-    {"combo": "HHH", "name": "Гнев леса", "category": "damage", "damage": 4, "effect": "4 урона."},
-    {"combo": "X1", "name": "Лес проснулся", "category": "roots", "effect": "Корни хватают ВСЕХ на арене: Оглушение на 1 ход."},
-    {"combo": "X2", "name": "Великое переселение", "category": "summon", "effect": "Призывает 3 случайных зверя, каждый встаёт на случайную сторону."},
-    {"combo": "X3", "name": "Землетрясение", "category": "damage", "damage": 5, "effect": "5 урона и Сбив шкалы на 30 % ВСЕМ на арене."}
+    {
+      "combo": "EEE",
+      "name": "Дубовая кора",
+      "category": "roots",
+      "shield": 5,
+      "effect": "Щит 5."
+    },
+    {
+      "combo": "EEW",
+      "name": "Зов медведя",
+      "category": "summon",
+      "effect": "Призывает Медведя."
+    },
+    {
+      "combo": "EEH",
+      "name": "Цепкие корни",
+      "category": "roots",
+      "effect": "Оглушение на 1 ход (корни держат)."
+    },
+    {
+      "combo": "EWE",
+      "name": "Зов волка",
+      "category": "summon",
+      "effect": "Призывает Волка."
+    },
+    {
+      "combo": "EWW",
+      "name": "Болотная трясина",
+      "category": "roots",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "EWH",
+      "name": "Зов оленя",
+      "category": "summon",
+      "effect": "Призывает Оленя."
+    },
+    {
+      "combo": "EHE",
+      "name": "Зов кабана",
+      "category": "summon",
+      "effect": "Призывает Кабана."
+    },
+    {
+      "combo": "EHW",
+      "name": "Лечебные травы",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "EHH",
+      "name": "Каменный страж",
+      "category": "roots",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "WEE",
+      "name": "Камнепад",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WEW",
+      "name": "Зов змеи",
+      "category": "summon",
+      "effect": "Призывает Змею."
+    },
+    {
+      "combo": "WEH",
+      "name": "Целебный мох",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "WWE",
+      "name": "Зов барсука",
+      "category": "summon",
+      "effect": "Призывает Барсука."
+    },
+    {
+      "combo": "WWW",
+      "name": "Плакучая ива",
+      "category": "roots",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "WWH",
+      "name": "Утренняя роса",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 и Очищение."
+    },
+    {
+      "combo": "WHE",
+      "name": "Зов ежа",
+      "category": "summon",
+      "effect": "Призывает Ежа."
+    },
+    {
+      "combo": "WHW",
+      "name": "Лесной туман",
+      "category": "roots",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "WHH",
+      "name": "Родник",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "HEE",
+      "name": "Шипы терновника",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "HEW",
+      "name": "Зов совы",
+      "category": "summon",
+      "effect": "Призывает Сову."
+    },
+    {
+      "combo": "HEH",
+      "name": "Цветочная броня",
+      "category": "roots",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "HWE",
+      "name": "Хваткие лозы",
+      "category": "roots",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "HWW",
+      "name": "Зов пчёл",
+      "category": "summon",
+      "effect": "Призывает Рой пчёл."
+    },
+    {
+      "combo": "HWH",
+      "name": "Солнечный цветок",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 всем на стороне цели."
+    },
+    {
+      "combo": "HHE",
+      "name": "Ядовитый плющ",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и 2 стака Яда."
+    },
+    {
+      "combo": "HHW",
+      "name": "Лунный камень",
+      "category": "roots",
+      "shield": 4,
+      "effect": "Щит 4."
+    },
+    {
+      "combo": "HHH",
+      "name": "Гнев леса",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "X1",
+      "name": "Лес проснулся",
+      "category": "roots",
+      "effect": "Корни хватают ВСЕХ на арене: Оглушение на 1 ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Великое переселение",
+      "category": "summon",
+      "effect": "Призывает 3 случайных зверя, каждый встаёт на случайную сторону."
+    },
+    {
+      "combo": "X3",
+      "name": "Землетрясение",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона и Сбив шкалы на 30 % ВСЕМ на арене."
+    }
   ]
 }

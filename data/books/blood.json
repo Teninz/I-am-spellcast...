@@ -1,0 +1,222 @@
+{
+  "id": "blood",
+  "name": "Книга Крови",
+  "class": null,
+  "rarity": "epic",
+  "loot": true,
+  "flavor": "Страницы склеились от засохшего. Лучше не спрашивать, от чего.",
+  "bag": {
+    "D": 10,
+    "H": 5,
+    "F": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 12,
+    "support": 12,
+    "curse": 6
+  },
+  "notes": "Многие заклинания платят здоровьем кастующего — сильная, но опасная книга.",
+  "spells": [
+    {
+      "combo": "DDD",
+      "name": "Кровопускание",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона, кастующий лечится на 2."
+    },
+    {
+      "combo": "DDH",
+      "name": "Кровавая жатва",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, кастующий лечится на столько же."
+    },
+    {
+      "combo": "DDF",
+      "name": "Кипящая кровь",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "DHD",
+      "name": "Переливание",
+      "category": "support",
+      "heal": 5,
+      "effect": "Кастующий теряет 3 ЗД, цель лечится на 5."
+    },
+    {
+      "combo": "DHH",
+      "name": "Святая кровь",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "DHF",
+      "name": "Кровавая руна",
+      "category": "support",
+      "effect": "Вдохновение на 3 хода, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "DFD",
+      "name": "Разрыв вен",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и 2 стака Яда (кровотечение)."
+    },
+    {
+      "combo": "DFH",
+      "name": "Жертва",
+      "category": "support",
+      "shield": 2,
+      "effect": "Кастующий теряет 2 ЗД, все на стороне цели получают Щит 2."
+    },
+    {
+      "combo": "DFF",
+      "name": "Кровавый огонь",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "HDD",
+      "name": "Кровный долг",
+      "category": "curse",
+      "effect": "Уязвимость на 3 хода."
+    },
+    {
+      "combo": "HDH",
+      "name": "Кровная связь",
+      "category": "support",
+      "effect": "2 хода цель и кастующий делят входящий урон пополам."
+    },
+    {
+      "combo": "HDF",
+      "name": "Гемофилия",
+      "category": "curse",
+      "effect": "Болезнь на 3 хода."
+    },
+    {
+      "combo": "HHD",
+      "name": "Алая печать",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "HHH",
+      "name": "Чистая кровь",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 и Очищение."
+    },
+    {
+      "combo": "HHF",
+      "name": "Горячая кровь",
+      "category": "support",
+      "effect": "Ускорение и Вдохновение на 2 хода, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "HFD",
+      "name": "Кровавый клинок",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "HFH",
+      "name": "Жизненная искра",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "HFF",
+      "name": "Лихорадка",
+      "category": "curse",
+      "effect": "Слабость и Горение на 2 хода."
+    },
+    {
+      "combo": "FDD",
+      "name": "Взрыв крови",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "FDH",
+      "name": "Кровь за кровь",
+      "category": "support",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "FDF",
+      "name": "Жар в венах",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FHD",
+      "name": "Кровавый пот",
+      "category": "curse",
+      "effect": "Замедление и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "FHH",
+      "name": "Кровавый пир",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 всем на стороне цели, кастующий теряет 2 ЗД."
+    },
+    {
+      "combo": "FHF",
+      "name": "Кровь кипит",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFD",
+      "name": "Кровавая луна",
+      "category": "curse",
+      "effect": "Проклятие Хаоса на 3 хода."
+    },
+    {
+      "combo": "FFH",
+      "name": "Высасывание",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона, кастующий лечится на 2."
+    },
+    {
+      "combo": "FFF",
+      "name": "Огненная кровь",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона цели, 2 урона кастующему."
+    },
+    {
+      "combo": "X1",
+      "name": "Кровь нараспашку",
+      "category": "curse",
+      "effect": "Болезнь ВСЕМ на арене на 3 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Кровавый ритуал",
+      "category": "support",
+      "heal": 4,
+      "effect": "Весь отряд кастующего лечится на 4, кастующий теряет 4 ЗД."
+    },
+    {
+      "combo": "X3",
+      "name": "Алая буря",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона всем врагам, кастующий лечится на 6."
+    }
+  ]
+}

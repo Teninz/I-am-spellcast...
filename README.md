@@ -8,7 +8,7 @@
 - Боссы: [docs/bosses.md](docs/bosses.md)
 - Баланс и эффекты: [docs/balance.md](docs/balance.md)
 - Обмундирование: [docs/equipment.md](docs/equipment.md)
-- Книги заклинаний (16 книг, таблицы и шансы): [docs/spells/README.md](docs/spells/README.md)
+- Книги заклинаний (26 книг, таблицы и шансы): [docs/spells/README.md](docs/spells/README.md)
 
 Таблицы книг хранятся в `data/books/*.json`. После правки пересоберите документы:
 

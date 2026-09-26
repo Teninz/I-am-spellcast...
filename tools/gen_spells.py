@@ -21,9 +21,12 @@ OUT = ROOT / "docs" / "spells"
 CHAOS_BY_DRAW = (0.05, 0.069, 0.088)
 
 ICON = {"F": "🔥", "W": "💧", "H": "✨", "D": "🌑", "E": "🌿", "M": "⚙️",
-        "S": "🎵", "T": "🔮", "I": "🌀", "L": "⚡", "C": "⏳"}
+        "S": "🎵", "T": "🔮", "I": "🌀", "L": "⚡", "C": "⏳", "K": "❄️", "A": "🌪️"}
 ELEMENT = {"F": "Огонь", "W": "Вода", "H": "Святость", "D": "Тьма", "E": "Земля", "M": "Механика",
-           "S": "Звук", "T": "Тайна", "I": "Иллюзия", "L": "Молния", "C": "Время"}
+           "S": "Звук", "T": "Тайна", "I": "Иллюзия", "L": "Молния", "C": "Время",
+           "K": "Лёд", "A": "Воздух"}
+RARITY = {"common": "⚪ Обычная", "rare": "🔵 Редкая", "epic": "🟣 Эпическая",
+          "legendary": "🟠 Легендарная", "cursed": "🔴 Проклятая"}
 CATEGORY = {
     "damage": "Урон",
     "control": "Контроль",
@@ -84,6 +87,8 @@ def validate(book):
                       f"нет {expected - set(combos)}, всего {len(combos)}")
     if sum(book["bag"].values()) != 20 or book["bag"].get("X") != 1:
         errors.append("в мешочке должно быть 19 фишек стихий и 1 фишка Хаоса")
+    if book.get("rarity") not in RARITY:
+        errors.append(f"неизвестная редкость {book.get('rarity')}")
     counts = {c: 0 for c in book["target_split"]}
     for s in book["spells"]:
         if s["category"] not in counts:
@@ -119,20 +124,29 @@ def summary(book):
     return by_cat, exp_damage, exp_heal
 
 
+def owner(book):
+    return book["class"] or "—"
+
+
 def render_index(books):
+    order = list(RARITY)
+    books = sorted(books, key=lambda b: (b["class"] is not None, order.index(b["rarity"]), b["name"]))
     lines = [
         "# Книги заклинаний",
         "",
         "Сводка по всем книгам. Шансы — за один каст, без Мудрости и способностей класса.",
+        "Сначала книги без класса, потом классовые. Правила выпадения — в GDD, раздел «Инвентарь и лут».",
         "",
-        "| Книга | Класс | Стихии | Шансы по типам | Урон за каст | Лечение/щит за каст |",
-        "|---|---|---|---|---|---|",
+        "| Книга | Редкость | Класс | Лут | Стихии | Шансы по типам | Урон за каст | Лечение/щит за каст |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for book in books:
         by_cat, dmg, heal = summary(book)
         els = "".join(ICON[e] for e in elements(book))
         cats = " · ".join(f"{CATEGORY[c]} {p * 100:.0f} %" for c, p in by_cat.items())
-        lines.append(f"| [{book['name']}]({book['id']}.md) | {book['class']} | {els} | "
+        loot = "да" if book.get("loot", True) else "нет"
+        lines.append(f"| [{book['name']}]({book['id']}.md) | {RARITY[book['rarity']]} | {owner(book)} | "
+                     f"{loot} | {els} | "
                      f"{cats} | {dmg:.2f} | {heal:.2f} |")
     lines += ["", "*Файл собран скриптом `tools/gen_spells.py`.*", ""]
     return "\n".join(lines)
@@ -151,7 +165,8 @@ def render(book):
         "",
         f"*{book['flavor']}*",
         "",
-        f"- **Класс:** {book['class']}",
+        f"- **Редкость:** {RARITY[book['rarity']]}",
+        f"- **Класс:** {book['class'] or 'без класса — только из лута'}",
         f"- **Мешочек:** {bag} · ⚫ Хаос ×1 ("
         + " / ".join(f"{c * 100:g} %" for c in CHAOS_BY_DRAW) + " на 1-е / 2-е / 3-е вытягивание)",
         f"- **Распределение заклинаний:** {split}",

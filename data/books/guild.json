@@ -1,0 +1,212 @@
+{
+  "id": "guild",
+  "name": "Устав Гильдии Магов",
+  "class": null,
+  "rarity": "rare",
+  "loot": true,
+  "flavor": "Тысяча страниц правил, форм и печатей. Магия в нём тоже есть — бюрократическая.",
+  "bag": {
+    "T": 10,
+    "C": 5,
+    "H": 4,
+    "X": 1
+  },
+  "target_split": {
+    "control": 15,
+    "support": 10,
+    "damage": 5
+  },
+  "spells": [
+    {
+      "combo": "TTT",
+      "name": "Справка о недееспособности",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "TTC",
+      "name": "Очередь в канцелярию",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "TTH",
+      "name": "Печать «Одобрено»",
+      "category": "support",
+      "effect": "Вдохновение на 2 хода."
+    },
+    {
+      "combo": "TCT",
+      "name": "Форма 27-Б",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "TCC",
+      "name": "Перерыв на обед",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "TCH",
+      "name": "Льготный стаж",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "THT",
+      "name": "Штраф",
+      "category": "control",
+      "effect": "Слабость на 2 хода."
+    },
+    {
+      "combo": "THC",
+      "name": "Выговор с занесением",
+      "category": "control",
+      "effect": "Уязвимость на 2 хода."
+    },
+    {
+      "combo": "THH",
+      "name": "Больничный",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "CTT",
+      "name": "Бюрократическая волокита",
+      "category": "control",
+      "effect": "Замедление и Забывчивость на 2 хода."
+    },
+    {
+      "combo": "CTC",
+      "name": "Срок подачи истёк",
+      "category": "control",
+      "effect": "Цель теряет все баффы."
+    },
+    {
+      "combo": "CTH",
+      "name": "Сверхурочные",
+      "category": "support",
+      "effect": "Разгон шкалы на 50 %."
+    },
+    {
+      "combo": "CCT",
+      "name": "Вас здесь не стояло",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 % и Страх на 2 хода."
+    },
+    {
+      "combo": "CCC",
+      "name": "Пенсионное удостоверение",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "CCH",
+      "name": "Отпуск",
+      "category": "support",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "CHT",
+      "name": "Налоговая проверка",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона («списание»)."
+    },
+    {
+      "combo": "CHC",
+      "name": "Командировка",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "CHH",
+      "name": "Профсоюз",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "HTT",
+      "name": "Удар папкой",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "HTC",
+      "name": "Запрет на колдовство",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "HTH",
+      "name": "Премия",
+      "category": "support",
+      "effect": "Благословение на 2 хода."
+    },
+    {
+      "combo": "HCT",
+      "name": "Инструкция по технике безопасности",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "HCC",
+      "name": "Заседание комиссии",
+      "category": "control",
+      "effect": "Окаменение на 1 ход (от скуки)."
+    },
+    {
+      "combo": "HCH",
+      "name": "Протокол",
+      "category": "control",
+      "effect": "Ослепление на 1 ход (бумаги в лицо)."
+    },
+    {
+      "combo": "HHT",
+      "name": "Печать «Отклонено»",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "HHC",
+      "name": "Увольнение",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "HHH",
+      "name": "Внеплановая проверка",
+      "category": "control",
+      "effect": "Слабость и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "X1",
+      "name": "Бумажная буря",
+      "category": "control",
+      "effect": "Ослепление ВСЕМ на арене на 1 ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Золотой парашют",
+      "category": "support",
+      "heal": 3,
+      "shield": 2,
+      "effect": "Лечение 3 и Щит 2 всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Ликвидация гильдии",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона ВСЕМ на арене. Книга сгорает — кастующий теряет её."
+    }
+  ]
+}
