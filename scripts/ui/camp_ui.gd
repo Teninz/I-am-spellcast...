@@ -85,19 +85,17 @@ func _build() -> void:
 	_info.modulate = Color(1, 1, 1, 0.75)
 	root.add_child(_info)
 
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(scroll)
 	_columns = HBoxContainer.new()
 	_columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_columns.alignment = BoxContainer.ALIGNMENT_CENTER
 	_columns.add_theme_constant_override("separation", 12)
-	scroll.add_child(_columns)
+	root.add_child(_columns)
 
 	_messages = RichTextLabel.new()
 	_messages.bbcode_enabled = true
 	_messages.scroll_following = true
-	_messages.custom_minimum_size = Vector2(0, 70)
+	_messages.custom_minimum_size = Vector2(0, 64)
 	_messages.add_theme_font_size_override("normal_font_size", 14)
 	root.add_child(_messages)
 
@@ -128,20 +126,40 @@ func _rebuild() -> void:
 
 func _wizard_column(i: int) -> Control:
 	var w := adventure.wizards[i]
-	var panel := PanelContainer.new()
+	# Колонка всегда в пропорциях рамки (400×720): рамка масштабируется целиком, не растягиваясь.
+	var panel := AspectRatioContainer.new()
+	panel.ratio = 400.0 / 720.0
+	panel.stretch_mode = AspectRatioContainer.STRETCH_FIT
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var box: StyleBox = Art.frame("card_rest", 46, 0.42)
-	if box == null:
-		var flat := StyleBoxFlat.new()
-		flat.bg_color = Color("2b3a30")
-		flat.set_corner_radius_all(8)
-		box = flat
-	box.set_content_margin_all(16)
-	box.content_margin_top = 44  # ниже орнамента с котелком
-	panel.add_theme_stylebox_override("panel", box)
+	var card := Control.new()
+	panel.add_child(card)
+	var frame_tex := Art.keyed("res://assets/ui/card_rest.png")
+	if frame_tex:
+		var tr := TextureRect.new()
+		tr.texture = frame_tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card.add_child(tr)
+	else:
+		var flat := ColorRect.new()
+		flat.color = Color("2b3a30")
+		flat.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card.add_child(flat)
+	# Содержимое — внутри рамки (доли от размера, чтобы масштабировались вместе с ней).
+	var inner := ScrollContainer.new()
+	inner.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	inner.anchor_left = 0.07
+	inner.anchor_right = 0.93
+	inner.anchor_top = 0.15
+	inner.anchor_bottom = 0.965
+	card.add_child(inner)
 	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_theme_constant_override("separation", 6)
-	panel.add_child(col)
+	inner.add_child(col)
 
 	col.add_child(_label(w.name, 19))
 	var st := w.stats()
@@ -257,7 +275,10 @@ func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
 	if rarity != "":
 		title.add_theme_color_override("font_color", RARITY_COLORS[rarity])
 	col.add_child(title)
-	col.add_child(_small(_offer_text(o)))
+	var lines := _offer_text(o).split("\n", false, 1)
+	col.add_child(_small(lines[0]))
+	if lines.size() > 1:
+		outer.add_child(_small(lines[1]))
 	if o.resolved:
 		col.add_child(_small("✔ Разобрано"))
 		return
@@ -334,9 +355,11 @@ func _offer_text(o: Dictionary) -> String:
 			var owner: String = b.class if b.class != null else "без класса"
 			return "Книга · %s · %s\nСтихии: %s\n%s" % [RARITY_NAMES[b.rarity], owner, ", ".join(PackedStringArray(els)), b.flavor]
 		"item":
-			return "Предмет · %s" % adventure.items[o.id].text
+			return "Расходуемый предмет\n%s" % adventure.items[o.id].text
 		"equipment":
-			return _equipment_text(adventure.equipment[o.id])
+			var e: Dictionary = adventure.equipment[o.id]
+			var full := _equipment_text(e)
+			return "%s · %s\n%s" % ["Шляпа" if e.slot == "hat" else "Ботинки", RARITY_NAMES[e.rarity], full.substr(full.find(": ") + 2)]
 	return ""
 
 

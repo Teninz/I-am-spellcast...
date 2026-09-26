@@ -89,11 +89,62 @@ static func book_cover(book: Dictionary, width: int) -> Control:
 
 # --- Интерфейс: фоны, рамки, кнопки ----------------------------------------
 
+## Картинка без сплошного фона по краям: пиксели цвета угла, связанные с краем, становятся
+## прозрачными. Нужно для рамок, у которых вокруг нарисован тёмный фон вместо прозрачности.
+static func keyed(path: String) -> Texture2D:
+	var key := path + "@keyed"
+	if _cache.has(key):
+		return _cache[key]
+	var tex := Art.texture(path)
+	if tex == null:
+		_cache[key] = null
+		return null
+	var img := tex.get_image()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	var bg := img.get_pixel(1, 1)
+	if bg.a < 0.5:
+		_cache[key] = tex  # фон уже прозрачный
+		return tex
+	var seen := PackedByteArray()
+	seen.resize(w * h)
+	var stack := PackedInt32Array()
+	for x in w:
+		stack.append(x)
+		stack.append((h - 1) * w + x)
+	for y in h:
+		stack.append(y * w)
+		stack.append(y * w + w - 1)
+	while not stack.is_empty():
+		var idx: int = stack[stack.size() - 1]
+		stack.resize(stack.size() - 1)
+		if seen[idx]:
+			continue
+		seen[idx] = 1
+		var px := idx % w
+		var py := idx / w
+		var c := img.get_pixel(px, py)
+		if absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b) > 0.12:
+			continue
+		img.set_pixel(px, py, Color(c.r, c.g, c.b, 0.0))
+		if px > 0: stack.append(idx - 1)
+		if px < w - 1: stack.append(idx + 1)
+		if py > 0: stack.append(idx - w)
+		if py < h - 1: stack.append(idx + w)
+	img.generate_mipmaps()
+	var out := ImageTexture.create_from_image(img)
+	_cache[key] = out
+	return out
+
+
 ## Уменьшенная копия картинки (для рамок: углы 9-slice рисуются в «родном» размере).
 static func scaled(path: String, factor: float) -> Texture2D:
 	var key := "%s@%s" % [path, factor]
 	if not _cache.has(key):
-		var tex := Art.texture(path)
+		var tex := Art.keyed(path) if path.contains("/ui/") else Art.texture(path)
 		if tex == null or is_equal_approx(factor, 1.0):
 			_cache[key] = tex
 		else:
@@ -106,13 +157,16 @@ static func scaled(path: String, factor: float) -> Texture2D:
 
 
 ## Рамка-«резинка» (9-slice) из картинки. margin — толщина края в исходных пикселях.
-static func frame(name: String, margin: float, factor: float = 0.5, content: float = -1.0, tint: Color = Color.WHITE) -> StyleBox:
+static func frame(name: String, margin: float, factor: float = 0.5, content: float = -1.0, tint: Color = Color.WHITE, margin_v: float = -1.0) -> StyleBox:
 	var tex := Art.scaled("res://assets/ui/%s.png" % name, factor)
 	if tex == null:
 		return null
 	var sb := StyleBoxTexture.new()
 	sb.texture = tex
 	sb.set_texture_margin_all(margin * factor)
+	if margin_v >= 0.0:
+		sb.texture_margin_top = margin_v * factor
+		sb.texture_margin_bottom = margin_v * factor
 	sb.set_content_margin_all(content if content >= 0.0 else margin * factor)
 	sb.modulate_color = tint
 	return sb
@@ -203,13 +257,13 @@ static func stat(id: String, value: String, tooltip: String) -> Control:
 ## Общая тема: деревянные кнопки.
 static func ui_theme() -> Theme:
 	var th := Theme.new()
-	var normal := Art.frame("button", 44, 0.5, -1.0)
+	var normal := Art.frame("button", 40, 0.4, -1.0, Color.WHITE, 14)
 	if normal == null:
 		return th
-	normal.content_margin_left = 18
-	normal.content_margin_right = 18
-	normal.content_margin_top = 6
-	normal.content_margin_bottom = 6
+	normal.content_margin_left = 20
+	normal.content_margin_right = 20
+	normal.content_margin_top = 7
+	normal.content_margin_bottom = 7
 	var hover := normal.duplicate()
 	hover.modulate_color = Color(1.2, 1.15, 1.0)
 	var pressed := normal.duplicate()

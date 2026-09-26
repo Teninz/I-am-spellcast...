@@ -668,7 +668,7 @@ func _build_ui() -> void:
 	_draw_button = _button("Достать фишку", _on_draw_pressed)
 	controls.add_child(_draw_button)
 	_cast_button = _button("Я кастую!", _on_cast_pressed)
-	var cast_box := Art.frame("button_cast", 60, 0.45)
+	var cast_box := Art.frame("button_cast", 56, 0.4, -1.0, Color.WHITE, 22)
 	if cast_box:
 		cast_box.content_margin_left = 24
 		cast_box.content_margin_right = 24
@@ -735,7 +735,7 @@ func _build_ui() -> void:
 
 func _make_card(u: Unit) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(260, 86)
+	b.custom_minimum_size = Vector2(260, 98)  # пропорции рамки 512×192
 	b.pressed.connect(_on_card_pressed.bind(u))
 	var frame_name := "card_party" if u.is_wizard() else ("card_boss" if u.is_boss else ("card_leader" if u.is_leader else "card_enemy"))
 	var box: StyleBox = Art.frame(frame_name, 40, 0.42)
