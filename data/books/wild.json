@@ -22,15 +22,15 @@
       "combo": "FFF",
       "name": "Огненный шторм",
       "category": "damage",
-      "damage": 5,
-      "effect": "5 урона."
+      "damage": 4,
+      "effect": "4 урона."
     },
     {
       "combo": "FFL",
       "name": "Шаровая молния",
       "category": "damage",
-      "damage": 4,
-      "effect": "4 урона."
+      "damage": 3,
+      "effect": "3 урона."
     },
     {
       "combo": "FFW",
@@ -49,8 +49,8 @@
       "combo": "FLL",
       "name": "Цепная молния",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона цели, 1 урон всем на её стороне и 1 урон случайному союзнику кастующего."
+      "damage": 2,
+      "effect": "2 урона цели, 1 урон всем на её стороне и 1 урон случайному союзнику кастующего."
     },
     {
       "combo": "FLW",
@@ -62,8 +62,8 @@
       "combo": "FWF",
       "name": "Кипящий взрыв",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона."
+      "damage": 2,
+      "effect": "2 урона."
     },
     {
       "combo": "FWL",
@@ -82,15 +82,15 @@
       "combo": "LFF",
       "name": "Молния в огне",
       "category": "damage",
-      "damage": 4,
-      "effect": "4 урона."
+      "damage": 3,
+      "effect": "3 урона."
     },
     {
       "combo": "LFL",
       "name": "Разряд",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона и Сбив шкалы на 30 %."
+      "damage": 2,
+      "effect": "2 урона и Сбив шкалы на 30 %."
     },
     {
       "combo": "LFW",
@@ -141,8 +141,8 @@
       "combo": "WFF",
       "name": "Взрыв котла",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона цели, 1 урон кастующему."
+      "damage": 2,
+      "effect": "2 урона цели, 1 урон кастующему."
     },
     {
       "combo": "WFL",
