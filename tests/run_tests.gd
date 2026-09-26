@@ -563,7 +563,8 @@ func test_settings_and_sound() -> void:
 	Settings.path = "user://test_settings.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reload()
-	check(Settings.speed() == 1.0 and Settings.value("tutorial") == true, "по умолчанию: обычная скорость, обучение включено")
+	check(Settings.speed() == 1.0 and Settings.value("tutorial") == true,
+		"по умолчанию: обычная скорость, обучение включено (скорость %s, обучение %s)" % [Settings.speed(), Settings.value("tutorial")])
 	Settings.set_value("speed", 2.0)
 	Settings.set_value("auto_draw", true)
 	Settings.set_value("sfx", 0.0)

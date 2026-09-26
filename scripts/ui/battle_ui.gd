@@ -313,6 +313,7 @@ func _ability_name() -> String:
 ## Мастерская заняла ход Учёного.
 func _after_turn_ability() -> void:
 	_critter = ""
+	_set_state(State.ENEMY_TURN)  # ход занят: блокируем ввод на время паузы
 	_refresh()
 	if combat.outcome != "":
 		_game_over()

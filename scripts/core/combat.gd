@@ -559,6 +559,8 @@ func critter_needs_target(critter: String) -> bool:
 
 ## Ход зверушки: урон врагу и/или провокация и щит Учёному. Ход Учёного заканчивается.
 func use_workshop(u: Unit, critter: String, target: Unit) -> void:
+	if not CRITTER_NAMES.has(critter) or u.ability_charges <= 0:
+		return
 	u.ability_charges -= 1
 	_log("%s заводит зверушку: %s!" % [u.name, CRITTER_NAMES[critter]], "special")
 	match critter:
