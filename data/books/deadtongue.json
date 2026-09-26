@@ -11,6 +11,11 @@
     "F": 4,
     "X": 1
   },
+  "cast_cost": {
+    "status": "dead_poison",
+    "stacks": 1,
+    "turns": 2
+  },
   "target_split": {
     "damage": 20,
     "curse": 10

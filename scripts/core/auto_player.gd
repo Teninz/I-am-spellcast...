@@ -4,14 +4,27 @@ extends RefCounted
 ## Лечащие книги направляет на самого раненого союзника, остальные — во врага.
 
 const HEALING_BOOKS := ["holy", "cookbook"]
+const LEAN_SAMPLES := 3000
+
+static var _lean: Dictionary = {}
 
 
-static func choose_book(caster: Unit) -> String:
-	# Лечащую книгу берём, только если кто-то ранен; иначе — первую боевую.
-	for b in caster.books:
-		if not HEALING_BOOKS.has(b):
-			return b
-	return caster.books[0]
+## Лечащую книгу — если кто-то ранен; иначе боевые книги по очереди (как живой игрок,
+## который пробует всё, что выпало).
+static func choose_book(caster: Unit, combat: Combat = null) -> String:
+	var fight: Array = caster.books.filter(func(b: String) -> bool: return not HEALING_BOOKS.has(b))
+	if combat != null and _someone_hurt(combat, caster) and fight.size() < caster.books.size():
+		return caster.books.filter(func(b: String) -> bool: return HEALING_BOOKS.has(b))[0]
+	if fight.is_empty():
+		return caster.books[0]
+	var counts: Dictionary = caster.get_meta("ai_casts", {})
+	var pick: String = fight[0]
+	for b in fight:
+		if int(counts.get(b, 0)) < int(counts.get(pick, 0)):
+			pick = b
+	counts[pick] = int(counts.get(pick, 0)) + 1
+	caster.set_meta("ai_casts", counts)
+	return pick
 
 
 static func choose_target(combat: Combat, caster: Unit, book_id: String) -> Unit:
@@ -23,6 +36,14 @@ static func choose_target(combat: Combat, caster: Unit, book_id: String) -> Unit
 				best = u
 		if best and best.hp < best.max_hp:
 			return best
+	# Цель выбирается до вытягивания фишек: книге поддержки выгоднее целить в своих.
+	if book_lean(combat.books, book_id) < 0.0:
+		var ally: Unit = null
+		for u in targets:
+			if u.side == caster.side and u.alive() and (ally == null or u.hp / u.max_hp < ally.hp / ally.max_hp):
+				ally = u
+		if ally:
+			return ally
 	var foes: Array[Unit] = []
 	for u in targets:
 		if u.side != caster.side and u.alive():
@@ -70,9 +91,7 @@ static func play(combat: Combat) -> String:
 			for i in casts:
 				if combat.outcome != "" or u.books.is_empty():
 					break
-				var book := choose_book(u)
-				if HEALING_BOOKS.has(u.books[0]) and _someone_hurt(combat, u):
-					book = u.books[0]
+				var book := choose_book(u, combat)
 				var target := combat.resolve_target(u, choose_target(combat, u, book))
 				var bag := combat.new_bag(u, book)
 				while not bag.is_complete():
@@ -159,3 +178,37 @@ static func _rank(e: Dictionary) -> int:
 	if e.rarity == "cursed":
 		return -1  # проклятое ИИ не надевает, если есть что-то другое
 	return Adventure.RARITY_ORDER.find(e.rarity)
+
+
+## Куда выгоднее целить книгой: > 0 — во врага, < 0 — в союзника.
+## Считается по шансам заклинаний (Монте-Карло по мешочку): вредные заклинания
+## в цель — «за врага», полезные (лечение, щит, баффы, очищение) — «за союзника».
+## Заклинания по площади (все враги, вся арена) от выбора цели не зависят.
+static func book_lean(books: Dictionary, book_id: String) -> float:
+	if _lean.has(book_id):
+		return _lean[book_id]
+	var book: Dictionary = books[book_id]
+	var value := {}
+	for sp in book.spells:
+		var spec := EffectParser.parse(sp)
+		if not (spec.area == "target" or spec.area == "target_side"):
+			value[sp.combo] = 0.0
+			continue
+		var harm: float = float(spec.damage) + spec.splash + (1.0 if spec.meter < 0 or spec.strip_buffs else 0.0)
+		var good: float = float(spec.heal) + spec.shield + (1.0 if spec.cleanse or spec.meter > 0 else 0.0)
+		for st in spec.statuses:
+			if Unit.DEBUFFS.has(st.id):
+				harm += 1.0
+			elif Unit.BUFFS.has(st.id):
+				good += 1.0
+		value[sp.combo] = harm - good
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(book_id)
+	var sum := 0.0
+	for i in LEAN_SAMPLES:
+		var bag := ChipBag.new(book.bag)
+		while not bag.is_complete():
+			bag.draw(rng)
+		sum += float(value.get(bag.combo_key(), 0.0))
+	_lean[book_id] = sum / LEAN_SAMPLES
+	return _lean[book_id]

@@ -46,6 +46,14 @@ Square game UI status icon, 256x256 px. One clear central symbol that is readabl
 Square game UI status icon, 256x256 px. One clear central symbol that is readable even at 24 px: a cracked green potion vial leaking bubbling green ooze, one bubble shaped like a tiny skull. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books). Limited palette of 3-4 colours dominated by #5fa83a. Simple dark background #1b1a24 with a soft radial glow behind the symbol. Symbol fills about 75% of the canvas, centered. No frame, no border, no text, no letters, no numbers.
 ```
 
+### `dead_poison.png` — Мёртвый яд
+
+*Плата за Книгу Мёртвого Языка: 0.5 урона за стак в начале хода, стаки копятся. Добавлено позже основного набора.*
+
+```
+Square game UI status icon, 256x256 px. One clear central symbol that is readable even at 24 px: a drop of murky grey-green poison with a tiny grinning skull inside it, cracked ancient runes floating around the drop. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books). Limited palette of 3-4 colours dominated by #3d5a3a. Simple dark background #1b1a24 with a soft radial glow behind the symbol. Symbol fills about 75% of the canvas, centered. No frame, no border, no text, no letters, no numbers.
+```
+
 ### `stun.png` — Оглушение
 
 *Пропускает ход. Боссы и предводители вместо этого теряют 50 % шкалы хода.*

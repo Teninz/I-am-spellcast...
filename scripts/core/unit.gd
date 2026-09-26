@@ -7,7 +7,7 @@ const ENEMIES := "enemies"
 
 ## Вредные статусы — их снимает Очищение, от них спасает Сопротивление.
 const DEBUFFS := ["burn", "poison", "stun", "slow", "vulnerable", "weak", "fear", "blind",
-	"disease", "confusion", "charm", "forget", "chaos_curse", "petrify", "toad", "aching"]
+	"disease", "confusion", "charm", "forget", "chaos_curse", "petrify", "toad", "aching", "dead_poison"]
 ## «Разбитость» после воскрешения: скорость −25 %.
 const ACHING_SPEED := 0.75
 const BUFFS := ["regen", "haste", "invisible", "reflect", "invulnerable", "stoneskin",
@@ -124,6 +124,8 @@ func add_status(status_id: String, turns: int, stacks: int = 1, source: Unit = n
 		s.turns = maxi(s.turns, turns)
 		if status_id == "poison":
 			s.stacks = mini(3, s.stacks + stacks)
+		elif status_id == "dead_poison":
+			s.stacks += stacks  # Мёртвый яд копится без предела
 		if source:
 			s.source = source_id
 	else:

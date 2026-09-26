@@ -21,6 +21,7 @@ func _initialize() -> void:
 	test_party_scaling()
 	test_profile_unlocks()
 	test_bard_and_paladin()
+	test_dead_tongue_cost()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -65,7 +66,7 @@ func test_art_assets(books: Dictionary) -> void:
 		ui.append("loot_frame_" + r)
 	groups["интерфейс"] = ui.map(func(n): return "res://assets/ui/%s.png" % n)
 	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
-	var pending := ["muse.png"]
+	var pending := ["muse.png", "dead_poison.png"]
 	for g in groups:
 		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
 		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))
@@ -324,6 +325,28 @@ func test_map() -> void:
 		rates[site] = float(got) / total
 	check(rates.library > 0.7 and rates.cellar < 0.3,
 		"добыча зависит от локации: книги в библиотеке %.0f %%, в погребе %.0f %%" % [rates.library * 100, rates.cellar * 100])
+
+
+func test_dead_tongue_cost() -> void:
+	print("Плата за Книгу Мёртвого Языка:")
+	var books := GameData.load_books()
+	var w := Wizard.new("pyromancer", GameData.load_classes().pyromancer, {})
+	w.books.append("deadtongue")
+	var enc := GameData.load_encounter("rat_king")
+	var c := Combat.new(books, [w], enc, 3, {})
+	var u: Unit = c.living(Unit.PARTY)[0]
+	var foe: Unit = c.living(Unit.ENEMIES)[0]
+	for i in 2:
+		var bag := c.new_bag(u, "deadtongue")
+		while not bag.is_complete():
+			bag.draw(c.rng)
+		c.cast(u, foe, "deadtongue", bag, false)
+	check(u.has("dead_poison") and u.statuses.dead_poison.stacks == 2, "каждый каст — стак Мёртвого яда (2 каста → 2 стака)")
+	u.hp = 10.0
+	c._start_of_turn(u)
+	check(is_equal_approx(u.hp, 9.0), "в начале хода 0.5 урона за стак (10 → %s)" % Unit._num(u.hp))
+	u.remove_debuffs()
+	check(not u.has("dead_poison"), "снимается Очищением")
 
 
 func test_loot_rules() -> void:

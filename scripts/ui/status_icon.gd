@@ -151,7 +151,7 @@ static func icons_for(u: Unit, icon_size: int = 30, names: Dictionary = {}) -> A
 	for id in u.statuses:
 		var s: Dictionary = u.statuses[id]
 		var turns := "" if s.turns >= 99 else str(s.turns)
-		var icon := make(id, turns, int(s.stacks) if id == "poison" else 0, icon_size)
+		var icon := make(id, turns, int(s.stacks) if id in ["poison", "dead_poison"] else 0, icon_size)
 		icon.source_name = names.get(int(s.source), "")
 		out.append(icon)
 	return out

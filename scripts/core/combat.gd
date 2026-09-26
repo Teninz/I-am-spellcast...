@@ -13,6 +13,8 @@ const FIZZLE_PER_LUCK := 0.05
 const RESIST_PER_POINT := 0.1
 const WATER_ELEMENTAL_CHANCE := 0.2
 const DOUBLE_GRACE_CHANCE := 0.05
+## Мёртвый яд (плата за Книгу Мёртвого Языка): урон за стак в начале хода.
+const DEAD_POISON_DAMAGE := 0.5
 ## Эти статусы у боссов и предводителей превращаются в Сбив шкалы на 50 %.
 const HARD_CONTROL := ["stun", "petrify", "toad"]
 
@@ -191,6 +193,9 @@ func _start_of_turn(u: Unit) -> void:
 	if u.has("poison") and u.alive():
 		_log("%s страдает от яда." % u.name)
 		_hurt(u, float(u.statuses.poison.stacks), null)
+	if u.has("dead_poison") and u.alive():
+		_log("%s: Мёртвый яд." % u.name)
+		_hurt(u, Unit.q(DEAD_POISON_DAMAGE * u.statuses.dead_poison.stacks), null)
 	if u.has("regen") and u.alive():
 		_restore(u, 1.0)
 
@@ -279,6 +284,7 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	caster.books_used[book_id] = true
 	_log("%s: «Я кастую!» — %s." % [caster.name, spell.name])
 	_apply_spell(caster, target, spell, bag.chips)
+	_pay_cast_cost(caster, book_id)
 	_cane_strike(caster, target, spell)
 	_bard_critics(caster)
 	if finish:
@@ -286,6 +292,16 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	else:
 		_check_outcome()
 	return spell
+
+
+## Проклятые книги берут плату за каст (Книга Мёртвого Языка — стак Мёртвого яда).
+func _pay_cast_cost(caster: Unit, book_id: String) -> void:
+	var cost: Dictionary = books[book_id].get("cast_cost", {})
+	if cost.is_empty() or not caster.alive():
+		return
+	caster.add_status(cost.status, int(cost.turns), int(cost.get("stacks", 1)), caster)
+	_log("%s платит за проклятую книгу: %s." % [caster.name, status_name(cost.status)])
+	status_applied.emit(caster, cost.status)
 
 
 # --- Способности классов ------------------------------------------------
