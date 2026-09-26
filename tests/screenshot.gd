@@ -60,8 +60,14 @@ func _play(ui: Node) -> void:
 					busy = true
 					ui.fast = false
 					_shot("battle.png", func() -> void:
-						StatusInfo.open(ui)
-						_shot("info.png", func() -> void: quit()))
+						var card := StatusIcon.big_card("aching", "7", "")
+						card.top_level = true
+						ui.add_child(card)
+						card.position = Vector2(420, 430)
+						_shot("card.png", func() -> void:
+							card.queue_free()
+							StatusInfo.open(ui)
+							_shot("info.png", func() -> void: quit())))
 					return
 			ui._on_cast_pressed()
 

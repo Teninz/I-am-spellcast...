@@ -5,6 +5,8 @@ extends RefCounted
 
 signal logged(text: String)
 signal unit_added(u: Unit)
+## Эффект наложен (для анимации «штампа» в интерфейсе).
+signal status_applied(u: Unit, status_id: String)
 
 const METER_FULL := 100.0
 const FIZZLE_PER_LUCK := 0.05
@@ -318,6 +320,7 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		if spec.shield > 0 and who.alive():
 			who.shield += maxi(0, spec.shield + bonus)
 			_log("%s получает Щит %d." % [who.name, spec.shield + bonus])
+			status_applied.emit(who, "shield")
 			_cheer(who)
 		if spec.cleanse:
 			who.remove_debuffs()
@@ -428,6 +431,7 @@ func use_item(owner: Unit, target: Unit) -> void:
 	if e.has("status"):
 		target.add_status(e.status, int(e.turns))
 		_log("%s: %s." % [target.name, status_name(e.status)])
+		status_applied.emit(target, e.status)
 		if Unit.BUFFS.has(e.status):
 			_cheer(target)
 	if e.has("extra_cast"):
@@ -454,6 +458,7 @@ func _apply_status(who: Unit, s: Dictionary, source: Unit) -> void:
 		return
 	who.add_status(id, int(s.turns), int(s.get("stacks", 1)), source)
 	_log("%s: %s." % [who.name, status_name(id)])
+	status_applied.emit(who, id)
 	if Unit.BUFFS.has(id):
 		_cheer(who)
 

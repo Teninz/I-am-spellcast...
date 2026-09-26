@@ -27,7 +27,7 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(760, 560)
+	panel.custom_minimum_size = Vector2(1040, 600)
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color("24232f")
 	box.set_corner_radius_all(10)
@@ -64,7 +64,7 @@ func _ready() -> void:
 	col.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 8)
+	list.add_theme_constant_override("separation", 10)
 	scroll.add_child(list)
 
 	var all := GameData.statuses()
@@ -74,16 +74,30 @@ func _ready() -> void:
 		gl.add_theme_font_size_override("font_size", 17)
 		gl.add_theme_color_override("font_color", StatusIcon.FRAME_COLORS[g[0]])
 		list.add_child(gl)
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 18)
+		grid.add_theme_constant_override("v_separation", 12)
+		list.add_child(grid)
 		for id in all:
 			if all[id].kind != g[0]:
 				continue
 			var row := HBoxContainer.new()
+			row.custom_minimum_size = Vector2(480, 0)
 			row.add_theme_constant_override("separation", 12)
-			row.add_child(StatusIcon.make(id, "", 0, 40))
+			row.add_child(StatusIcon.make(id, "", 0, 80))
+			var text_col := VBoxContainer.new()
+			text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var name_l := Label.new()
+			name_l.text = all[id].name
+			name_l.add_theme_font_size_override("font_size", 17)
+			text_col.add_child(name_l)
 			var text := Label.new()
-			text.text = "%s — %s" % [all[id].name, all[id].desc]
+			text.text = all[id].desc
 			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			text.add_theme_font_size_override("font_size", 14)
-			row.add_child(text)
-			list.add_child(row)
+			text.custom_minimum_size = Vector2(380, 0)
+			text.add_theme_font_size_override("font_size", 13)
+			text.modulate = Color(1, 1, 1, 0.85)
+			text_col.add_child(text)
+			row.add_child(text_col)
+			grid.add_child(row)

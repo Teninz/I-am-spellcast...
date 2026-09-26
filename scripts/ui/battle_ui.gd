@@ -46,6 +46,7 @@ var _chip_buttons: Array[Button] = []
 var _queue_label: Label
 var _prompt_label: Label
 var _spell_label: Label
+var _effects_box: HBoxContainer
 var _shout_label: Label
 var _ability_label: Label
 var _party_box: VBoxContainer
@@ -75,6 +76,7 @@ func start_battle() -> void:
 	combat = adventure.start_combat()
 	combat.logged.connect(_on_log)
 	combat.unit_added.connect(_add_card)
+	combat.status_applied.connect(_stamp)
 	var enc := adventure.encounter()
 	_title_label.text = "Уровень %d из %d — %s" % [adventure.level, adventure.level_count(), enc.name]
 	_log.clear()
@@ -106,6 +108,7 @@ func _advance() -> void:
 	bag = null
 	_clear_chips()
 	_spell_label.text = ""
+	_show_effects({})
 	var u := combat.next_turn()
 	if u == null:
 		_game_over()
@@ -193,6 +196,7 @@ func _on_cast_pressed() -> void:
 	var spell := combat.cast(actor, target, book_id, bag, not again)
 	_update_chips()
 	_spell_label.text = "%s\n%s" % [spell.name, spell.effect]
+	_show_effects(spell)
 	_shout()
 	_refresh()
 	await _wait(0.6)
@@ -314,7 +318,10 @@ func _update_card(card: Button, u: Unit) -> void:
 	for c in icons.get_children():
 		c.queue_free()
 	if u.alive():
-		for icon in StatusIcon.icons_for(u, 26):
+		var names := {}
+		for x in combat.units:
+			names[x.id] = x.name
+		for icon in StatusIcon.icons_for(u, 30, names):
 			icons.add_child(icon)
 
 
@@ -347,10 +354,58 @@ func _style_chip(b: Button, chip: String, active: bool) -> void:
 func _show_preview() -> void:
 	var spell := combat.spell_for(book_id, bag.combo_key())
 	_spell_label.text = "%s\n%s" % [spell.name, spell.effect]
+	_show_effects(spell)
 	var hint := "Нажми «Я кастую!»."
 	if actor.ability == "burn" and actor.ability_charges > 0:
 		hint = "Нажми «Я кастую!» или кликни по фишке, чтобы сжечь её."
 	_prompt_label.text = hint
+
+
+## Крупные иконки эффектов, которые наложит заклинание.
+func _show_effects(spell: Dictionary) -> void:
+	for c in _effects_box.get_children():
+		c.queue_free()
+	if spell.is_empty():
+		return
+	var spec := EffectParser.parse(spell)
+	var ids: Array[String] = []
+	if spec.shield > 0:
+		ids.append("shield")
+	for s in spec.statuses:
+		ids.append(s.id)
+	for id in ids:
+		_effects_box.add_child(StatusIcon.make(id, "", 0, 60))
+	for s in spec.caster_statuses:
+		var icon := StatusIcon.make(s.id, "", 0, 44)
+		icon.tooltip_text += "\n(накладывается на самого кастующего)"
+		_effects_box.add_child(icon)
+
+
+## Эффект «штамп»: крупная иконка появляется над карточкой и впечатывается в неё.
+func _stamp(u: Unit, id: String) -> void:
+	if fast or not _cards.has(u.id):
+		return
+	var card: Control = _cards[u.id]
+	var big := StatusIcon.make(id, "", 0, 96)
+	big.rich_tooltip = false
+	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	big.top_level = true
+	add_child(big)
+	var rect := card.get_global_rect()
+	big.size = Vector2(96, 96)
+	big.pivot_offset = Vector2(48, 48)
+	big.global_position = rect.get_center() - Vector2(48, 60)
+	big.scale = Vector2(1.4, 1.4)
+	big.modulate.a = 0.0
+	var target_pos := Vector2(rect.position.x + 8 - 48 + 15, rect.end.y - 23 - 48)
+	var tw := create_tween()
+	tw.tween_property(big, "modulate:a", 1.0, 0.12)
+	tw.parallel().tween_property(big, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.35)
+	tw.tween_property(big, "global_position", target_pos, 0.25).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(big, "scale", Vector2(0.3, 0.3), 0.25).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(big, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(big.queue_free)
 
 
 func _shout() -> void:
@@ -445,6 +500,12 @@ func _build_ui() -> void:
 	_spell_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	center.add_child(_spell_label)
 
+	_effects_box = HBoxContainer.new()
+	_effects_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_effects_box.add_theme_constant_override("separation", 10)
+	_effects_box.custom_minimum_size = Vector2(0, 64)
+	center.add_child(_effects_box)
+
 	_shout_label = _label("", 40)
 	_shout_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_shout_label.add_theme_color_override("font_color", Color("ffd35a"))
@@ -509,7 +570,7 @@ func _build_ui() -> void:
 
 func _make_card(u: Unit) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(260, 74)
+	b.custom_minimum_size = Vector2(260, 78)
 	b.pressed.connect(_on_card_pressed.bind(u))
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color("2d3a52") if u.is_wizard() else Color("522d2d")

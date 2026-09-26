@@ -18,6 +18,8 @@ var status_id := ""
 var counter := ""  # число в правом нижнем углу (ходы, остаток щита)
 var stacks := 0    # число стаков в левом верхнем углу (яд)
 var info: Dictionary = {}
+var source_name := ""  # кто наложил (для карточки при наведении)
+var rich_tooltip := true
 
 
 static func make(id: String, counter_text: String = "", stack_count: int = 0, icon_size: int = 30) -> StatusIcon:
@@ -30,6 +32,7 @@ static func make(id: String, counter_text: String = "", stack_count: int = 0, ic
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_PASS
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	icon.tooltip_text = "%s%s\n%s" % [icon.info.name, " (%s)" % counter_text if counter_text != "" else "", icon.info.desc]
 	return icon
 
@@ -39,6 +42,56 @@ static func texture_for(id: String) -> Texture2D:
 		var path := ICON_DIR + id + ".png"
 		_textures[id] = load(path) if ResourceLoader.exists(path) else null
 	return _textures[id]
+
+
+## Крупная карточка эффекта вместо обычной подсказки.
+func _make_custom_tooltip(_for_text: String) -> Object:
+	if not rich_tooltip:
+		return null
+	return StatusIcon.big_card(status_id, counter, source_name)
+
+
+## Карточка: крупная иконка, название, ходы, кто наложил, описание.
+static func big_card(id: String, counter_text: String = "", source: String = "", icon_size: int = 112) -> Control:
+	var info_d: Dictionary = GameData.statuses().get(id, {"name": id, "kind": "special", "desc": ""})
+	var panel := PanelContainer.new()
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("24232f")
+	box.border_color = FRAME_COLORS.get(info_d.kind, Color.GRAY)
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(8)
+	box.set_content_margin_all(10)
+	panel.add_theme_stylebox_override("panel", box)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(row)
+	var big := StatusIcon.make(id, "", 0, icon_size)
+	big.rich_tooltip = false
+	row.add_child(big)
+	var col := VBoxContainer.new()
+	col.custom_minimum_size = Vector2(260, 0)
+	row.add_child(col)
+	var title := Label.new()
+	title.text = info_d.name
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", FRAME_COLORS.get(info_d.kind, Color.WHITE))
+	col.add_child(title)
+	var kind := Label.new()
+	kind.text = {"debuff": "Дебафф", "buff": "Бафф", "special": "Особое"}.get(info_d.kind, "")
+	if counter_text != "":
+		kind.text += " · осталось: %s" % counter_text
+	if source != "":
+		kind.text += " · от: %s" % source
+	kind.add_theme_font_size_override("font_size", 13)
+	kind.modulate = Color(1, 1, 1, 0.7)
+	col.add_child(kind)
+	var desc := Label.new()
+	desc.text = info_d.desc
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(260, 0)
+	desc.add_theme_font_size_override("font_size", 14)
+	col.add_child(desc)
+	return panel
 
 
 func _draw() -> void:
@@ -73,7 +126,7 @@ func _draw_text_centered(text: String, r: Rect2, fs: int, color: Color) -> void:
 
 
 ## Все иконки участника боя: особые метки, Укрепление, Щит, затем статусы.
-static func icons_for(u: Unit, icon_size: int = 30) -> Array[StatusIcon]:
+static func icons_for(u: Unit, icon_size: int = 30, names: Dictionary = {}) -> Array[StatusIcon]:
 	var out: Array[StatusIcon] = []
 	if u.is_boss:
 		out.append(make("boss", "", 0, icon_size))
@@ -88,5 +141,7 @@ static func icons_for(u: Unit, icon_size: int = 30) -> Array[StatusIcon]:
 	for id in u.statuses:
 		var s: Dictionary = u.statuses[id]
 		var turns := "" if s.turns >= 99 else str(s.turns)
-		out.append(make(id, turns, int(s.stacks) if id == "poison" else 0, icon_size))
+		var icon := make(id, turns, int(s.stacks) if id == "poison" else 0, icon_size)
+		icon.source_name = names.get(int(s.source), "")
+		out.append(icon)
 	return out
