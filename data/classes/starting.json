@@ -1,0 +1,27 @@
+{
+  "pyromancer": {
+    "name": "Пиромант",
+    "hp": 10,
+    "speed": 10,
+    "books": ["fire"],
+    "ability": "burn",
+    "ability_charges": 3,
+    "ability_text": "Сожжение: 3 раза за бой можно сжечь вытянутую фишку (клик по ней) и вытянуть вместо неё новую."
+  },
+  "priest": {
+    "name": "Священник",
+    "hp": 10,
+    "speed": 10,
+    "books": ["holy"],
+    "ability": "double_grace",
+    "ability_text": "Двойная благодать: лечение союзника с шансом 5 % срабатывает дважды."
+  },
+  "water": {
+    "name": "Волшебник Воды",
+    "hp": 8,
+    "speed": 10,
+    "books": ["water"],
+    "ability": "elemental_form",
+    "ability_text": "Элементальная форма: 20 % шанс проигнорировать любой урон, кроме огня."
+  }
+}

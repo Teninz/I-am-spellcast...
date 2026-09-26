@@ -1,0 +1,32 @@
+{
+  "id": "rat_pack",
+  "name": "Крысиная стая",
+  "level": 1,
+  "members": [
+    {
+      "name": "Крыса-воришка",
+      "hp": 2,
+      "damage": 1,
+      "speed": 12
+    },
+    {
+      "name": "Крыса-воришка",
+      "hp": 2,
+      "damage": 1,
+      "speed": 12
+    },
+    {
+      "name": "Толстый Хвост",
+      "hp": 6,
+      "damage": 1,
+      "speed": 11,
+      "leader": true,
+      "special": {
+        "id": "all_attack_one",
+        "name": "Крысиный писк",
+        "cooldown": 3,
+        "text": "все крысы сразу атакуют одну цель"
+      }
+    }
+  ]
+}
