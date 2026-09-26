@@ -116,13 +116,40 @@ func _ready() -> void:
 	_take.custom_minimum_size = Vector2(300, 52)
 	_take.add_theme_font_size_override("font_size", 18)
 	_take.pressed.connect(func() -> void:
-		adventure.award_trophy(_kind, _wizard)
-		for w in _patron:
-			adventure.pay_patron(w, _patron[w])
-		Sfx.play("trophy")
-		done.emit())
+		if NetSession.online():
+			# В сети трофей раздаёт хозяин игры: решение уходит всем.
+			var patron := {}
+			for w in _patron:
+				patron[str(adventure.wizards.find(w))] = _patron[w]
+			NetSession.get_session().submit({"t": "trophy", "kind": _kind,
+				"w": adventure.wizards.find(_wizard), "patron": patron})
+		else:
+			_finish())
 	bottom.add_child(_take)
 	_sync()
+	if NetSession.online() and not NetSession.get_session().is_host:
+		_take.disabled = true
+		_take.text = "Трофей выбирает хозяин игры…"
+
+
+func _finish() -> void:
+	adventure.award_trophy(_kind, _wizard)
+	for w in _patron:
+		adventure.pay_patron(w, _patron[w])
+	Sfx.play("trophy")
+	done.emit()
+
+
+## Решение хозяина из сети (трофей раздаёт только хозяин).
+func apply_cmd(cmd: Dictionary) -> void:
+	if String(cmd.get("t", "")) != "trophy" or int(cmd.get("from", 0)) != 1:
+		return
+	_kind = String(cmd.kind)
+	_wizard = adventure.wizards[int(cmd.w)]
+	_patron.clear()
+	for k in cmd.patron:
+		_patron[adventure.wizards[int(k)]] = cmd.patron[k]
+	_finish()
 
 
 func _kind_card(kind: String, data: Dictionary) -> Button:

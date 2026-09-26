@@ -6,6 +6,7 @@ const CampUI := preload("res://scripts/ui/camp_ui.gd")
 const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
 const MapUI := preload("res://scripts/ui/map_ui.gd")
 const TrophyUI := preload("res://scripts/ui/trophy_ui.gd")
+const LobbyUI := preload("res://scripts/ui/net_lobby_ui.gd")
 
 ## Для тестов: ускоряет задержки в бою.
 var fast := false
@@ -16,12 +17,23 @@ var screen: Control
 ## Достижения этого приключения (для экрана итогов).
 var _run_achievements: Array[String] = []
 var _pending_notices: Array[String] = []
+var _chat: ChatOverlay
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = Art.ui_theme()
 	Settings.load_from_disk()
+	_add_color_grade()
+	var net := NetSession.get_session()
+	net.command.connect(_on_command)
+	net.started.connect(_on_net_started)
+	net.ended.connect(func(reason: String) -> void:
+		_hide_chat()
+		new_adventure()
+		screen.set_meta("net_message", reason)
+		if screen.has_method("show_message"):
+			screen.show_message(reason))
 	new_adventure()
 
 
@@ -33,8 +45,91 @@ func new_adventure() -> void:
 	sel.setup(classes, profile)
 	sel.start_pressed.connect(start_adventure)
 	sel.continue_pressed.connect(continue_adventure)
+	sel.online_pressed.connect(open_lobby)
 	Sfx.music("menu")
 	_swap(sel)
+
+
+## Сетевая игра: лобби (создать игру или подключиться).
+func open_lobby() -> void:
+	classes = GameData.load_classes()
+	profile = Profile.load_or_new(classes)
+	var lobby: Control = LobbyUI.new()
+	lobby.setup(classes, profile)
+	lobby.back_pressed.connect(func() -> void:
+		NetSession.get_session().leave()
+		_hide_chat()
+		new_adventure())
+	Sfx.music("menu")
+	_hide_chat()  # в лобби свой чат, встроенный в экран
+	_swap(lobby)
+
+
+## Хозяин начал сетевую игру: у всех одно «зерно» и один отряд.
+func _on_net_started(setup: Dictionary) -> void:
+	classes = GameData.load_classes()
+	profile = Profile.load_or_new(classes)
+	adventure = Adventure.new(setup.party, int(setup.seed), "act1", setup.unlocked)
+	adventure.owners = setup.owners
+	_run_achievements.clear()
+	_pending_notices.clear()
+	_show_battle()
+	_show_chat()
+
+
+## Действие из сети (или сразу, без сети): общее — здесь, остальное — текущему экрану.
+func _on_command(cmd: Dictionary) -> void:
+	match String(cmd.get("t", "")):
+		"map":
+			if screen.get_script() == MapUI and adventure.choose(int(cmd.id)):
+				Sfx.play("map_step")
+				_show_battle()
+		"camp_continue":
+			if screen.get_script() == CampUI and adventure.all_resolved():
+				_after_camp()
+		"reassign":
+			if adventure:
+				adventure.reassign(int(cmd.peer))
+				if screen.has_method("_refresh"):
+					screen._refresh()
+		_:
+			if screen and screen.has_method("apply_cmd"):
+				screen.apply_cmd(cmd)
+
+
+## Решения за весь отряд (путь на карте, «Дальше» на привале, трофей) в сети принимает хозяин.
+func _leader() -> bool:
+	return not NetSession.online() or NetSession.get_session().is_host
+
+
+## Мягкий цветокор поверх всего (картинки игры контрастные и насыщенные — так глазам спокойнее).
+func _add_color_grade() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	layer.name = "ColorGrade"
+	var rect := ColorRect.new()
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/soft_grade.gdshader")
+	rect.material = mat
+	layer.add_child(rect)
+	add_child(layer)
+	layer.visible = bool(Settings.value("soft_colors"))
+
+
+func _show_chat() -> void:
+	if not NetSession.online():
+		return
+	if _chat == null:
+		_chat = ChatOverlay.new()
+		add_child(_chat)
+
+
+func _hide_chat() -> void:
+	if _chat:
+		_chat.queue_free()
+		_chat = null
 
 
 func start_adventure(party: Array) -> void:
@@ -119,7 +214,12 @@ func _open_camp(rest: Array, torn: Array, notices: Array) -> void:
 	var camp: Control = CampUI.new()
 	camp.setup(adventure, rest, torn)
 	camp.notices.assign(notices)
-	camp.continue_pressed.connect(_after_camp)
+	camp.continue_pressed.connect(func() -> void:
+		if NetSession.online():
+			if _leader():
+				NetSession.get_session().submit({"t": "camp_continue"})
+		else:
+			_after_camp())
 	Sfx.music("camp")
 	_swap(camp)
 
@@ -163,14 +263,18 @@ func _show_map() -> void:
 	var m: Control = MapUI.new()
 	m.setup(adventure)
 	m.chosen.connect(func(id: int) -> void:
-		if adventure.choose(id):
+		if NetSession.online():
+			if _leader():
+				NetSession.get_session().submit({"t": "map", "id": id})
+		elif adventure.choose(id):
 			Sfx.play("map_step")
 			_show_battle())
 	_swap(m)
 
 
 func _show_end(victory: bool) -> void:
-	SaveGame.clear()
+	if adventure.owners.is_empty():
+		SaveGame.clear()  # одиночное сохранение; сетевая игра его не трогает
 	var fresh := profile.record_run(victory, classes)
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -220,7 +324,13 @@ func _show_end(victory: bool) -> void:
 	again.text = "Новое приключение"
 	again.custom_minimum_size = Vector2(260, 52)
 	again.add_theme_font_size_override("font_size", 18)
-	again.pressed.connect(new_adventure)
+	if NetSession.online():
+		again.text = "В лобби"
+		again.pressed.connect(func() -> void:
+			NetSession.get_session().back_to_lobby()
+			open_lobby())
+	else:
+		again.pressed.connect(new_adventure)
 	box.add_child(again)
 	holder.set_meta("victory", victory)
 	_swap(holder)

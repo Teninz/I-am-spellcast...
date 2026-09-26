@@ -20,6 +20,8 @@ static func clear() -> void:
 
 ## screen — где продолжить: "battle", "camp", "map", "trophy"; extra — данные этого экрана.
 static func write(adv: Adventure, screen: String, extra: Dictionary = {}) -> void:
+	if not adv.owners.is_empty():
+		return  # сетевую игру не сохраняем: продолжить её в одиночку нельзя
 	var data := {"version": VERSION, "screen": screen, "extra": extra, "adventure": dump(adv)}
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f:

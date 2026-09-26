@@ -149,7 +149,7 @@ func _advance() -> void:
 	# Ослеплённый кастует в случайную цель из случайной книги.
 	if u.has("blind"):
 		target = combat.resolve_target(u, u)
-		_select_book(u.books[combat.rng.randi_range(0, u.books.size() - 1)])
+		_do_select_book(u.books[combat.rng.randi_range(0, u.books.size() - 1)])
 		return
 	_set_state(State.CHOOSE_TARGET)
 	_prompt_label.text = "%s, выбери цель: противника или союзника." % u.name
@@ -157,7 +157,140 @@ func _advance() -> void:
 		_prompt_label.text += " Удача с тобой: открой книгу и вложи шкалу удачи."
 
 
+# --- Действия игрока → команды (в сети — у всех в одном порядке) -------------------
+
+## Состояния, в которых бой ждёт действия игрока.
+const INPUT_STATES := [State.CHOOSE_TARGET, State.CHOOSE_BOOK, State.DRAWING, State.READY,
+	State.ITEM_TARGET, State.ABILITY_TARGET, State.REWIND]
+
+var _inbox: Array[Dictionary] = []
+
+
+## Может ли этот игрок сейчас действовать (в сети — только за своих волшебников).
+func _can_input() -> bool:
+	if actor == null or not actor.is_wizard() or actor.wizard == null:
+		return false
+	return not NetSession.online() or adventure.controls(actor.wizard, NetSession.my_id())
+
+
+## Действие игрока: без сети — сразу, в сети — через хозяина игры.
+func _act(cmd: Dictionary) -> void:
+	if not _can_input():
+		return
+	if NetSession.online():
+		# Метка «где отправлено»: ход, состояние, сколько фишек уже вытянуто. Повторные клики,
+		# пришедшие позже, у всех одинаково отбрасываются (см. _exec).
+		cmd["turn"] = combat.turn_count
+		cmd["state"] = state
+		cmd["chips"] = bag.chips.size() if bag else 0
+		NetSession.get_session().submit(cmd)
+	else:
+		_exec(cmd)
+
+
+## Команда из сети: выполняется, когда бой дошёл до того же места (анимации у всех идут своим темпом).
+func apply_cmd(cmd: Dictionary) -> void:
+	_inbox.append(cmd)
+	_pump()
+
+
+func _pump() -> void:
+	while not _inbox.is_empty() and state in INPUT_STATES:
+		_exec(_inbox.pop_front())
+
+
+func _exec(cmd: Dictionary) -> void:
+	if NetSession.online() and (actor == null or actor.wizard == null
+			or not adventure.controls(actor.wizard, int(cmd.get("from", 1)))):
+		return  # не его ход — у всех игроков это действие одинаково пропускается
+	if cmd.has("turn") and (int(cmd.turn) != combat.turn_count or int(cmd.state) != state
+			or int(cmd.chips) != (bag.chips.size() if bag else 0)):
+		return  # устаревшее действие (двойной клик, запоздалый повтор)
+	match String(cmd.t):
+		"card":
+			for x in combat.units:
+				if x.id == int(cmd.u):
+					_do_card(x)
+		"book":
+			_do_select_book(String(cmd.id), cmd.get("plan", null))
+		"book_random":
+			if state == State.CHOOSE_BOOK:
+				var pick: String = actor.books[combat.rng.randi_range(0, actor.books.size() - 1)]
+				_on_log("Время вышло — %s хватает первую попавшуюся книгу: «%s»." % [actor.name, books[pick].name], "info")
+				_do_select_book(pick)
+		"plan":
+			if state == State.DRAWING and bag != null and bag.chips.is_empty() and book_id == String(cmd.book):
+				_luck_plans[book_id] = cmd.plan
+				bag = combat.new_bag(actor, book_id, cmd.plan)
+		"draw":
+			_do_draw(bool(cmd.get("manual", true)))
+		"reroll":
+			_do_reroll(int(cmd.slot))
+		"cast":
+			_do_cast()
+		"item":
+			_do_item()
+		"ability":
+			_do_ability()
+		"vision":
+			_do_vision(int(cmd.i))
+		"pact":
+			_do_pact(String(cmd.letter))
+		"rewind":
+			_do_rewind()
+		"rewind_skip":
+			_do_rewind_skip()
+
+
 func _on_card_pressed(u: Unit) -> void:
+	_act({"t": "card", "u": u.id})
+
+
+func _select_book(id: String, plan: Variant = null) -> void:
+	_act({"t": "book", "id": id, "plan": plan if plan is Dictionary else _luck_plans.get(id, {})})
+
+
+func _on_draw_pressed(manual: bool = true) -> void:
+	_act({"t": "draw", "manual": manual})
+
+
+func _on_chip_pressed(slot: int) -> void:
+	_act({"t": "reroll", "slot": slot})
+
+
+func _on_cast_pressed() -> void:
+	_act({"t": "cast"})
+
+
+func _on_item_pressed() -> void:
+	_act({"t": "item"})
+
+
+func _on_ability_pressed() -> void:
+	# Сделка Чернокнижника сначала открывает выбор фишки — это только на экране у игрока.
+	if combat.ability_phase(actor) == "draw" and _ability_available():
+		_do_ability()
+		return
+	_act({"t": "ability"})
+
+
+func _on_vision(i: int) -> void:
+	_act({"t": "vision", "i": i})
+
+
+func _on_pact(letter: String) -> void:
+	_act({"t": "pact", "letter": letter})
+
+
+func _on_rewind() -> void:
+	_act({"t": "rewind"})
+
+
+func _on_rewind_skip() -> void:
+	_act({"t": "rewind_skip"})
+
+
+func _do_card(u: Unit) -> void:
 	if state == State.ABILITY_TARGET:
 		if _ability_targets().has(u):
 			if actor.ability == "workshop":
@@ -176,13 +309,15 @@ func _on_card_pressed(u: Unit) -> void:
 		return
 	target = combat.resolve_target(actor, u)
 	if actor.books.size() == 1:
-		_select_book(actor.books[0])
+		_do_select_book(actor.books[0])
 	else:
 		_set_state(State.CHOOSE_BOOK)
 		_prompt_label.text = "Цель: %s. Выбери книгу." % target.name
 
 
-func _select_book(id: String) -> void:
+func _do_select_book(id: String, plan: Variant = null) -> void:
+	if plan is Dictionary:
+		_luck_plans[id] = plan
 	book_id = id
 	bag = combat.new_bag(actor, id, _luck_plans.get(id, {}))
 	_show_book_cover(id)
@@ -193,7 +328,7 @@ func _select_book(id: String) -> void:
 
 
 ## Клик по мешочку (manual) или автотяга: достаёт следующую фишку.
-func _on_draw_pressed(manual: bool = true) -> void:
+func _do_draw(manual: bool) -> void:
 	if state != State.DRAWING:
 		return
 	var chip := combat.draw_chip(actor, target, book_id, bag, manual)
@@ -208,7 +343,7 @@ func _on_draw_pressed(manual: bool = true) -> void:
 	_auto_step()
 
 
-func _on_chip_pressed(slot: int) -> void:
+func _do_reroll(slot: int) -> void:
 	if actor == null or not combat.can_reroll(actor):
 		return
 	if not (state == State.DRAWING or state == State.READY) or slot >= bag.chips.size():
@@ -223,7 +358,7 @@ func _on_chip_pressed(slot: int) -> void:
 		_show_preview()
 
 
-func _on_cast_pressed() -> void:
+func _do_cast() -> void:
 	if state != State.READY:
 		return
 	_set_state(State.ENEMY_TURN)  # блокируем ввод на время анимации
@@ -278,7 +413,7 @@ func _ability_targets() -> Array[Unit]:
 	return combat.ability_targets(actor)
 
 
-func _on_ability_pressed() -> void:
+func _do_ability() -> void:
 	if not _ability_available():
 		return
 	match combat.ability_phase(actor):
@@ -365,24 +500,24 @@ func _rebuild_extra() -> void:
 		_extra_box.add_child(_button("Оставить как есть", _on_rewind_skip))
 
 
-func _on_vision(i: int) -> void:
+func _do_vision(i: int) -> void:
 	if state != State.READY or not combat.can_use_vision(actor, bag) or i >= combat.visions.size():
 		return
 	combat.use_vision(actor, bag, i, book_id)
 	_chips_changed()
 
 
-func _on_pact(letter: String) -> void:
+func _do_pact(letter: String) -> void:
 	_pact_picking = false
 	if combat.pact_deal(actor, bag, letter):
 		_refresh()
 		_set_state(State.DRAWING)
-		_on_draw_pressed()
+		_do_draw(true)
 	else:
 		_set_state(State.DRAWING)
 
 
-func _on_rewind() -> void:
+func _do_rewind() -> void:
 	if state != State.REWIND:
 		return
 	var u := combat.rewind()
@@ -401,12 +536,12 @@ func _on_rewind() -> void:
 	_prompt_label.text = "Время отмотано! %s, кастуй заново: выбери цель." % u.name
 
 
-func _on_rewind_skip() -> void:
+func _do_rewind_skip() -> void:
 	if state == State.REWIND:
 		_after_cast(_rewind_again)
 
 
-func _on_item_pressed() -> void:
+func _do_item() -> void:
 	if state != State.CHOOSE_TARGET or not combat.can_use_item(actor):
 		return
 	var it: Dictionary = adventure.items[actor.wizard.item]
@@ -430,8 +565,8 @@ func _after_item() -> void:
 func _auto_step() -> void:
 	_auto_timer.stop()
 	_deadline = 0.0
-	if fast:
-		return  # в тестах интерфейс ведёт сам тест
+	if fast or not _can_input():
+		return  # в тестах интерфейс ведёт сам тест; в сети отсчёт идёт только у того, чей ход
 	var wait := 0.0
 	match state:
 		State.DRAWING, State.READY, State.REWIND:
@@ -454,13 +589,7 @@ func _on_auto_timer() -> void:
 		State.REWIND:
 			_on_rewind_skip()
 		State.CHOOSE_BOOK:
-			# Время на выбор вышло — книга выбирается случайно (открытая книга закрывается).
-			for c in get_children():
-				if c is BookView:
-					c.queue_free()
-			var pick: String = actor.books[combat.rng.randi_range(0, actor.books.size() - 1)]
-			_on_log("Время вышло — %s хватает первую попавшуюся книгу: «%s»." % [actor.name, books[pick].name], "info")
-			_select_book(pick)
+			_act({"t": "book_random"})
 
 
 ## Обратный отсчёт в подсказке.
@@ -553,6 +682,7 @@ func _set_state(s: State) -> void:
 	_refresh()
 	_tutorial_step()
 	_auto_step()
+	_pump.call_deferred()
 
 
 # --- Отрисовка -----------------------------------------------------------
@@ -768,22 +898,22 @@ func _open_book(id: String, choosing: bool) -> void:
 	if actor == null or not actor.is_wizard():
 		return
 	var before_draw := state == State.CHOOSE_BOOK or (state == State.DRAWING and bag != null and bag.chips.is_empty())
-	var can := Luck.has_luck(actor) and before_draw
+	var can := Luck.has_luck(actor) and before_draw and _can_input()
 	var note := ""
 	if Luck.has_luck(actor) and not before_draw:
 		note = "Фишки уже тянутся — удачу можно вложить только до первой фишки."
 	var view := BookView.open(self, books[id], combat.book_odds(actor, id), can, _luck_plans.get(id, {}),
-		"Кастовать из этой книги" if choosing else "", note)
+		"Кастовать из этой книги" if choosing and _can_input() else "", note)
 	view.plan_changed.connect(func(plan: Dictionary) -> void:
 		_luck_plans[id] = plan
 		# Книга уже выбрана, фишек ещё нет — пересобираем мешочек с новой удачей.
 		if not choosing and state == State.DRAWING and bag != null and bag.chips.is_empty() and book_id == id:
-			bag = combat.new_bag(actor, id, plan))
+			_act({"t": "plan", "book": id, "plan": plan}))
 	if choosing:
 		view.cast_pressed.connect(func(plan: Dictionary) -> void:
 			_luck_plans[id] = plan
 			if state == State.CHOOSE_BOOK:
-				_select_book(id))
+				_select_book(id, plan))
 
 
 func _show_preview() -> void:

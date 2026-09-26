@@ -32,6 +32,8 @@ var _messages: RichTextLabel
 var _continue: Button
 ## Строки, которые показать при открытии привала (например, полученные достижения).
 var notices: Array[String] = []
+var _buttons := {}      # номер кнопки -> {text, cb, owner}
+var _btn_owner := -1    # колонка какого волшебника сейчас строится
 
 
 func setup(adv: Adventure, rest: Array, torn_books: Array) -> void:
@@ -128,9 +130,12 @@ func _rebuild() -> void:
 		adventure.level, adventure.level_count(), next, adventure.refusals_left]
 	for c in _columns.get_children():
 		c.queue_free()
+	_buttons.clear()
 	for i in adventure.wizards.size():
+		_btn_owner = i
 		_columns.add_child(_wizard_column(i))
-	_continue.disabled = not adventure.all_resolved()
+	_btn_owner = -1
+	_continue.disabled = not adventure.all_resolved() or (NetSession.online() and not NetSession.get_session().is_host)
 	var go := "К карте" if adventure.needs_choice() else "В бой!"
 	_continue.text = go if adventure.all_resolved() else "Сначала разбери добычу"
 
@@ -468,9 +473,33 @@ func _small(text: String) -> Label:
 	return _label(text, 13)
 
 
+## Кнопка действия. В сети кнопки строятся у всех одинаково, поэтому по сети уходит
+## «нажата кнопка №N с таким текстом», и каждый нажимает её у себя. Кнопки чужих волшебников неактивны.
 func _btn(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.add_theme_font_size_override("font_size", 13)
-	b.pressed.connect(cb)
+	var key := "b%d" % _buttons.size()
+	_buttons[key] = {"text": text, "cb": cb, "owner": _btn_owner}
+	var mine := _btn_owner < 0 or adventure.controls(adventure.wizards[_btn_owner], NetSession.my_id())
+	b.disabled = NetSession.online() and not mine
+	b.pressed.connect(func() -> void:
+		if NetSession.online():
+			NetSession.get_session().submit({"t": "camp_btn", "key": key, "text": text})
+		else:
+			cb.call())
 	return b
+
+
+## Команда из сети: нажать ту же кнопку (если нажимающий — хозяин этого волшебника).
+func apply_cmd(cmd: Dictionary) -> void:
+	if String(cmd.get("t", "")) != "camp_btn":
+		return
+	var entry: Dictionary = _buttons.get(String(cmd.key), {})
+	if entry.is_empty() or entry.text != String(cmd.text):
+		push_warning("Привал: кнопка %s не совпала — рассинхрон?" % cmd.key)
+		return
+	var owner: int = entry.owner
+	if owner >= 0 and not adventure.controls(adventure.wizards[owner], int(cmd.get("from", 1))):
+		return
+	entry.cb.call()

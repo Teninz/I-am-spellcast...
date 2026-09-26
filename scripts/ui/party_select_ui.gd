@@ -4,6 +4,7 @@ extends Control
 
 signal start_pressed(party: Array)
 signal continue_pressed
+signal online_pressed
 
 const MIN_PARTY := 3
 const MAX_PARTY := 4
@@ -56,6 +57,12 @@ func _ready() -> void:
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
+	var online := Button.new()
+	online.text = "Игра по сети"
+	online.tooltip_text = "Играть вместе через интернет: создать игру или подключиться к другу"
+	online.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	online.pressed.connect(func() -> void: online_pressed.emit())
+	head.add_child(online)
 	var gear := Button.new()
 	gear.text = "Настройки"
 	gear.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -187,3 +194,10 @@ func _card(cid: String) -> Control:
 	for c in [m, row, text, name_l, info, cover]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b
+
+
+## Сообщение (например, «связь с хозяином потеряна») — внизу подсказки.
+func show_message(text: String) -> void:
+	if _hint:
+		_hint.text = text
+		_hint.modulate = Color(1, 0.75, 0.6)

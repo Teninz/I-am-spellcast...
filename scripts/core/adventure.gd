@@ -38,6 +38,23 @@ var earned: Array[String] = []
 var fresh_achievements: Array[String] = []
 var act_id := "act1"
 var finished := false  # приключение закончено (победа в акте или поражение)
+## Сетевая игра: кто управляет каждым волшебником (id игрока по индексу волшебника). Пусто — все свои.
+var owners: Array = []
+
+
+## Может ли этот игрок управлять волшебником.
+func controls(w: Wizard, player_id: int) -> bool:
+	var i := wizards.find(w)
+	return owners.is_empty() or i < 0 or i >= owners.size() or int(owners[i]) == player_id
+
+
+## Игрок отключился — его волшебниками управляет хозяин.
+func reassign(peer_id: int, to_id: int = 1) -> void:
+	for i in owners.size():
+		if int(owners[i]) == peer_id:
+			owners[i] = to_id
+
+
 ## Чернокнижники, которые после босса должны заплатить Покровителю (ЗД или предмет).
 var patron_due: Array[Wizard] = []
 
@@ -257,7 +274,11 @@ static func scale_encounter(enc: Dictionary, party_size: int, cfg: Dictionary) -
 	return out
 
 
+## seed_value 0 — «зерно» боя берётся из генератора приключения: у всех игроков сетевой игры
+## (одинаковое «зерно» приключения) бой получается одинаковым.
 func start_combat(seed_value: int = 0) -> Combat:
+	if seed_value == 0:
+		seed_value = rng.randi_range(1, 2147483647)
 	for w in wizards:
 		if w.ability == "revelation":
 			w.bonus_wisdom = (level - 1) / 5  # Оракул: +1 Мудрость за каждые 5 пройденных уровней
