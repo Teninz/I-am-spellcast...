@@ -6,6 +6,7 @@
 - Дизайн-документ: [docs/GDD.md](docs/GDD.md)
 - Бестиарий: [docs/enemies.md](docs/enemies.md)
 - Боссы: [docs/bosses.md](docs/bosses.md)
+- Банды с предводителями: [docs/gangs.md](docs/gangs.md)
 - Баланс и эффекты: [docs/balance.md](docs/balance.md)
 - Обмундирование: [docs/equipment.md](docs/equipment.md)
 - Книги заклинаний (26 книг, таблицы и шансы): [docs/spells/README.md](docs/spells/README.md)

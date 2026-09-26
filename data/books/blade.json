@@ -16,42 +16,42 @@
     "support": 6,
     "control": 6
   },
-  "notes": "Способность Магуса «Удар тростью» добавляет 1 урон после каждого каста по врагу — в таблицу не входит.",
+  "notes": "Способность Магуса «Удар тростью»: после каста по врагу, который НЕ нанёс урона, бьёт тростью на 1 урон. В таблицу не входит.",
   "spells": [
     {
       "combo": "LLL",
       "name": "Молниеносный выпад",
       "category": "damage",
-      "damage": 5,
-      "effect": "5 урона."
+      "damage": 4,
+      "effect": "4 урона."
     },
     {
       "combo": "LLF",
       "name": "Громовой клинок",
       "category": "damage",
-      "damage": 4,
-      "effect": "4 урона."
+      "damage": 3,
+      "effect": "3 урона."
     },
     {
       "combo": "LLW",
       "name": "Разряд по воде",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона и Оглушение на 1 ход."
+      "damage": 2,
+      "effect": "2 урона и Оглушение на 1 ход."
     },
     {
       "combo": "LFL",
       "name": "Искрящий укол",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона."
+      "damage": 2,
+      "effect": "2 урона."
     },
     {
       "combo": "LFF",
       "name": "Огненная сталь",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона и Горение на 2 хода."
+      "damage": 2,
+      "effect": "2 урона и Горение на 2 хода."
     },
     {
       "combo": "LFW",
@@ -63,8 +63,8 @@
       "combo": "LWL",
       "name": "Удар током",
       "category": "damage",
-      "damage": 3,
-      "effect": "3 урона и Сбив шкалы на 30 %."
+      "damage": 2,
+      "effect": "2 урона и Сбив шкалы на 30 %."
     },
     {
       "combo": "LWF",
@@ -82,15 +82,15 @@
       "combo": "FLL",
       "name": "Пламенный росчерк",
       "category": "damage",
-      "damage": 4,
-      "effect": "4 урона."
+      "damage": 3,
+      "effect": "3 урона."
     },
     {
       "combo": "FLF",
       "name": "Двойной удар",
       "category": "damage",
-      "damage": 4,
-      "effect": "2 урона дважды."
+      "damage": 2,
+      "effect": "1 урон дважды."
     },
     {
       "combo": "FLW",
@@ -110,8 +110,8 @@
       "combo": "FFF",
       "name": "Раскалённая трость",
       "category": "damage",
-      "damage": 4,
-      "effect": "4 урона и Горение на 2 хода."
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
     },
     {
       "combo": "FFW",
@@ -144,8 +144,8 @@
       "combo": "WLL",
       "name": "Электрический клинок",
       "category": "damage",
-      "damage": 4,
-      "effect": "4 урона."
+      "damage": 3,
+      "effect": "3 урона."
     },
     {
       "combo": "WLF",
@@ -216,8 +216,8 @@
       "combo": "X3",
       "name": "Тысяча ударов тростью",
       "category": "damage",
-      "damage": 8,
-      "effect": "8 урона цели."
+      "damage": 7,
+      "effect": "7 урона цели."
     }
   ]
 }

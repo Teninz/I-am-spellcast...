@@ -199,17 +199,17 @@
     },
     {
       "combo": "X1",
+      "name": "Бабушкин пирожок",
+      "category": "support",
+      "heal": 5,
+      "effect": "Лечение 5."
+    },
+    {
+      "combo": "X2",
       "name": "Подгорело",
       "category": "damage",
       "damage": 2,
       "effect": "2 урона и Горение всем на стороне цели."
-    },
-    {
-      "combo": "X2",
-      "name": "Бабушкин обед",
-      "category": "support",
-      "heal": 5,
-      "effect": "Лечение 5 всему отряду кастующего."
     },
     {
       "combo": "X3",

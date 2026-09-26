@@ -12,6 +12,7 @@ import itertools
 import json
 import math
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -41,6 +42,8 @@ CATEGORY = {
     "item": "Предмет",
 }
 CHAOS = {"X1": "Хаос I", "X2": "Хаос II", "X3": "Хаос III"}
+# Хаос I действует только на цель (и иногда на кастующего); площадь — с двух меток.
+AOE_WORDS = re.compile(r"(?i:\bвсем\b|всему|на арене|каждый волшебник|каждое|каждый встаёт)|\bВСЕХ\b")
 
 
 def elements(book):
@@ -89,6 +92,9 @@ def validate(book):
         errors.append("в мешочке должно быть 19 фишек стихий и 1 фишка Хаоса")
     if book.get("rarity") not in RARITY:
         errors.append(f"неизвестная редкость {book.get('rarity')}")
+    for s in book["spells"]:
+        if s["combo"] == "X1" and AOE_WORDS.search(s["effect"]):
+            errors.append(f"Хаос I «{s['name']}» действует по площади — это только для Хаоса II и III")
     counts = {c: 0 for c in book["target_split"]}
     for s in book["spells"]:
         if s["category"] not in counts:

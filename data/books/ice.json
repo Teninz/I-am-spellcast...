@@ -193,16 +193,16 @@
     },
     {
       "combo": "X1",
-      "name": "Ледниковый период",
-      "category": "control",
-      "effect": "Замедление ВСЕМ на арене на 2 хода."
+      "name": "Ледяной бастион",
+      "category": "support",
+      "shield": 5,
+      "effect": "Щит 5."
     },
     {
       "combo": "X2",
-      "name": "Ледяная крепость",
-      "category": "support",
-      "shield": 4,
-      "effect": "Щит 4 всему отряду кастующего."
+      "name": "Ледниковый период",
+      "category": "control",
+      "effect": "Замедление ВСЕМ на арене на 2 хода."
     },
     {
       "combo": "X3",
