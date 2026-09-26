@@ -17,7 +17,7 @@ func _initialize() -> void:
 	quit()
 
 
-static func run(n: int) -> Dictionary:
+static func run(n: int, party: Array = ["pyromancer", "priest", "water"]) -> Dictionary:
 	var wins := 0
 	var defeats := {}
 	var reached := {}
@@ -25,7 +25,7 @@ static func run(n: int) -> Dictionary:
 	var hp_before_boss := 0.0
 	var boss_count := 0
 	for i in n:
-		var adv := Adventure.new(["pyromancer", "priest", "water"], i + 1)
+		var adv := Adventure.new(party, i + 1)
 		while true:
 			var lvl := adv.level
 			reached[lvl] = reached.get(lvl, 0) + 1

@@ -47,6 +47,13 @@ python3 tools/gen_spells.py
 
 ![Иконки эффектов](docs/images/status-icons.png)
 
+**Фишки и книги.** В ячейках каста — картинки фишек (пустая ячейка — рубашка, при вытягивании фишка
+переворачивается), слева мешочек (клик по нему тоже достаёт фишку), справа — обложка книги. Рамка обложки
+показывает редкость. Картинки: `assets/chips/`, `assets/books/`.
+
+![Фишки](docs/images/chips.png)
+![Книги](docs/images/books.png)
+
 Промпты для фишек стихий и обложек книг: [docs/art_prompts_chips_books.md](docs/art_prompts_chips_books.md).
 Промпты, по которым сделаны иконки: [docs/icon_prompts.md](docs/icon_prompts.md);
 готовые PNG клади в `assets/icons/status/<id>.png` — игра подхватит их сама
@@ -76,4 +83,5 @@ godot --headless --path . --script res://tests/run_tests.gd
 godot --headless --path . --script res://tests/ui_smoke.gd
 godot --headless --path . --script res://tests/simulate.gd -- encounter=rat_pack n=3000
 godot --headless --path . --script res://tests/simulate_act.gd -- n=500
+godot --headless --path . --script res://tests/simulate_party.gd -- n=1500 act=500
 ```

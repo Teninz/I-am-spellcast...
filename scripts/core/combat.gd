@@ -277,11 +277,23 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	caster.books_used[book_id] = true
 	_log("%s: «Я кастую!» — %s." % [caster.name, spell.name])
 	_apply_spell(caster, target, spell, bag.chips)
+	_cane_strike(caster, target, spell)
 	if finish:
 		end_turn(caster)
 	else:
 		_check_outcome()
 	return spell
+
+
+## Магус: каст по противнику без урона — добивает тростью на 1.
+func _cane_strike(caster: Unit, target: Unit, spell: Dictionary) -> void:
+	if caster.ability != "cane" or target == null or target.side == caster.side or not target.alive():
+		return
+	var spec := EffectParser.parse(spell)
+	if spec.damage > 0 or spec.splash > 0:
+		return
+	_log("%s добивает тростью!" % caster.name)
+	_hit(target, 1.0, caster)
 
 
 func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[String]) -> void:

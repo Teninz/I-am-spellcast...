@@ -37,6 +37,8 @@ func _init(party: Array, seed_value: int = 0, act_id: String = "act1") -> void:
 	refusals_left = int(config.refusals)
 	for cid in party:
 		wizards.append(Wizard.new(cid, classes[cid], equipment))
+		if not unlocked_classes.has(cid):
+			unlocked_classes.append(cid)
 	_plan_levels()
 
 
@@ -60,7 +62,27 @@ func is_last_level() -> bool:
 
 
 func encounter() -> Dictionary:
-	return GameData.load_encounter(_plan[level - 1])
+	return Adventure.scale_encounter(GameData.load_encounter(_plan[level - 1]), wizards.size(), config)
+
+
+## Усиление врагов под размер отряда (настройки — config.party_scaling["<размер>"]):
+## hp — множитель здоровья всех врагов, extra_members — сколько рядовых добавить
+## (копии первого рядового), boss_hp — отдельный множитель для боссов.
+static func scale_encounter(enc: Dictionary, party_size: int, cfg: Dictionary) -> Dictionary:
+	var rule: Dictionary = cfg.get("party_scaling", {}).get(str(party_size), {})
+	if rule.is_empty():
+		return enc
+	var out: Dictionary = enc.duplicate(true)
+	var grunt: Dictionary = {}
+	for m in out.members:
+		var mult := float(rule.get("boss_hp", rule.get("hp", 1.0))) if m.get("boss", false) else float(rule.get("hp", 1.0))
+		m.hp = maxi(1, roundi(float(m.hp) * mult))
+		if grunt.is_empty() and not m.get("leader", false) and not m.get("boss", false):
+			grunt = m
+	for i in int(rule.get("extra_members", 0)):
+		if not grunt.is_empty():
+			out.members.append(grunt.duplicate(true))
+	return out
 
 
 func start_combat(seed_value: int = 0) -> Combat:

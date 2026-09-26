@@ -13,6 +13,7 @@ var base_speed: float
 var ability: String
 var ability_charges: int
 var forbidden_books: Array[String] = []
+var max_books := MAX_BOOKS
 var destroys_forbidden := false
 
 var hp: float
@@ -42,6 +43,7 @@ func _init(id: String, cfg: Dictionary, equipment_db: Dictionary) -> void:
 	for b in cfg.get("forbidden_books", []):
 		forbidden_books.append(String(b))
 	destroys_forbidden = bool(cfg.get("destroys_forbidden", false))
+	max_books = int(cfg.get("max_books", MAX_BOOKS))
 	for b in cfg.books:
 		books.append(String(b))
 	_equipment_db = equipment_db
@@ -57,7 +59,7 @@ func can_use_book(book_id: String) -> bool:
 
 
 func free_book_slots() -> int:
-	return MAX_BOOKS - books.size()
+	return max_books - books.size()
 
 
 func equipment(slot: String) -> Dictionary:

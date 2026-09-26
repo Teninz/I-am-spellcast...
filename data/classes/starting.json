@@ -39,5 +39,18 @@
     "ability": "elemental_form",
     "ability_text": "Элементальная форма: 20 % шанс проигнорировать любой урон, кроме огня.",
     "forbidden_books": []
+  },
+  "magus": {
+    "name": "Магус с тростью",
+    "hp": 10,
+    "speed": 10,
+    "books": [
+      "blade"
+    ],
+    "ability": "cane",
+    "max_books": 2,
+    "unlocked": false,
+    "forbidden_books": [],
+    "ability_text": "Удар тростью: если каст по противнику не нанёс урона, Магус добивает его тростью на 1. Носит только 2 книги."
   }
 }

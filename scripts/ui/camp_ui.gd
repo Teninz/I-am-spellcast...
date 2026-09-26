@@ -100,7 +100,7 @@ func _build() -> void:
 	_messages = RichTextLabel.new()
 	_messages.bbcode_enabled = true
 	_messages.scroll_following = true
-	_messages.custom_minimum_size = Vector2(0, 90)
+	_messages.custom_minimum_size = Vector2(0, 70)
 	_messages.add_theme_font_size_override("normal_font_size", 14)
 	root.add_child(_messages)
 
@@ -158,10 +158,16 @@ func _wizard_column(i: int) -> Control:
 	col.add_child(_small("Мдр %d · Защ %d · Удача %d · Сопр %d · Скор %s" % [
 		st.wisdom, st.defense, st.luck, st.resist, Unit._num(st.speed)]))
 
-	col.add_child(_section("Книги (%d/%d)" % [w.books.size(), Wizard.MAX_BOOKS]))
+	col.add_child(_section("Добыча"))
+	for o in adventure.offers:
+		if o.wizard == i:
+			_offer_card(col, o, w)
+	col.add_child(HSeparator.new())
+	col.add_child(_section("Книги (%d/%d)" % [w.books.size(), w.max_books]))
 	for b in w.books:
 		var row := _row()
 		var wear := w.wear_of(b)
+		row.add_child(Art.book_cover(adventure.books[b], 30))
 		var book_label := _small("%s%s" % [adventure.books[b].name, "  (износ %d/%d)" % [wear, Wizard.WEAR_LIMIT] if wear > 0 else ""])
 		book_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 		row.add_child(book_label)
@@ -201,15 +207,19 @@ func _wizard_column(i: int) -> Control:
 		var e := w.equipment(slot)
 		col.add_child(_small("—" if e.is_empty() else _equipment_text(e)))
 
-	col.add_child(HSeparator.new())
-	col.add_child(_section("Добыча"))
-	for o in adventure.offers:
-		if o.wizard == i:
-			_offer_card(col, o, w)
 	return panel
 
 
 func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
+	if o.kind == "book":
+		var cover_row := HBoxContainer.new()
+		cover_row.add_theme_constant_override("separation", 10)
+		cover_row.add_child(Art.book_cover(adventure.books[o.id], 80))
+		var side := VBoxContainer.new()
+		side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cover_row.add_child(side)
+		col.add_child(cover_row)
+		col = side
 	var title := _label(adventure.offer_name(o), 17)
 	var rarity := _offer_rarity(o)
 	if rarity != "":

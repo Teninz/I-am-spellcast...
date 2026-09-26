@@ -43,6 +43,8 @@ var bag: ChipBag
 
 var _cards := {}  # id участника -> Button
 var _chip_buttons: Array[Button] = []
+var _bag_button: TextureButton
+var _book_cover_holder: CenterContainer
 var _queue_label: Label
 var _prompt_label: Label
 var _spell_label: Label
@@ -109,6 +111,7 @@ func _advance() -> void:
 	_clear_chips()
 	_spell_label.text = ""
 	_show_effects({})
+	_show_book_cover("")
 	var u := combat.next_turn()
 	if u == null:
 		_game_over()
@@ -152,6 +155,7 @@ func _on_card_pressed(u: Unit) -> void:
 func _select_book(id: String) -> void:
 	book_id = id
 	bag = combat.new_bag(actor, id)
+	_show_book_cover(id)
 	_set_state(State.DRAWING)
 	_prompt_label.text = "%s → %s. Книга: %s. Доставай фишки!" % [actor.name, target.name, books[id].name]
 	_update_chips()
@@ -261,6 +265,9 @@ func _game_over() -> void:
 func _set_state(s: State) -> void:
 	state = s
 	_draw_button.disabled = s != State.DRAWING
+	if _bag_button:
+		_bag_button.disabled = s != State.DRAWING
+		_bag_button.modulate = Color(1, 1, 1, 1.0 if s == State.DRAWING else 0.45)
 	_cast_button.disabled = s != State.READY
 	_item_button.visible = s in [State.CHOOSE_TARGET, State.ITEM_TARGET] and actor != null \
 		and actor.is_wizard() and combat.can_use_item(actor)
@@ -271,8 +278,24 @@ func _set_state(s: State) -> void:
 	if s == State.CHOOSE_BOOK:
 		for b in actor.books:
 			var btn := Button.new()
-			btn.text = books[b].name
+			btn.custom_minimum_size = Vector2(110, 176)
+			btn.tooltip_text = books[b].name
 			btn.pressed.connect(_select_book.bind(b))
+			var col := VBoxContainer.new()
+			col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			col.alignment = BoxContainer.ALIGNMENT_CENTER
+			var cc := CenterContainer.new()
+			cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cc.add_child(Art.book_cover(books[b], 88))
+			col.add_child(cc)
+			var l := Label.new()
+			l.text = books[b].name
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.add_theme_font_size_override("font_size", 11)
+			col.add_child(l)
+			btn.add_child(col)
 			_book_box.add_child(btn)
 	_refresh()
 
@@ -337,6 +360,24 @@ func _update_chips() -> void:
 
 
 func _style_chip(b: Button, chip: String, active: bool) -> void:
+	var art: TextureRect = b.get_meta("art")
+	var tex := Art.chip(chip)
+	if tex:
+		var clear := StyleBoxEmpty.new()
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			b.add_theme_stylebox_override(st, clear)
+		b.text = ""
+		art.texture = tex
+		art.visible = true
+		art.modulate = Color(1, 1, 1, 1.0 if (active or chip != "") else 0.35)
+		b.tooltip_text = ELEMENT_NAMES.get(chip, "") if chip != "" else ""
+		# Новая фишка переворачивается рубашкой вниз.
+		if chip != "" and b.get_meta("chip") != chip and not fast:
+			art.scale = Vector2(0.0, 1.0)
+			create_tween().tween_property(art, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_SINE)
+		b.set_meta("chip", chip)
+		return
+	art.visible = false
 	var box := StyleBoxFlat.new()
 	box.set_corner_radius_all(48)
 	box.set_border_width_all(3)
@@ -349,6 +390,14 @@ func _style_chip(b: Button, chip: String, active: bool) -> void:
 	var font_color := Color.BLACK if dark else Color.WHITE
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color", "font_focus_color"]:
 		b.add_theme_color_override(c, font_color)
+	b.set_meta("chip", chip)
+
+
+func _show_book_cover(id: String) -> void:
+	for c in _book_cover_holder.get_children():
+		c.queue_free()
+	if id != "":
+		_book_cover_holder.add_child(Art.book_cover(books[id], 60))
 
 
 func _show_preview() -> void:
@@ -486,14 +535,40 @@ func _build_ui() -> void:
 	chips.alignment = BoxContainer.ALIGNMENT_CENTER
 	chips.add_theme_constant_override("separation", 18)
 	center.add_child(chips)
+	# Мешочек: клик по нему тоже достаёт фишку.
+	_bag_button = TextureButton.new()
+	_bag_button.texture_normal = Art.bag()
+	_bag_button.ignore_texture_size = true
+	_bag_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	_bag_button.custom_minimum_size = Vector2(96, 96)
+	_bag_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_bag_button.tooltip_text = "Мешочек: достать фишку"
+	_bag_button.pressed.connect(_on_draw_pressed)
+	_bag_button.visible = Art.bag() != null
+	chips.add_child(_bag_button)
 	for i in ChipBag.CHIPS_PER_CAST:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(96, 96)
 		b.add_theme_font_size_override("font_size", 16)
 		b.pressed.connect(_on_chip_pressed.bind(i))
+		var art := TextureRect.new()
+		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.material = Art.circle_material()
+		art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.pivot_offset = Vector2(48, 48)
+		b.add_child(art)
+		b.set_meta("art", art)
+		b.set_meta("chip", "")
 		_style_chip(b, "", false)
 		chips.add_child(b)
 		_chip_buttons.append(b)
+	# Обложка книги, из которой сейчас кастуют.
+	_book_cover_holder = CenterContainer.new()
+	_book_cover_holder.custom_minimum_size = Vector2(70, 96)
+	chips.add_child(_book_cover_holder)
 
 	_spell_label = _label("", 18)
 	_spell_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -16,6 +16,7 @@ func _initialize() -> void:
 	test_rest_and_fortify()
 	test_loot_rules()
 	test_revive_after_battle()
+	test_party_scaling()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -163,6 +164,21 @@ func test_revive_after_battle() -> void:
 	var u4: Unit = c4.units[0]
 	c4._apply_status(u4, {"id": "haste", "turns": 2}, c4.units[1])
 	check(not u4.has("aching"), "бафф снимает Разбитость")
+
+
+## Отряд из 4: враги крепче, в банде на одного рядового больше, босс заметно крепче.
+func test_party_scaling() -> void:
+	print("Усиление врагов под отряд из 4:")
+	var cfg: Dictionary = GameData.load_json("res://data/adventure/act1.json")
+	var gob := GameData.load_encounter("goblin_gang")
+	var g4 := Adventure.scale_encounter(gob, 4, cfg)
+	check(g4.members.size() == gob.members.size() + 1, "в банде на одного рядового больше")
+	check(int(g4.members[3].hp) == roundi(float(gob.members[3].hp) * 1.7), "здоровье предводителя ×1.7")
+	check(Adventure.scale_encounter(gob, 3, cfg).members.size() == gob.members.size(), "для 3 волшебников бой не меняется")
+	var king := Adventure.scale_encounter(GameData.load_encounter("rat_king"), 4, cfg)
+	check(int(king.members[0].hp) == roundi(22 * 2.8), "здоровье босса ×2.8 (%d)" % int(king.members[0].hp))
+	var adv := Adventure.new(["pyromancer", "priest", "water", "magus"], 5)
+	check(adv.wizards[3].max_books == 2 and adv.book_pool().has("blade"), "Магус: 2 слота книг, его книга в пуле лута")
 
 
 ## Лут: правила выпадения и инвентаря.

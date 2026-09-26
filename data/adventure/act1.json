@@ -41,5 +41,12 @@
   "fortify_turns": 5,
   "fortify_decay": 0.5,
   "refusals": 5,
-  "resurrection_guarantee_level": 10
+  "resurrection_guarantee_level": 10,
+  "party_scaling": {
+    "4": {
+      "hp": 1.7,
+      "extra_members": 1,
+      "boss_hp": 2.8
+    }
+  }
 }
