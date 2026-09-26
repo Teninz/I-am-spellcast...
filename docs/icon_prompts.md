@@ -248,6 +248,14 @@ Square game UI status icon, 256x256 px. One clear central symbol that is readabl
 Square game UI status icon, 256x256 px. One clear central symbol that is readable even at 24 px: an old man's fist shaking a wooden walking cane, an angry puff of steam above it. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books). Limited palette of 3-4 colours dominated by #c0392b. Simple dark background #1b1a24 with a soft radial glow behind the symbol. Symbol fills about 75% of the canvas, centered. No frame, no border, no text, no letters, no numbers.
 ```
 
+### `muse.png` — Муза
+
+*Вдохновение Барда: в следующем касте можно перевытянуть одну фишку (клик по ней). Добавлено позже основного набора.*
+
+```
+Square game UI status icon, 256x256 px. One clear central symbol that is readable even at 24 px: a small winged musical note wearing a tiny laurel wreath, blowing a sparkle onto a game chip. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books). Limited palette of 3-4 colours dominated by #d46fb0. Simple dark background #1b1a24 with a soft radial glow behind the symbol. Symbol fills about 75% of the canvas, centered. No frame, no border, no text, no letters, no numbers.
+```
+
 ## Особые метки
 
 ### `shield.png` — Щит

@@ -9,6 +9,7 @@ var failures := 0
 func _initialize() -> void:
 	var books := GameData.load_books()
 	test_books_loaded(books)
+	test_art_assets(books)
 	test_chaos_odds(books)
 	test_combo_odds(books)
 	test_parser_coverage(books)
@@ -38,6 +39,46 @@ func test_books_loaded(books: Dictionary) -> void:
 	check(books.size() >= 26, "загружено книг: %d" % books.size())
 	for id in ["fire", "water", "holy"]:
 		check(books.has(id) and books[id].spells.size() == 30, "%s: 30 заклинаний" % id)
+
+
+## Картинки: у каждого эффекта, стихии, книги, предмета, вещи и элемента интерфейса есть файл,
+## и Godot его загружает. Персонажи пока необязательны.
+func test_art_assets(books: Dictionary) -> void:
+	print("Картинки:")
+	var groups := {}
+	groups["эффекты"] = GameData.statuses().keys().map(func(id): return "res://assets/icons/status/%s.png" % id)
+	var letters := {}
+	for b in books.values():
+		for k in b.bag:
+			letters[k] = true
+	groups["фишки"] = letters.keys().map(func(k): return "res://assets/chips/%s.png" % Art.CHIP_FILES[k]) \
+		+ ["res://assets/chips/chip_back.png", "res://assets/chips/bag.png"]
+	groups["книги"] = books.keys().map(func(id): return "res://assets/books/%s.png" % id)
+	groups["предметы"] = GameData.load_json("res://data/items.json").keys().map(func(id): return "res://assets/items/%s.png" % id)
+	groups["шляпы и ботинки"] = GameData.load_json("res://data/equipment.json").items.map(func(e): return "res://assets/equipment/%s.png" % e.id)
+	var ui := ["bg_battle_act1", "bg_camp", "bg_party_select", "art_victory", "art_defeat", "emblem",
+		"card_party", "card_enemy", "card_leader", "card_boss", "card_rest", "portrait_ring",
+		"panel_dialog", "button", "button_cast", "chip_socket", "shout_banner", "hp_bar_frame",
+		"stat_hp", "stat_speed", "stat_wisdom", "stat_defense", "stat_luck", "stat_resist"]
+	for r in ["common", "rare", "epic", "legendary", "cursed"]:
+		ui.append("loot_frame_" + r)
+	groups["интерфейс"] = ui.map(func(n): return "res://assets/ui/%s.png" % n)
+	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
+	var pending := ["muse.png"]
+	for g in groups:
+		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
+		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))
+		missing = missing.filter(func(p): return not pending.has(p.get_file()))
+		if not waiting.is_empty():
+			print("       %s: ждут картинку — %s" % [g, ", ".join(PackedStringArray(waiting.map(func(p): return p.get_file())))])
+		check(missing.is_empty(), "%s: %d из %d%s" % [g, groups[g].size() - missing.size() - waiting.size(), groups[g].size(),
+			"" if missing.is_empty() else " — нет: " + ", ".join(PackedStringArray(missing.map(func(p): return p.get_file()))) ])
+	var chars := 0
+	for cid in GameData.load_classes():
+		for st in ["healthy", "hurt", "critical", "zombie"]:
+			if ResourceLoader.exists("res://assets/characters/%s_%s.png" % [cid, st]):
+				chars += 1
+	print("       персонажи: %d из %d (пока необязательно)" % [chars, GameData.load_classes().size() * 4])
 
 
 ## Шансы Хаоса за каст должны совпадать с документацией (18.0 / 1.30 / 0.03 %).

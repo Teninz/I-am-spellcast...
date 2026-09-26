@@ -16,6 +16,7 @@ var _auto_draw := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = Art.ui_theme()
 	new_adventure()
 
 
@@ -66,9 +67,7 @@ func _show_end(victory: bool) -> void:
 	var fresh := profile.record_run(victory, classes)
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color("1b1a24")
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bg := Art.background("bg_camp" if victory else "bg_battle_act1", 0.6)
 	var holder := Control.new()
 	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	holder.add_child(bg)
@@ -77,7 +76,18 @@ func _show_end(victory: bool) -> void:
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 16)
 	c.add_child(box)
+	var art := Art.texture("res://assets/ui/%s.png" % ("art_victory" if victory else "art_defeat"))
+	if art:
+		var pic := TextureRect.new()
+		pic.texture = art
+		pic.custom_minimum_size = Vector2(300, 300)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		box.add_child(pic)
 	var title := Label.new()
+	title.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02))
+	title.add_theme_constant_override("outline_size", 8)
 	title.text = "Акт I пройден! Крысиный Король повержен." if victory \
 		else "Поражение на уровне %d. Старики отправились на пенсию окончательно." % adventure.level
 	title.add_theme_font_size_override("font_size", 28)

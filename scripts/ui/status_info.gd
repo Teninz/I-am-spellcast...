@@ -30,12 +30,16 @@ func _ready() -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(1040, 600)
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("24232f")
-	box.set_corner_radius_all(10)
-	box.set_content_margin_all(16)
-	box.border_color = Color("5a586e")
-	box.set_border_width_all(2)
+	var box: StyleBox = Art.frame("panel_dialog", 80, 0.6)
+	if box == null:
+		var flat := StyleBoxFlat.new()
+		flat.bg_color = Color("24232f")
+		flat.set_corner_radius_all(10)
+		flat.border_color = Color("5a586e")
+		flat.set_border_width_all(2)
+		box = flat
+	box.set_content_margin_all(34)
+	box.content_margin_top = 42
 	panel.add_theme_stylebox_override("panel", box)
 	center.add_child(panel)
 

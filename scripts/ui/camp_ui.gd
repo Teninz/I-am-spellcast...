@@ -61,10 +61,7 @@ func _ready() -> void:
 
 func _build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color("1f2a22")
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(Art.background("bg_camp", 0.5))
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
@@ -133,10 +130,14 @@ func _wizard_column(i: int) -> Control:
 	var w := adventure.wizards[i]
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("2b3a30")
-	box.set_corner_radius_all(8)
-	box.set_content_margin_all(12)
+	var box: StyleBox = Art.frame("card_rest", 46, 0.42)
+	if box == null:
+		var flat := StyleBoxFlat.new()
+		flat.bg_color = Color("2b3a30")
+		flat.set_corner_radius_all(8)
+		box = flat
+	box.set_content_margin_all(16)
+	box.content_margin_top = 44  # ниже орнамента с котелком
 	panel.add_theme_stylebox_override("panel", box)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
@@ -155,8 +156,13 @@ func _wizard_column(i: int) -> Control:
 		icons.add_child(StatusIcon.make(id, str(w.carry_statuses[id]), 0, 36))
 	if icons.get_child_count() > 0:
 		col.add_child(icons)
-	col.add_child(_small("Мдр %d · Защ %d · Удача %d · Сопр %d · Скор %s" % [
-		st.wisdom, st.defense, st.luck, st.resist, Unit._num(st.speed)]))
+	var stats_row := HFlowContainer.new()
+	stats_row.add_theme_constant_override("h_separation", 10)
+	for sd in [["wisdom", str(st.wisdom), "Мудрость"], ["defense", str(st.defense), "Защита"],
+			["luck", str(st.luck), "Удача"], ["resist", str(st.resist), "Сопротивление"],
+			["speed", Unit._num(st.speed), "Скорость"]]:
+		stats_row.add_child(Art.stat(sd[0], sd[1], sd[2]))
+	col.add_child(stats_row)
 
 	col.add_child(_section("Добыча"))
 	for o in adventure.offers:
@@ -189,7 +195,13 @@ func _wizard_column(i: int) -> Control:
 		col.add_child(_small("—"))
 	else:
 		var it: Dictionary = adventure.items[w.item]
-		col.add_child(_small("%s — %s" % [it.name, it.text]))
+		var item_row := HBoxContainer.new()
+		item_row.add_theme_constant_override("separation", 8)
+		item_row.add_child(Art.item_icon(w.item, 40, it.text))
+		var item_text := _small("%s — %s" % [it.name, it.text])
+		item_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_row.add_child(item_text)
+		col.add_child(item_row)
 		var row := _row()
 		for t in adventure.camp_item_targets(w):
 			row.add_child(_btn("Применить → %s" % t.name, func() -> void:
@@ -205,16 +217,36 @@ func _wizard_column(i: int) -> Control:
 	for slot in ["hat", "boots"]:
 		col.add_child(_section("Шляпа" if slot == "hat" else "Ботинки"))
 		var e := w.equipment(slot)
-		col.add_child(_small("—" if e.is_empty() else _equipment_text(e)))
+		if e.is_empty():
+			col.add_child(_small("—"))
+		else:
+			var eq_row := HBoxContainer.new()
+			eq_row.add_theme_constant_override("separation", 8)
+			eq_row.add_child(Art.equipment_icon(e.id, 40, e.name))
+			var eq_text := _small(_equipment_text(e))
+			eq_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			eq_row.add_child(eq_text)
+			col.add_child(eq_row)
 
 	return panel
 
 
 func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
-	if o.kind == "book":
+	var outer := col  # кнопки действий — на всю ширину колонки, под картинкой
+	if o.kind in ["book", "item", "equipment"]:
 		var cover_row := HBoxContainer.new()
 		cover_row.add_theme_constant_override("separation", 10)
-		cover_row.add_child(Art.book_cover(adventure.books[o.id], 80))
+		match String(o.kind):
+			"book":
+				cover_row.add_child(Art.book_cover(adventure.books[o.id], 80))
+			"item":
+				cover_row.add_child(Art.item_icon(o.id, 72))
+			"equipment":
+				var frame := PanelContainer.new()
+				frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+				frame.add_theme_stylebox_override("panel", Art.rarity_box(adventure.equipment[o.id].rarity, 80))
+				frame.add_child(Art.equipment_icon(o.id, 64))
+				cover_row.add_child(frame)
 		var side := VBoxContainer.new()
 		side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		cover_row.add_child(side)
@@ -230,7 +262,7 @@ func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
 		col.add_child(_small("✔ Разобрано"))
 		return
 	var row := HFlowContainer.new()
-	col.add_child(row)
+	outer.add_child(row)
 	match String(o.kind):
 		"book":
 			var book_name: String = adventure.books[o.id].name

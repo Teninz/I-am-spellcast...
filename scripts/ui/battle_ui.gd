@@ -50,6 +50,7 @@ var _prompt_label: Label
 var _spell_label: Label
 var _effects_box: HBoxContainer
 var _shout_label: Label
+var _shout_banner: TextureRect
 var _ability_label: Label
 var _party_box: VBoxContainer
 var _enemy_box: VBoxContainer
@@ -404,13 +405,17 @@ func _style_chip(b: Button, chip: String, active: bool) -> void:
 			b.add_theme_stylebox_override(st, clear)
 		b.text = ""
 		art.texture = tex
-		art.visible = true
+		art.visible = chip != "" or Art.texture("res://assets/ui/chip_socket.png") == null
 		art.modulate = Color(1, 1, 1, 1.0 if (active or chip != "") else 0.35)
 		b.tooltip_text = ELEMENT_NAMES.get(chip, "") if chip != "" else ""
-		# Новая фишка переворачивается рубашкой вниз.
+		# Новая фишка ложится рубашкой вверх и переворачивается лицом.
 		if chip != "" and b.get_meta("chip") != chip and not fast:
-			art.scale = Vector2(0.0, 1.0)
-			create_tween().tween_property(art, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_SINE)
+			art.texture = Art.chip("")
+			art.scale = Vector2(1.0, 1.0)
+			var tw := create_tween()
+			tw.tween_property(art, "scale", Vector2(0.0, 1.0), 0.1).set_trans(Tween.TRANS_SINE)
+			tw.tween_callback(func() -> void: art.texture = tex)
+			tw.tween_property(art, "scale", Vector2(1.0, 1.0), 0.12).set_trans(Tween.TRANS_SINE)
 		b.set_meta("chip", chip)
 		return
 	art.visible = false
@@ -499,10 +504,14 @@ func _shout() -> void:
 	_shout_label.text = "«Я кастую!»"
 	_shout_label.modulate = Color(1, 1, 1, 1)
 	_shout_label.scale = Vector2(0.6, 0.6)
+	_shout_banner.modulate.a = 1.0
+	_shout_banner.scale = Vector2(0.6, 0.6)
 	var tw := create_tween()
 	tw.tween_property(_shout_label, "scale", Vector2(1.0, 1.0), 0.15)
+	tw.parallel().tween_property(_shout_banner, "scale", Vector2(1.0, 1.0), 0.15)
 	tw.tween_interval(0.5)
 	tw.tween_property(_shout_label, "modulate:a", 0.0, 0.4)
+	tw.parallel().tween_property(_shout_banner, "modulate:a", 0.0, 0.4)
 
 
 func _on_log(text: String) -> void:
@@ -517,10 +526,7 @@ func _wait(seconds: float) -> Signal:
 
 func _build_ui() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color("1b1a24")
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(Art.background("bg_battle_act1", 0.45))
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -589,6 +595,18 @@ func _build_ui() -> void:
 		b.custom_minimum_size = Vector2(96, 96)
 		b.add_theme_font_size_override("font_size", 16)
 		b.pressed.connect(_on_chip_pressed.bind(i))
+		var socket := TextureRect.new()
+		socket.texture = Art.texture("res://assets/ui/chip_socket.png")
+		socket.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		socket.offset_left = -6
+		socket.offset_top = -6
+		socket.offset_right = 6
+		socket.offset_bottom = 6
+		socket.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		socket.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		socket.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		socket.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(socket)
 		var art := TextureRect.new()
 		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -619,11 +637,25 @@ func _build_ui() -> void:
 	_effects_box.custom_minimum_size = Vector2(0, 76)
 	center.add_child(_effects_box)
 
+	var shout_holder := CenterContainer.new()
+	shout_holder.custom_minimum_size = Vector2(0, 72)
+	center.add_child(shout_holder)
+	_shout_banner = TextureRect.new()
+	_shout_banner.texture = Art.texture("res://assets/ui/shout_banner.png")
+	_shout_banner.custom_minimum_size = Vector2(420, 105)
+	_shout_banner.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_shout_banner.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_shout_banner.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_shout_banner.modulate.a = 0.0
+	_shout_banner.pivot_offset = Vector2(210, 52)
+	shout_holder.add_child(_shout_banner)
 	_shout_label = _label("", 40)
 	_shout_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_shout_label.add_theme_color_override("font_color", Color("ffd35a"))
 	_shout_label.pivot_offset = Vector2(200, 25)
-	center.add_child(_shout_label)
+	_shout_label.add_theme_color_override("font_outline_color", Color(0.25, 0.1, 0.02))
+	_shout_label.add_theme_constant_override("outline_size", 8)
+	shout_holder.add_child(_shout_label)
 
 	_book_box = HBoxContainer.new()
 	_book_box.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -636,6 +668,18 @@ func _build_ui() -> void:
 	_draw_button = _button("Достать фишку", _on_draw_pressed)
 	controls.add_child(_draw_button)
 	_cast_button = _button("Я кастую!", _on_cast_pressed)
+	var cast_box := Art.frame("button_cast", 60, 0.45)
+	if cast_box:
+		cast_box.content_margin_left = 24
+		cast_box.content_margin_right = 24
+		_cast_button.add_theme_stylebox_override("normal", cast_box)
+		var ch := cast_box.duplicate()
+		ch.modulate_color = Color(1.25, 1.15, 1.1)
+		_cast_button.add_theme_stylebox_override("hover", ch)
+		var cd := cast_box.duplicate()
+		cd.modulate_color = Color(0.5, 0.45, 0.45, 0.8)
+		_cast_button.add_theme_stylebox_override("disabled", cd)
+		_cast_button.custom_minimum_size = Vector2(210, 52)
 	controls.add_child(_cast_button)
 	_item_button = _button("Предмет", _on_item_pressed)
 	_item_button.visible = false
@@ -674,6 +718,11 @@ func _build_ui() -> void:
 	_log.bbcode_enabled = true
 	_log.scroll_following = true
 	_log.custom_minimum_size = Vector2(0, 170)
+	var log_box := StyleBoxFlat.new()
+	log_box.bg_color = Color(0.06, 0.05, 0.09, 0.75)
+	log_box.set_corner_radius_all(6)
+	log_box.set_content_margin_all(8)
+	_log.add_theme_stylebox_override("normal", log_box)
 	_log.add_theme_font_size_override("normal_font_size", 14)
 	_log.add_theme_font_size_override("bold_font_size", 14)
 	root.add_child(_log)
@@ -688,24 +737,32 @@ func _make_card(u: Unit) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(260, 86)
 	b.pressed.connect(_on_card_pressed.bind(u))
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("2d3a52") if u.is_wizard() else Color("522d2d")
-	box.set_corner_radius_all(8)
+	var frame_name := "card_party" if u.is_wizard() else ("card_boss" if u.is_boss else ("card_leader" if u.is_leader else "card_enemy"))
+	var box: StyleBox = Art.frame(frame_name, 40, 0.42)
+	if box == null:
+		var flat := StyleBoxFlat.new()
+		flat.bg_color = Color("2d3a52") if u.is_wizard() else Color("522d2d")
+		flat.set_corner_radius_all(8)
+		box = flat
 	var hover := box.duplicate()
-	hover.bg_color = box.bg_color.lightened(0.2)
+	hover.set("modulate_color", Color(1.25, 1.25, 1.25))
+	if hover is StyleBoxFlat:
+		hover.bg_color = hover.bg_color.lightened(0.2)
+	var dis := box.duplicate()
+	dis.set("modulate_color", Color(0.5, 0.5, 0.55))
+	if dis is StyleBoxFlat:
+		dis.bg_color = dis.bg_color.darkened(0.5)
 	b.add_theme_stylebox_override("normal", box)
 	b.add_theme_stylebox_override("hover", hover)
 	b.add_theme_stylebox_override("pressed", hover)
 	b.add_theme_stylebox_override("focus", box)
-	var dis := box.duplicate()
-	dis.bg_color = box.bg_color.darkened(0.5)
 	b.add_theme_stylebox_override("disabled", dis)
 
 	var margin := MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 8)
+		margin.add_theme_constant_override("margin_" + side, 14 if side in ["left", "right"] else 10)
 	b.add_child(margin)
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE

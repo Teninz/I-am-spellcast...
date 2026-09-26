@@ -26,10 +26,7 @@ func setup(class_db: Dictionary, p: Profile) -> void:
 
 
 func _ready() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color("1b1a24")
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(Art.background("bg_party_select", 0.55))
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
@@ -38,10 +35,25 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	margin.add_child(col)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 16)
+	col.add_child(head)
+	var emblem := Art.texture("res://assets/ui/emblem.png")
+	if emblem:
+		var em := TextureRect.new()
+		em.texture = emblem
+		em.custom_minimum_size = Vector2(200, 100)
+		em.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		em.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		em.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		head.add_child(em)
 	var title := Label.new()
-	title.text = "Я кастую — собери отряд"
-	title.add_theme_font_size_override("font_size", 26)
-	col.add_child(title)
+	title.text = "Я кастую! — собери отряд"
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02))
+	title.add_theme_constant_override("outline_size", 8)
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(title)
 	_hint = Label.new()
 	_hint.add_theme_font_size_override("font_size", 15)
 	_hint.modulate = Color(1, 1, 1, 0.75)
