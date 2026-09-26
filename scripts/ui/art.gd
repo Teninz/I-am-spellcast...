@@ -106,6 +106,41 @@ static func enemy_head(enemy_name: String) -> Texture2D:
 	return _head_of(full, "enemy:" + enemy_name) if full else null
 
 
+static var _crops: Dictionary = {}
+
+
+## Квадратный кадр по голове для круглой аватарки (data/portrait_crops.json).
+static func face_crop(full: Texture2D, crop_id: String) -> Texture2D:
+	if full == null:
+		return null
+	var key := "face:%s:%s" % [crop_id, full.resource_path if full.resource_path != "" else str(full.get_instance_id())]
+	if _cache.has(key):
+		return _cache[key]
+	if _crops.is_empty():
+		_crops = GameData.load_json("res://data/portrait_crops.json")
+	var c: Array = _crops.get(crop_id, _crops.get("_default", [0.5, 0.2, 0.56]))
+	var w := float(full.get_width())
+	var h := float(full.get_height())
+	var side := w * float(c[2])
+	var x := clampf(float(c[0]) * w - side / 2.0, 0.0, w - side)
+	var y := clampf(float(c[1]) * h - side / 2.0, 0.0, h - side)
+	var a := AtlasTexture.new()
+	a.atlas = full
+	a.region = Rect2(x, y, side, side)
+	_cache[key] = a
+	return a
+
+
+static func wizard_face(class_id: String, state: String = "healthy") -> Texture2D:
+	return face_crop(portrait(class_id, state), PORTRAIT_FILES.get(class_id, class_id))
+
+
+static func enemy_face(enemy_name: String) -> Texture2D:
+	if _enemy_ids.is_empty():
+		_enemy_ids = GameData.load_json("res://data/enemy_portraits.json")
+	return face_crop(enemy_portrait(enemy_name), _enemy_ids.get(enemy_name, ""))
+
+
 ## Кольцо аватарки: assets/ui/ring_<вид>.png (ring_wizard, ring_wizard_active, ring_enemy_boss…).
 static func ring(kind: String) -> Texture2D:
 	return texture("res://assets/ui/ring_%s.png" % kind)
@@ -128,10 +163,11 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	f.material = circle_material()
+	f.self_modulate = Color(1.2, 1.18, 1.12)  # портреты тёмные — чуть светлее, чтобы лицо читалось
 	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var inset := px * 0.15  # лицо — внутри кольца (внутренний диаметр ≈ 70 %)
+	var inset := px * 0.16  # лицо — внутри кольца (внутренний диаметр ≈ 70 %)
 	f.offset_left = inset
 	f.offset_top = inset
 	f.offset_right = -inset

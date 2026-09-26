@@ -619,7 +619,8 @@ func _update_card(card: Button, u: Unit) -> void:
 		if u.is_wizard():
 			var zombie := u.wizard != null and u.wizard.zombie
 			var face: TextureRect = av.get_meta("face")
-			face.texture = Art.portrait_head(u.class_id, Art.portrait_state(u.hp, u.max_hp, zombie))
+			var st := Art.portrait_state(u.hp, u.max_hp, zombie)
+			face.texture = Art.wizard_face(u.class_id, st) if av.has_meta("ring") else Art.portrait_head(u.class_id, st)
 		if av.has_meta("ring"):
 			var r: TextureRect = av.get_meta("ring")
 			var t := Art.ring(_ring_kind(u))
@@ -1235,9 +1236,15 @@ func _make_card(u: Unit) -> Button:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 8)
 	margin.add_child(row)
-	var face_tex := Art.portrait_head(u.class_id) if u.is_wizard() else Art.enemy_head(u.name)
+	# С кольцами — круглое лицо крупным планом, без колец — прямоугольный портрет по плечи.
+	var ringed := Art.ring(_ring_kind(u)) != null
+	var face_tex: Texture2D
+	if u.is_wizard():
+		face_tex = Art.wizard_face(u.class_id) if ringed else Art.portrait_head(u.class_id)
+	else:
+		face_tex = Art.enemy_face(u.name) if ringed else Art.enemy_head(u.name)
 	if face_tex != null:
-		var av := Art.avatar(face_tex, _ring_kind(u), 74)
+		var av := Art.avatar(face_tex, _ring_kind(u), 82)
 		row.add_child(av)
 		b.set_meta("avatar", av)
 	var col := VBoxContainer.new()

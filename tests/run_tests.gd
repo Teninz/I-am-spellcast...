@@ -74,7 +74,7 @@ func test_art_assets(books: Dictionary) -> void:
 		ui.append("loot_frame_" + r)
 	groups["интерфейс"] = ui.map(func(n): return "res://assets/ui/%s.png" % n)
 	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
-	var pending := ["muse.png", "dead_poison.png"]
+	var pending := []
 	for g in groups:
 		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
 		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))
@@ -100,7 +100,7 @@ func test_art_assets(books: Dictionary) -> void:
 	var have := uniq.keys().filter(func(id): return ResourceLoader.exists("res://assets/enemies/%s.png" % id)).size()
 	var rings := ["wizard", "wizard_active", "wizard_critical", "wizard_zombie", "enemy", "enemy_leader", "enemy_boss", "enemy_summon"]
 	var have_rings := rings.filter(func(r): return Art.ring(r) != null).size()
-	print("       портреты врагов: %d из %d, кольца аватарок: %d из %d (ждут картинок)" % [have, uniq.size(), have_rings, rings.size()])
+	check(have == uniq.size() and have_rings == rings.size(), "портреты врагов: %d из %d, кольца аватарок: %d из %d" % [have, uniq.size(), have_rings, rings.size()])
 	var names_ok := true
 	for f in DirAccess.get_files_at("res://data/encounters"):
 		if f.ends_with(".json"):
