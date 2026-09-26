@@ -1,0 +1,210 @@
+{
+  "id": "chrono",
+  "name": "Часослов",
+  "class": "Хрономант",
+  "flavor": "Книга тикает. Закладка — минутная стрелка от чьих-то часов.",
+  "bag": {
+    "C": 10,
+    "W": 5,
+    "H": 4,
+    "X": 1
+  },
+  "target_split": {
+    "control": 12,
+    "support": 12,
+    "damage": 6
+  },
+  "spells": [
+    {
+      "combo": "CCC",
+      "name": "Остановка времени",
+      "category": "control",
+      "effect": "Оглушение на 2 хода."
+    },
+    {
+      "combo": "CCW",
+      "name": "Вязкие секунды",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "CCH",
+      "name": "Ускорение",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "CWC",
+      "name": "Шаг назад",
+      "category": "support",
+      "effect": "Разгон шкалы на 100 % — дополнительный ход."
+    },
+    {
+      "combo": "CWW",
+      "name": "Вязкое время",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "CWH",
+      "name": "Откат",
+      "category": "support",
+      "heal": 3,
+      "effect": "Цель восстанавливает здоровье, потерянное за свой последний ход (до 4)."
+    },
+    {
+      "combo": "CHC",
+      "name": "Старение",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Слабость на 2 хода."
+    },
+    {
+      "combo": "CHW",
+      "name": "Временная петля",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "CHH",
+      "name": "Молодильное мгновение",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "WCC",
+      "name": "Пыль веков",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WCW",
+      "name": "Песочные часы",
+      "category": "control",
+      "effect": "Замедление и Забывчивость на 2 хода."
+    },
+    {
+      "combo": "WCH",
+      "name": "Второй шанс",
+      "category": "support",
+      "effect": "Неуязвимость."
+    },
+    {
+      "combo": "WWC",
+      "name": "Дежавю",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "WWW",
+      "name": "Течение реки",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "WWH",
+      "name": "Остановленная рана",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "WHC",
+      "name": "Ускоренное заживление",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 2 и Регенерация на 2 хода."
+    },
+    {
+      "combo": "WHW",
+      "name": "Тикающий механизм",
+      "category": "damage",
+      "damage": 4,
+      "effect": "Через 2 хода цель получает 4 урона."
+    },
+    {
+      "combo": "WHH",
+      "name": "Утренний час",
+      "category": "support",
+      "effect": "Разгон шкалы на 50 %."
+    },
+    {
+      "combo": "HCC",
+      "name": "Распад",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "HCW",
+      "name": "Замороженный миг",
+      "category": "control",
+      "effect": "Окаменение на 1 ход."
+    },
+    {
+      "combo": "HCH",
+      "name": "Эхо прошлого",
+      "category": "support",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "HWC",
+      "name": "Опоздание",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 % и Замедление на 1 ход."
+    },
+    {
+      "combo": "HWW",
+      "name": "Сонный час",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "HWH",
+      "name": "Продление",
+      "category": "support",
+      "effect": "Все баффы цели длятся на 2 хода дольше."
+    },
+    {
+      "combo": "HHC",
+      "name": "Последний час",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "HHW",
+      "name": "Вечная минута",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "HHH",
+      "name": "Застывший свет",
+      "category": "control",
+      "effect": "Слабость на 2 хода и Ослепление на 1 ход."
+    },
+    {
+      "combo": "X1",
+      "name": "Сбой часов",
+      "category": "control",
+      "effect": "Очередь ходов ВСЕХ на арене перемешивается случайно."
+    },
+    {
+      "combo": "X2",
+      "name": "Вне времени",
+      "category": "support",
+      "effect": "Весь отряд кастующего получает дополнительный ход."
+    },
+    {
+      "combo": "X3",
+      "name": "Конец времён",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона ВСЕМ на арене, все шкалы хода обнуляются."
+    }
+  ]
+}

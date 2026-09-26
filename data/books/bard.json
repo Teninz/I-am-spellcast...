@@ -1,0 +1,210 @@
+{
+  "id": "bard",
+  "name": "Сборник баллад",
+  "class": "Бард-на-пенсии",
+  "flavor": "Потрёпанный песенник с нотами на полях. Половина песен — про то, как автор был молод.",
+  "bag": {
+    "S": 10,
+    "H": 5,
+    "W": 4,
+    "X": 1
+  },
+  "target_split": {
+    "support": 12,
+    "control": 12,
+    "damage": 6
+  },
+  "spells": [
+    {
+      "combo": "SSS",
+      "name": "Баллада о старых героях",
+      "category": "support",
+      "effect": "Вдохновение всем на стороне цели на 2 хода."
+    },
+    {
+      "combo": "SSH",
+      "name": "Колыбельная",
+      "category": "control",
+      "effect": "Оглушение на 1 ход (засыпает)."
+    },
+    {
+      "combo": "SSW",
+      "name": "Застольная",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 и Разгон шкалы на 30 %."
+    },
+    {
+      "combo": "SHS",
+      "name": "Гимн",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "SHH",
+      "name": "Серенада",
+      "category": "control",
+      "effect": "Очарование на 1 ход."
+    },
+    {
+      "combo": "SHW",
+      "name": "Песнь утешения",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "SWS",
+      "name": "Марш",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "SWH",
+      "name": "Похоронный марш",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "SWW",
+      "name": "Плач",
+      "category": "control",
+      "effect": "Слабость на 2 хода."
+    },
+    {
+      "combo": "HSS",
+      "name": "Звон колокола",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "HSH",
+      "name": "Ода",
+      "category": "support",
+      "effect": "Благословение на 2 хода."
+    },
+    {
+      "combo": "HSW",
+      "name": "Фальшивая нота",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "HHS",
+      "name": "Хорал",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 всем на стороне цели."
+    },
+    {
+      "combo": "HHH",
+      "name": "Ангельский хор",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "HHW",
+      "name": "Утренняя песнь",
+      "category": "support",
+      "effect": "Очищение."
+    },
+    {
+      "combo": "HWS",
+      "name": "Тихая песнь",
+      "category": "support",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "HWH",
+      "name": "Эхо",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "HWW",
+      "name": "Песнь сирены",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "WSS",
+      "name": "Звуковой удар",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "WSH",
+      "name": "Дуэт",
+      "category": "support",
+      "effect": "Сосредоточенность: в следующем касте цель сама выбирает порядок фишек."
+    },
+    {
+      "combo": "WSW",
+      "name": "Визг волынки",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "WHS",
+      "name": "Лунная соната",
+      "category": "control",
+      "effect": "Оглушение на 1 ход (засыпает)."
+    },
+    {
+      "combo": "WHH",
+      "name": "Речитатив",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "WHW",
+      "name": "Трель",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Ослепление на 1 ход."
+    },
+    {
+      "combo": "WWS",
+      "name": "Шанти",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "WWH",
+      "name": "Аккорд-разрушитель",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "WWW",
+      "name": "Лопнувшая струна",
+      "category": "control",
+      "effect": "Уязвимость на 2 хода."
+    },
+    {
+      "combo": "X1",
+      "name": "Какофония",
+      "category": "control",
+      "effect": "Путаница ВСЕМ на арене на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Эпическая баллада",
+      "category": "support",
+      "effect": "Вдохновение и Ускорение всему отряду кастующего на 2 хода."
+    },
+    {
+      "combo": "X3",
+      "name": "Песнь конца света",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона всем врагам. Оглушение ВСЕМ на арене, включая отряд."
+    }
+  ]
+}

@@ -1,0 +1,221 @@
+{
+  "id": "blade",
+  "name": "Трактат о клинке и слове",
+  "class": "Магус с тростью",
+  "flavor": "Учебник фехтования для магов. На полях — схемы ударов тростью.",
+  "bag": {
+    "L": 10,
+    "F": 5,
+    "W": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 18,
+    "support": 6,
+    "control": 6
+  },
+  "notes": "Способность Магуса «Удар тростью» добавляет 1 урон после каждого каста по врагу — в таблицу не входит.",
+  "spells": [
+    {
+      "combo": "LLL",
+      "name": "Молниеносный выпад",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "LLF",
+      "name": "Громовой клинок",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "LLW",
+      "name": "Разряд по воде",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Оглушение на 1 ход."
+    },
+    {
+      "combo": "LFL",
+      "name": "Искрящий укол",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "LFF",
+      "name": "Огненная сталь",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "LFW",
+      "name": "Стойка",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "LWL",
+      "name": "Удар током",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "LWF",
+      "name": "Парирование",
+      "category": "support",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "LWW",
+      "name": "Шоковая волна",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "FLL",
+      "name": "Пламенный росчерк",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FLF",
+      "name": "Двойной удар",
+      "category": "damage",
+      "damage": 4,
+      "effect": "2 урона дважды."
+    },
+    {
+      "combo": "FLW",
+      "name": "Выпад",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, игнорирует Защиту."
+    },
+    {
+      "combo": "FFL",
+      "name": "Огненный вихрь",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона цели и 1 урон всем на её стороне."
+    },
+    {
+      "combo": "FFF",
+      "name": "Раскалённая трость",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FFW",
+      "name": "Боевой пар",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "FWL",
+      "name": "Финт",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "FWF",
+      "name": "Тепловой удар",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FWW",
+      "name": "Боевая медитация",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "WLL",
+      "name": "Электрический клинок",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "WLF",
+      "name": "Подсечка",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "WLW",
+      "name": "Отвод удара",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "WFL",
+      "name": "Кипящий выпад",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "WFF",
+      "name": "Раскалённый пар",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Слабость на 2 хода."
+    },
+    {
+      "combo": "WFW",
+      "name": "Разоружение",
+      "category": "control",
+      "effect": "Слабость на 2 хода."
+    },
+    {
+      "combo": "WWL",
+      "name": "Ледяной выпад",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Замедление на 2 хода."
+    },
+    {
+      "combo": "WWF",
+      "name": "Второе дыхание",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 и Ускорение на 2 хода."
+    },
+    {
+      "combo": "WWW",
+      "name": "Удар по коленям",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "X1",
+      "name": "Трость выскользнула",
+      "category": "control",
+      "effect": "Кастующий и цель получают Оглушение на 1 ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Боевой транс",
+      "category": "support",
+      "effect": "Кастующий получает дополнительный ход и Вдохновение."
+    },
+    {
+      "combo": "X3",
+      "name": "Тысяча ударов тростью",
+      "category": "damage",
+      "damage": 8,
+      "effect": "8 урона цели."
+    }
+  ]
+}

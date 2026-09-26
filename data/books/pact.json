@@ -1,0 +1,218 @@
+{
+  "id": "pact",
+  "name": "Договор с Покровителем",
+  "class": "Чернокнижник",
+  "flavor": "Книга подписана кровью. Мелкий шрифт в конце занимает сорок страниц.",
+  "bag": {
+    "D": 10,
+    "F": 5,
+    "T": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 15,
+    "curse": 10,
+    "support": 5
+  },
+  "spells": [
+    {
+      "combo": "DDD",
+      "name": "Мистический заряд",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "DDF",
+      "name": "Адский укус",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "DDT",
+      "name": "Порча",
+      "category": "curse",
+      "effect": "Слабость и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "DFD",
+      "name": "Тёмный огонь",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "DFF",
+      "name": "Геенна",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "DFT",
+      "name": "Сглаз",
+      "category": "curse",
+      "effect": "Проклятие Хаоса на 3 хода."
+    },
+    {
+      "combo": "DTD",
+      "name": "Щупальца тьмы",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Замедление на 2 хода."
+    },
+    {
+      "combo": "DTF",
+      "name": "Кровавый договор",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4 цели, кастующий теряет 2 ЗД."
+    },
+    {
+      "combo": "DTT",
+      "name": "Метка покровителя",
+      "category": "curse",
+      "effect": "Уязвимость на 3 хода."
+    },
+    {
+      "combo": "FDD",
+      "name": "Адский выстрел",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, игнорирует Защиту."
+    },
+    {
+      "combo": "FDF",
+      "name": "Пламя преисподней",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона цели и 1 урон всем на её стороне."
+    },
+    {
+      "combo": "FDT",
+      "name": "Проклятие немоты",
+      "category": "curse",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "FFD",
+      "name": "Огненный бич",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Страх на 2 хода."
+    },
+    {
+      "combo": "FFF",
+      "name": "Дыхание ада",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона цели, кастующий получает Горение."
+    },
+    {
+      "combo": "FFT",
+      "name": "Клеймо",
+      "category": "curse",
+      "effect": "Болезнь и Горение на 2 хода."
+    },
+    {
+      "combo": "FTD",
+      "name": "Тёмная сделка",
+      "category": "support",
+      "effect": "Вдохновение на 2 хода, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "FTF",
+      "name": "Пекло",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FTT",
+      "name": "Кошмар",
+      "category": "curse",
+      "effect": "Страх и Слабость на 2 хода."
+    },
+    {
+      "combo": "TDD",
+      "name": "Голодная тьма",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, кастующий лечится на 1."
+    },
+    {
+      "combo": "TDF",
+      "name": "Шёпот покровителя",
+      "category": "curse",
+      "effect": "Очарование на 1 ход."
+    },
+    {
+      "combo": "TDT",
+      "name": "Зов бездны",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Путаница на 2 хода."
+    },
+    {
+      "combo": "TFD",
+      "name": "Цена силы",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "TFF",
+      "name": "Огненная плата",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона цели, 1 урон кастующему."
+    },
+    {
+      "combo": "TFT",
+      "name": "Сглаз неудачи",
+      "category": "curse",
+      "effect": "Удача −2 на 3 хода и Ослепление на 1 ход."
+    },
+    {
+      "combo": "TTD",
+      "name": "Проклятие слабости",
+      "category": "curse",
+      "effect": "Слабость на 3 хода и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "TTF",
+      "name": "Разрыв души",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "TTT",
+      "name": "Милость покровителя",
+      "category": "support",
+      "heal": 3,
+      "shield": 2,
+      "effect": "Лечение 3 и Щит 2, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "X1",
+      "name": "Покровитель гневается",
+      "category": "curse",
+      "effect": "Цель и кастующий получают Проклятие Хаоса и Слабость на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Покровитель доволен",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 и Вдохновение всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Явление покровителя",
+      "category": "damage",
+      "damage": 7,
+      "effect": "7 урона цели и 3 урона всем остальным на арене, включая отряд."
+    }
+  ]
+}

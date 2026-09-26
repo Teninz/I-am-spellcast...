@@ -1,0 +1,212 @@
+{
+  "id": "illusion",
+  "name": "Книга Миражей",
+  "class": "Иллюзионист",
+  "flavor": "Если смотреть на эту книгу долго, она притворяется другой книгой.",
+  "bag": {
+    "I": 10,
+    "W": 5,
+    "F": 4,
+    "X": 1
+  },
+  "target_split": {
+    "control": 12,
+    "support": 10,
+    "damage": 8
+  },
+  "notes": "Иллюзорный урон и лечение частично «возвращаются» через 2 хода — это указано в эффекте.",
+  "spells": [
+    {
+      "combo": "III",
+      "name": "Великий мираж",
+      "category": "support",
+      "effect": "Невидимость всем на стороне цели на 1 ход."
+    },
+    {
+      "combo": "IIW",
+      "name": "Двойник",
+      "category": "support",
+      "effect": "Неуязвимость: иллюзия принимает следующий удар."
+    },
+    {
+      "combo": "IIF",
+      "name": "Фантомный клинок",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "IWI",
+      "name": "Кривое зеркало",
+      "category": "control",
+      "effect": "Путаница на 2 хода."
+    },
+    {
+      "combo": "IWW",
+      "name": "Мираж оазиса",
+      "category": "control",
+      "effect": "Очарование на 1 ход."
+    },
+    {
+      "combo": "IWF",
+      "name": "Призрачный огонь",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Страх на 2 хода."
+    },
+    {
+      "combo": "IFI",
+      "name": "Пугало из дыма",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "IFW",
+      "name": "Цветные брызги",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "IFF",
+      "name": "Фантомная боль",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, но 2 из них иллюзорные: вернутся цели через 2 хода."
+    },
+    {
+      "combo": "WII",
+      "name": "Зеркальные образы",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "WIW",
+      "name": "Туманный двойник",
+      "category": "support",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "WIF",
+      "name": "Иллюзия лечения",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 4, но через 2 хода 2 из них исчезают."
+    },
+    {
+      "combo": "WWI",
+      "name": "Ложная тропа",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "WWW",
+      "name": "Отражение в луже",
+      "category": "control",
+      "effect": "Цель теряет все баффы (они были иллюзией)."
+    },
+    {
+      "combo": "WWF",
+      "name": "Паровой призрак",
+      "category": "control",
+      "effect": "Ослепление на 1 ход и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "WFI",
+      "name": "Маска",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "WFW",
+      "name": "Ложная надежда",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "WFF",
+      "name": "Огненный мираж",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FII",
+      "name": "Иллюзорная стена",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4."
+    },
+    {
+      "combo": "FIW",
+      "name": "Ложный старик",
+      "category": "support",
+      "effect": "Невидимость на 1 ход: враги бьют иллюзию."
+    },
+    {
+      "combo": "FIF",
+      "name": "Ужас из сна",
+      "category": "control",
+      "effect": "Страх и Слабость на 2 хода."
+    },
+    {
+      "combo": "FWI",
+      "name": "Мерцание",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "FWW",
+      "name": "Сон наяву",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "FWF",
+      "name": "Жгучий мираж",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FFI",
+      "name": "Ослепительная вспышка",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Ослепление на 1 ход."
+    },
+    {
+      "combo": "FFW",
+      "name": "Зеркальный лабиринт",
+      "category": "control",
+      "effect": "Путаница и Замедление на 2 хода."
+    },
+    {
+      "combo": "FFF",
+      "name": "Фантом дракона",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона, но 2 из них иллюзорные: вернутся цели через 2 хода."
+    },
+    {
+      "combo": "X1",
+      "name": "Кто здесь настоящий?",
+      "category": "control",
+      "effect": "Путаница ВСЕМ на арене на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Толпа двойников",
+      "category": "support",
+      "effect": "Неуязвимость всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Кошмар наяву",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона всем врагам. Через 2 хода половина урона возвращается (иллюзия)."
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "id": "mystery",
+  "name": "Книга Тайн",
+  "class": "Оракул",
+  "flavor": "Текст проступает, только когда читающий чем-то проклят. Оракулу повезло.",
+  "bag": {
+    "T": 10,
+    "D": 5,
+    "H": 4,
+    "X": 1
+  },
+  "target_split": {
+    "fate": 8,
+    "support": 8,
+    "damage": 8,
+    "curse": 6
+  },
+  "spells": [
+    {
+      "combo": "TTT",
+      "name": "Откровение бездны",
+      "category": "fate",
+      "effect": "Сосредоточенность и Благословение на 2 хода."
+    },
+    {
+      "combo": "TTD",
+      "name": "Тайный знак",
+      "category": "fate",
+      "effect": "Цель в следующем касте видит свою тройку до выбора цели и книги. На враге — раскрывает его следующую способность."
+    },
+    {
+      "combo": "TTH",
+      "name": "Печать тайны",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "TDT",
+      "name": "Тёмное пророчество",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "TDD",
+      "name": "Мрак",
+      "category": "curse",
+      "effect": "Ослепление на 1 ход и Страх на 2 хода."
+    },
+    {
+      "combo": "TDH",
+      "name": "Весы судьбы",
+      "category": "fate",
+      "effect": "Если у цели меньше половины ЗД — лечение 4, иначе 2 урона."
+    },
+    {
+      "combo": "THT",
+      "name": "Свет тайны",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "THD",
+      "name": "Предназначение",
+      "category": "fate",
+      "effect": "Неуязвимость: следующий удар по цели промахнётся."
+    },
+    {
+      "combo": "THH",
+      "name": "Благая весть",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 и Очищение."
+    },
+    {
+      "combo": "DTT",
+      "name": "Проклятое знание",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Забывчивость на 2 хода."
+    },
+    {
+      "combo": "DTD",
+      "name": "Шёпот тьмы",
+      "category": "curse",
+      "effect": "Слабость и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "DTH",
+      "name": "Кармический долг",
+      "category": "curse",
+      "effect": "Следующий удар по цели наносит +3 урона."
+    },
+    {
+      "combo": "DDT",
+      "name": "Тень рока",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "DDD",
+      "name": "Бездна смотрит",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "DDH",
+      "name": "Проклятие оракула",
+      "category": "curse",
+      "effect": "Цель до конца боя получает −1 к случайной характеристике."
+    },
+    {
+      "combo": "DHT",
+      "name": "Карма",
+      "category": "fate",
+      "effect": "Цель получает урон, равный лечению, которое она получила за бой (до 5)."
+    },
+    {
+      "combo": "DHD",
+      "name": "Тёмная молитва",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "DHH",
+      "name": "Сумеречный щит",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "HTT",
+      "name": "Звезда пути",
+      "category": "fate",
+      "effect": "Разгон шкалы на 50 %."
+    },
+    {
+      "combo": "HTD",
+      "name": "Светлая жертва",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "HTH",
+      "name": "Истина",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, снимает Невидимость."
+    },
+    {
+      "combo": "HDT",
+      "name": "Небесный знак",
+      "category": "fate",
+      "effect": "Благословение на 2 хода."
+    },
+    {
+      "combo": "HDD",
+      "name": "Сглаз",
+      "category": "curse",
+      "effect": "Проклятие Хаоса на 3 хода."
+    },
+    {
+      "combo": "HDH",
+      "name": "Смягчение судьбы",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "HHT",
+      "name": "Луч откровения",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "HHD",
+      "name": "Затмение",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "HHH",
+      "name": "Чудо оракула",
+      "category": "support",
+      "heal": 5,
+      "effect": "Лечение 5."
+    },
+    {
+      "combo": "X1",
+      "name": "Злой рок",
+      "category": "curse",
+      "effect": "Цель и кастующий получают Уязвимость и Проклятие Хаоса на 2 хода."
+    },
+    {
+      "combo": "X2",
+      "name": "Судьба переписана",
+      "category": "fate",
+      "effect": "Кастующий выбирает любую комбинацию этой книги и кастует её."
+    },
+    {
+      "combo": "X3",
+      "name": "Апокалипсис",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона всем врагам, 2 урона всем союзникам."
+    }
+  ]
+}

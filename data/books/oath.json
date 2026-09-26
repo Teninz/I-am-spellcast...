@@ -1,0 +1,220 @@
+{
+  "id": "oath",
+  "name": "Клятвенный кодекс",
+  "class": "Паладин в отставке",
+  "flavor": "Свод обетов с пометками «уже не актуально» напротив половины пунктов.",
+  "bag": {
+    "H": 10,
+    "F": 5,
+    "E": 4,
+    "X": 1
+  },
+  "target_split": {
+    "support": 12,
+    "damage": 12,
+    "control": 6
+  },
+  "spells": [
+    {
+      "combo": "HHH",
+      "name": "Святой щит",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4."
+    },
+    {
+      "combo": "HHF",
+      "name": "Божественная кара",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, против нежити 6."
+    },
+    {
+      "combo": "HHE",
+      "name": "Благословенная земля",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "HFH",
+      "name": "Клятвенный удар",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона, кастующий получает Щит 1."
+    },
+    {
+      "combo": "HFF",
+      "name": "Праведный огонь",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "HFE",
+      "name": "Аура отваги",
+      "category": "support",
+      "effect": "Снимает Страх, Вдохновение на 2 хода."
+    },
+    {
+      "combo": "HEH",
+      "name": "Возложение рук",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "HEF",
+      "name": "Кара земли",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "HEE",
+      "name": "Каменная клятва",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "FHH",
+      "name": "Сияющий клинок",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FHF",
+      "name": "Пламенный натиск",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FHE",
+      "name": "Строгий взгляд",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "FFH",
+      "name": "Горячий приговор",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "FFF",
+      "name": "Гнев паладина",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона."
+    },
+    {
+      "combo": "FFE",
+      "name": "Огненная стена",
+      "category": "support",
+      "shield": 2,
+      "effect": "Щит 2 всем на стороне цели."
+    },
+    {
+      "combo": "FEH",
+      "name": "Тёплый очаг",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "FEF",
+      "name": "Раскалённый молот",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Оглушение на 1 ход."
+    },
+    {
+      "combo": "FEE",
+      "name": "Удар щитом",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "EHH",
+      "name": "Святая земля",
+      "category": "support",
+      "heal": 2,
+      "effect": "Очищение и лечение 2."
+    },
+    {
+      "combo": "EHF",
+      "name": "Вызов на дуэль",
+      "category": "control",
+      "effect": "Провокация: 2 хода враг-цель бьёт только кастующего. На союзника — Метка на кастующего вместо цели."
+    },
+    {
+      "combo": "EHE",
+      "name": "Страж",
+      "category": "support",
+      "effect": "Неуязвимость."
+    },
+    {
+      "combo": "EFH",
+      "name": "Удар с разворота",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "EFF",
+      "name": "Лавовый след",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона всем на стороне цели."
+    },
+    {
+      "combo": "EFE",
+      "name": "Твёрдость",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "EEH",
+      "name": "Щит веры",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "EEF",
+      "name": "Обет молчания",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "EEE",
+      "name": "Нерушимая клятва",
+      "category": "support",
+      "heal": 2,
+      "effect": "Каменная кожа на 2 хода и лечение 2."
+    },
+    {
+      "combo": "X1",
+      "name": "Нарушенная клятва",
+      "category": "control",
+      "effect": "Кастующий и цель получают Оглушение на 1 ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Крестовый поход",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3 и Вдохновение всему отряду кастующего."
+    },
+    {
+      "combo": "X3",
+      "name": "Суд небес",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона всем врагам, нежити — 10."
+    }
+  ]
+}

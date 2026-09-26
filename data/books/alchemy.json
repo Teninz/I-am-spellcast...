@@ -1,0 +1,216 @@
+{
+  "id": "alchemy",
+  "name": "Рецептурник",
+  "class": "Алхимик",
+  "flavor": "Книга в пятнах всех цветов. Некоторые пятна до сих пор шипят.",
+  "bag": {
+    "W": 10,
+    "F": 5,
+    "E": 4,
+    "X": 1
+  },
+  "target_split": {
+    "support": 10,
+    "damage": 10,
+    "control": 6,
+    "item": 4
+  },
+  "notes": "Заклинания категории «Предмет» создают одноразовые предметы. Алхимик может носить 2 предмета.",
+  "spells": [
+    {
+      "combo": "WWW",
+      "name": "Микстура",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "WWF",
+      "name": "Горячий отвар",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "WWE",
+      "name": "Грязевая маска",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "WFW",
+      "name": "Кислотная склянка",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "WFF",
+      "name": "Паровая бомба",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Ослепление на 1 ход."
+    },
+    {
+      "combo": "WFE",
+      "name": "Эликсир бодрости",
+      "category": "support",
+      "effect": "Ускорение на 2 хода."
+    },
+    {
+      "combo": "WEW",
+      "name": "Сонное зелье",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "WEF",
+      "name": "Зелье невидимости",
+      "category": "support",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "WEE",
+      "name": "Клейкая смесь",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "FWW",
+      "name": "Нюхательная соль",
+      "category": "support",
+      "heal": 1,
+      "effect": "Очищение и лечение 1."
+    },
+    {
+      "combo": "FWF",
+      "name": "Огненный коктейль",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FWE",
+      "name": "Флакон в запас",
+      "category": "item",
+      "effect": "Цель получает Зелье здоровья (если есть место под предмет)."
+    },
+    {
+      "combo": "FFW",
+      "name": "Бомба",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFF",
+      "name": "Большая бомба",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона цели и 1 урон всем на её стороне, 1 урон кастующему."
+    },
+    {
+      "combo": "FFE",
+      "name": "Зажигательная смесь",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Горение на 2 хода."
+    },
+    {
+      "combo": "FEW",
+      "name": "Эликсир силы",
+      "category": "support",
+      "effect": "Вдохновение на 2 хода."
+    },
+    {
+      "combo": "FEF",
+      "name": "Взрывной порошок",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "FEE",
+      "name": "Ядовитый дым",
+      "category": "damage",
+      "effect": "3 стака Яда."
+    },
+    {
+      "combo": "EWW",
+      "name": "Бальзам",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "EWF",
+      "name": "Экспресс-анализ",
+      "category": "item",
+      "effect": "Цель получает случайный предмет (если есть место)."
+    },
+    {
+      "combo": "EWE",
+      "name": "Гипс",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "EFW",
+      "name": "Слезоточивый газ",
+      "category": "control",
+      "effect": "Ослепление на 1 ход и Слабость на 2 хода."
+    },
+    {
+      "combo": "EFF",
+      "name": "Термит",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, игнорирует Защиту."
+    },
+    {
+      "combo": "EFE",
+      "name": "Порошок забвения",
+      "category": "control",
+      "effect": "Забывчивость на 2 хода."
+    },
+    {
+      "combo": "EEW",
+      "name": "Философский камешек",
+      "category": "item",
+      "effect": "Предмет цели становится предметом более высокой редкости. Нет предмета — создаёт случайный."
+    },
+    {
+      "combo": "EEF",
+      "name": "Удобрение",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 всем на стороне цели."
+    },
+    {
+      "combo": "EEE",
+      "name": "Окаменяющий раствор",
+      "category": "control",
+      "effect": "Окаменение на 1 ход."
+    },
+    {
+      "combo": "X1",
+      "name": "Не та пробирка",
+      "category": "control",
+      "effect": "Цель становится Жабой на 1 ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Великое делание",
+      "category": "item",
+      "effect": "Каждый волшебник отряда получает случайный предмет (если есть место)."
+    },
+    {
+      "combo": "X3",
+      "name": "Лаборатория взлетела",
+      "category": "damage",
+      "damage": 6,
+      "effect": "6 урона ВСЕМ на арене. Кастующий теряет свой предмет."
+    }
+  ]
+}

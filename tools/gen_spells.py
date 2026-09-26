@@ -4,8 +4,8 @@
 Правило вытягивания:
 - в мешочке 19 фишек стихий и 1 фишка Хаоса;
 - фишки тянутся по одной, всего 3 вытягивания;
-- на каждом вытягивании шанс Хаоса — CHAOS_PER_CHIP за каждую фишку Хаоса;
-  Хаос оставляет чёрную метку в ячейке и возвращается в мешочек;
+- шанс Хаоса на 1-м, 2-м и 3-м вытягивании — CHAOS_BY_DRAW (за каждую фишку
+  Хаоса); Хаос оставляет чёрную метку в ячейке и возвращается в мешочек;
 - иначе выпадает фишка стихии из оставшихся; она остаётся на столе до конца каста.
 """
 import itertools
@@ -18,10 +18,12 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BOOKS = ROOT / "data" / "books"
 OUT = ROOT / "docs" / "spells"
 
-CHAOS_PER_CHIP = 0.069
+CHAOS_BY_DRAW = (0.05, 0.069, 0.088)
 
-ICON = {"F": "🔥", "W": "💧", "H": "✨", "D": "🌑", "E": "🌿", "M": "⚙️"}
-ELEMENT = {"F": "Огонь", "W": "Вода", "H": "Святость", "D": "Тьма", "E": "Земля", "M": "Механика"}
+ICON = {"F": "🔥", "W": "💧", "H": "✨", "D": "🌑", "E": "🌿", "M": "⚙️",
+        "S": "🎵", "T": "🔮", "I": "🌀", "L": "⚡", "C": "⏳"}
+ELEMENT = {"F": "Огонь", "W": "Вода", "H": "Святость", "D": "Тьма", "E": "Земля", "M": "Механика",
+           "S": "Звук", "T": "Тайна", "I": "Иллюзия", "L": "Молния", "C": "Время"}
 CATEGORY = {
     "damage": "Урон",
     "control": "Контроль",
@@ -30,6 +32,10 @@ CATEGORY = {
     "disease": "Болезнь",
     "roots": "Щиты и корни",
     "glitch": "Сбой",
+    "fate": "Судьба",
+    "curse": "Проклятие",
+    "wild": "Дикая магия",
+    "item": "Предмет",
 }
 CHAOS = {"X1": "Хаос I", "X2": "Хаос II", "X3": "Хаос III"}
 
@@ -54,12 +60,18 @@ def sequence_probability(counts, seq):
 
 def combo_probabilities(book):
     counts = {k: v for k, v in book["bag"].items() if k != "X"}
-    c = CHAOS_PER_CHIP * book["bag"].get("X", 0)
+    chips = book["bag"].get("X", 0)
+    chaos = [min(1.0, c * chips) for c in CHAOS_BY_DRAW]
+    no_chaos = math.prod(1 - c for c in chaos)
     probs = {}
     for seq in itertools.product(elements(book), repeat=3):
-        probs["".join(seq)] = (1 - c) ** 3 * sequence_probability(counts, seq)
+        probs["".join(seq)] = no_chaos * sequence_probability(counts, seq)
     for k in (1, 2, 3):
-        probs[f"X{k}"] = math.comb(3, k) * c**k * (1 - c) ** (3 - k)
+        probs[f"X{k}"] = 0.0
+    for marks in itertools.product((False, True), repeat=3):
+        k = sum(marks)
+        if k:
+            probs[f"X{k}"] += math.prod(c if m else 1 - c for c, m in zip(chaos, marks))
     return probs
 
 
@@ -95,17 +107,42 @@ def fmt_chance(p):
     return f"{p:.2f} %" if p >= 0.1 else f"{p:.3f} %"
 
 
-def render(book):
+def summary(book):
     probs = combo_probabilities(book)
-    spells = sorted(book["spells"], key=lambda s: (s["combo"] in CHAOS, -probs[s["combo"]], s["combo"]))
-    cats = list(book["target_split"])
-    by_cat = {c: 0.0 for c in cats}
+    by_cat = {c: 0.0 for c in book["target_split"]}
     exp_damage = exp_heal = 0.0
     for s in book["spells"]:
         p = probs[s["combo"]]
         by_cat[s["category"]] += p
         exp_damage += p * s.get("damage", 0)
         exp_heal += p * (s.get("heal", 0) + s.get("shield", 0))
+    return by_cat, exp_damage, exp_heal
+
+
+def render_index(books):
+    lines = [
+        "# Книги заклинаний",
+        "",
+        "Сводка по всем книгам. Шансы — за один каст, без Мудрости и способностей класса.",
+        "",
+        "| Книга | Класс | Стихии | Шансы по типам | Урон за каст | Лечение/щит за каст |",
+        "|---|---|---|---|---|---|",
+    ]
+    for book in books:
+        by_cat, dmg, heal = summary(book)
+        els = "".join(ICON[e] for e in elements(book))
+        cats = " · ".join(f"{CATEGORY[c]} {p * 100:.0f} %" for c, p in by_cat.items())
+        lines.append(f"| [{book['name']}]({book['id']}.md) | {book['class']} | {els} | "
+                     f"{cats} | {dmg:.2f} | {heal:.2f} |")
+    lines += ["", "*Файл собран скриптом `tools/gen_spells.py`.*", ""]
+    return "\n".join(lines)
+
+
+def render(book):
+    probs = combo_probabilities(book)
+    spells = sorted(book["spells"], key=lambda s: (s["combo"] in CHAOS, -probs[s["combo"]], s["combo"]))
+    cats = list(book["target_split"])
+    by_cat, exp_damage, exp_heal = summary(book)
 
     bag = " · ".join(f"{ICON[k]} {ELEMENT[k]} ×{v}" for k, v in book["bag"].items() if k != "X")
     split = " · ".join(f"{CATEGORY[c]} {n}" for c, n in book["target_split"].items())
@@ -115,7 +152,8 @@ def render(book):
         f"*{book['flavor']}*",
         "",
         f"- **Класс:** {book['class']}",
-        f"- **Мешочек:** {bag} · 🌀 Хаос ×1 ({CHAOS_PER_CHIP * 100:.1f} % на каждое вытягивание)",
+        f"- **Мешочек:** {bag} · ⚫ Хаос ×1 ("
+        + " / ".join(f"{c * 100:g} %" for c in CHAOS_BY_DRAW) + " на 1-е / 2-е / 3-е вытягивание)",
         f"- **Распределение заклинаний:** {split}",
     ]
     if book.get("notes"):
@@ -154,14 +192,18 @@ def render(book):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     failed = False
+    books = []
     for path in sorted(BOOKS.glob("*.json")):
         book = json.loads(path.read_text(encoding="utf-8"))
+        books.append(book)
         errors = validate(book)
         for e in errors:
             print(f"{path.name}: {e}", file=sys.stderr)
         failed |= bool(errors)
         (OUT / f"{book['id']}.md").write_text(render(book), encoding="utf-8")
         print(f"{path.name} -> docs/spells/{book['id']}.md")
+    (OUT / "README.md").write_text(render_index(books), encoding="utf-8")
+    print("docs/spells/README.md")
     sys.exit(1 if failed else 0)
 
 
