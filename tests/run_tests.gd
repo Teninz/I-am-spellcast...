@@ -27,6 +27,7 @@ func _initialize() -> void:
 	test_trophies_and_scars()
 	test_achievements()
 	test_save_and_load()
+	test_settings_and_sound()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -554,6 +555,30 @@ func test_save_and_load() -> void:
 	check(b.encounter().id == adv.encounter().id, "следующий бой — та же банда")
 	SaveGame.clear()
 	check(not SaveGame.exists(), "после конца приключения сохранение удаляется")
+
+
+func test_settings_and_sound() -> void:
+	print("Настройки и звук:")
+	Settings.path = "user://test_settings.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
+	Settings.reload()
+	check(Settings.speed() == 1.0 and Settings.value("tutorial") == true, "по умолчанию: обычная скорость, обучение включено")
+	Settings.set_value("speed", 2.0)
+	Settings.set_value("auto_draw", true)
+	Settings.set_value("sfx", 0.0)
+	Settings.reload()
+	check(Settings.speed() == 2.0 and Settings.value("auto_draw") == true and is_equal_approx(Settings.delay(0.8), 0.4),
+		"настройки сохраняются: скорость ×2 (пауза 0.8 → 0.4 с), автотяга")
+	check(AudioServer.get_bus_index("SFX") != -1 and AudioServer.is_bus_mute(AudioServer.get_bus_index("SFX")),
+		"шина звуков создана, громкость 0 → звук выключен")
+	var ok := true
+	for id in Sfx.MIX:
+		var st := Sfx.stream_for(id)
+		if st == null or (st is AudioStreamWAV and (st as AudioStreamWAV).data.size() < 400):
+			ok = false
+	check(ok, "у всех %d звуков есть файл или временный звук" % Sfx.MIX.size())
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
+	Settings.reload()
 
 
 func test_loot_rules() -> void:

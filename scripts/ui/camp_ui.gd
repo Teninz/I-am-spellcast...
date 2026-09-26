@@ -105,7 +105,13 @@ func _build() -> void:
 
 	var bottom := HBoxContainer.new()
 	bottom.alignment = BoxContainer.ALIGNMENT_END
+	bottom.add_theme_constant_override("separation", 10)
 	root.add_child(bottom)
+	var gear := Button.new()
+	gear.text = "Настройки"
+	gear.custom_minimum_size = Vector2(0, 48)
+	gear.pressed.connect(func() -> void: SettingsView.open(self))
+	bottom.add_child(gear)
 	_continue = Button.new()
 	_continue.custom_minimum_size = Vector2(220, 48)
 	_continue.add_theme_font_size_override("font_size", 18)
@@ -196,7 +202,7 @@ func _wizard_column(i: int) -> Control:
 	for b in w.books:
 		var row := _row()
 		var wear := w.wear_of(b)
-		row.add_child(Art.book_cover(adventure.books[b], 30))
+		row.add_child(_book_link(b, 30))
 		var book_label := _small("%s%s" % [adventure.books[b].name, "  (износ %d/%d)" % [wear, Wizard.WEAR_LIMIT] if wear > 0 else ""])
 		book_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 		row.add_child(book_label)
@@ -261,7 +267,7 @@ func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
 		cover_row.add_theme_constant_override("separation", 10)
 		match String(o.kind):
 			"book":
-				cover_row.add_child(Art.book_cover(adventure.books[o.id], 80))
+				cover_row.add_child(_book_link(o.id, 80))
 			"item":
 				cover_row.add_child(Art.item_icon(o.id, 72))
 			"equipment":
@@ -337,6 +343,7 @@ func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
 func _act(ok: bool, message: String) -> void:
 	if ok:
 		_say(message)
+		Sfx.play("loot")
 	_rebuild()
 
 
@@ -378,6 +385,24 @@ func _equipment_text(e: Dictionary) -> String:
 	if e.has("prototype_note"):
 		text += " (" + e.prototype_note + ")"
 	return text
+
+
+## Обложка-кнопка: открывает книгу (все заклинания и шансы) — чтобы решить, брать ли её.
+func _book_link(book_id: String, width: int) -> Control:
+	var b := Button.new()
+	b.flat = true
+	b.tooltip_text = "Открыть книгу: заклинания и шансы"
+	b.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var cover := Art.book_cover(adventure.books[book_id], width)
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.custom_minimum_size = cover.get_combined_minimum_size()
+	b.add_child(cover)
+	b.pressed.connect(func() -> void:
+		var book: Dictionary = adventure.books[book_id]
+		BookView.open(self, book, ChipBag.odds(book.bag), false, {}, "",
+			"Шкала удачи — в бою, при Благословении. Здесь книгу можно только прочитать."))
+	return b
 
 
 func _say(text: String) -> void:

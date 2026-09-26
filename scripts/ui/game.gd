@@ -22,6 +22,8 @@ var _pending_notices: Array[String] = []
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = Art.ui_theme()
+	Settings.reload()
+	_auto_draw = bool(Settings.value("auto_draw"))
 	new_adventure()
 
 
@@ -33,6 +35,7 @@ func new_adventure() -> void:
 	sel.setup(classes, profile)
 	sel.start_pressed.connect(start_adventure)
 	sel.continue_pressed.connect(continue_adventure)
+	Sfx.music("menu")
 	_swap(sel)
 
 
@@ -71,6 +74,7 @@ func _show_battle() -> void:
 	b.auto_draw = _auto_draw
 	b.setup(adventure)
 	b.finished.connect(_on_battle_finished)
+	Sfx.music("boss" if adventure.is_last_level() else "battle")
 	_swap(b)
 
 
@@ -120,6 +124,7 @@ func _open_camp(rest: Array, torn: Array, notices: Array) -> void:
 	camp.setup(adventure, rest, torn)
 	camp.notices.assign(notices)
 	camp.continue_pressed.connect(_after_camp)
+	Sfx.music("camp")
 	_swap(camp)
 
 
@@ -158,10 +163,12 @@ func _after_camp() -> void:
 ## Карта: выбор одной из двух следующих локаций.
 func _show_map() -> void:
 	SaveGame.write(adventure, "map")
+	Sfx.music("map")
 	var m: Control = MapUI.new()
 	m.setup(adventure)
 	m.chosen.connect(func(id: int) -> void:
 		if adventure.choose(id):
+			Sfx.play("map_step")
 			_show_battle())
 	_swap(m)
 

@@ -26,6 +26,8 @@ func _initialize() -> void:
 	Engine.max_fps = 0
 	Profile.path = "user://test_profile.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	Settings.path = "user://test_ui_settings.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	SaveGame.path = "user://test_smoke_adventure.json"
 	SaveGame.clear()
 	game = load("res://scenes/main.tscn").instantiate()

@@ -64,6 +64,11 @@ var _ability_button: Button
 var _title_label: Label
 var _log: BattleLog
 var _auto_timer: Timer
+## Обучение первого боя: панель с шагом и подсветка того, куда нажимать.
+var _tutorial: PanelContainer
+var _tutorial_label: RichTextLabel
+var _pulse_tween: Tween
+var _pulsed: Array[Control] = []
 
 
 func setup(adv: Adventure) -> void:
@@ -183,7 +188,9 @@ func _select_book(id: String) -> void:
 func _on_draw_pressed() -> void:
 	if state != State.DRAWING:
 		return
-	bag.draw(combat.rng)
+	var chip := bag.draw(combat.rng)
+	if not fast:
+		Sfx.play("chip_chaos" if chip == ChipBag.CHAOS else "chip_draw")
 	_update_chips()
 	if bag.is_complete():
 		_set_state(State.READY)
@@ -199,6 +206,8 @@ func _on_chip_pressed(slot: int) -> void:
 		return
 	var old := bag.chips[slot]
 	combat.reroll_chip(actor, bag, slot)
+	if not fast:
+		Sfx.play("chip_burn")
 	_on_log("«%s» → «%s»." % [ELEMENT_NAMES[old], ELEMENT_NAMES[bag.chips[slot]]], "luck")
 	_update_chips()
 	if state == State.READY:
@@ -278,7 +287,7 @@ func _after_item() -> void:
 
 func _auto_step() -> void:
 	var delay := AUTO_DRAW_DELAY if state == State.DRAWING else AUTO_CAST_DELAY
-	_auto_timer.start(0.01 if fast else delay)
+	_auto_timer.start(0.01 if fast else Settings.delay(delay))
 
 
 func _on_auto_timer() -> void:
@@ -296,12 +305,19 @@ func _game_over() -> void:
 	_set_state(State.OVER)
 	var win := combat.outcome == "victory"
 	_prompt_label.text = "ПОБЕДА!" if win else "Поражение… Отряд выбыл."
+	if not fast:
+		Sfx.play("victory" if win else "defeat")
+	if _tutorial:
+		Settings.set_value("tutorial", false)  # обучение — только в первом бою
+		_tutorial.queue_free()
+		_tutorial = null
 	_on_log(_prompt_label.text, "outcome")
 	await _wait(1.2)
 	finished.emit(combat.outcome)
 
 
 func _set_state(s: State) -> void:
+	_stop_pulse()
 	state = s
 	_draw_button.disabled = s != State.DRAWING
 	if _bag_button:
@@ -349,6 +365,7 @@ func _set_state(s: State) -> void:
 			holder.add_child(open)
 			_book_box.add_child(holder)
 	_refresh()
+	_tutorial_step()
 
 
 # --- Отрисовка -----------------------------------------------------------
@@ -526,6 +543,7 @@ func _show_effects(spell: Dictionary) -> void:
 func _stamp(u: Unit, id: String) -> void:
 	if fast or not _cards.has(u.id):
 		return
+	Sfx.play("status_good" if Unit.BUFFS.has(id) or id in ["shield", "fortify"] else "status_bad")
 	var card: Control = _cards[u.id]
 	var big := StatusIcon.make(id, "", 0, 128)
 	big.rich_tooltip = false
@@ -550,6 +568,8 @@ func _stamp(u: Unit, id: String) -> void:
 
 
 func _shout() -> void:
+	if not fast:
+		Sfx.play("cast_shout")
 	_shout_label.text = "«Я кастую!»"
 	_shout_label.modulate = Color(1, 1, 1, 1)
 	_shout_label.scale = Vector2(0.6, 0.6)
@@ -565,12 +585,23 @@ func _shout() -> void:
 
 func _on_log(text: String, kind: String = "info", icon: String = "") -> void:
 	_log.add(text, kind, icon)
+	if not fast:
+		var sound: String = {"kill": "down", "special": "enemy_special", "summon": "summon", "luck": "luck"}.get(kind, "")
+		if sound != "":
+			Sfx.play(sound)
 
 
 ## Всплывающее число над карточкой: −урон красным, +лечение зелёным, поглощение — голубым.
 func _float_number(u: Unit, amount: float, kind: String) -> void:
 	if fast or not _cards.has(u.id) or amount <= 0.0:
 		return
+	match kind:
+		"damage":
+			Sfx.play("hit_big" if amount >= Combat.BIG_HIT else "hit")
+		"heal":
+			Sfx.play("heal")
+		"block":
+			Sfx.play("shield")
 	var card: Control = _cards[u.id]
 	var l := Label.new()
 	l.top_level = true
@@ -599,7 +630,111 @@ func _float_number(u: Unit, amount: float, kind: String) -> void:
 
 
 func _wait(seconds: float) -> Signal:
-	return get_tree().create_timer(0.01 if fast else seconds).timeout
+	return get_tree().create_timer(0.01 if fast else Settings.delay(seconds)).timeout
+
+
+# --- Обучение первого боя -----------------------------------------------
+
+const TUTORIAL := {
+	State.CHOOSE_TARGET: "[b]Шаг 1 из 4 · Выбери цель.[/b] Кликни по карточке врага (справа) или союзника (слева). [color=#ffd35a]Цель выбирается до фишек[/color] — поэтому лечение может достаться врагу, а удар своему. В этом весь «Я кастую!».",
+	State.CHOOSE_BOOK: "[b]Шаг 2 из 4 · Выбери книгу.[/b] У каждой книги свои 30 заклинаний. Кнопка [color=#ffd35a]«Открыть»[/color] под обложкой покажет их все с шансами.",
+	State.DRAWING: "[b]Шаг 3 из 4 · Тяни фишки.[/b] Нажми [color=#ffd35a]«Достать фишку»[/color] или по мешочку — три раза. Порядок фишек определяет заклинание, чёрная фишка — Хаос. Щёлкни по обложке книги, чтобы подсмотреть шансы.",
+	State.READY: "[b]Шаг 4 из 4 · Кричи![/b] Над кнопкой видно, что получилось. Жми [color=#ffd35a]«Я кастую!»[/color].",
+	State.ENEMY_TURN: "[b]Ходят враги.[/b] Кто ходит следующим — в строке «Очередь» сверху: быстрые ходят чаще. Наведи мышь на иконку эффекта или жми «Инфо», чтобы узнать, что она значит.",
+	State.ITEM_TARGET: "[b]Предмет.[/b] Выбери, на кого его использовать. Предмет не тратит ход.",
+	State.ABILITY_TARGET: "[b]Способность класса.[/b] Выбери союзника. Способность не тратит ход.",
+}
+
+
+func _build_tutorial() -> void:
+	_tutorial = PanelContainer.new()
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.13, 0.1, 0.05, 1.0)
+	box.border_color = Color("ffd35a")
+	box.set_border_width_all(3)
+	box.set_corner_radius_all(10)
+	box.set_content_margin_all(12)
+	_tutorial.add_theme_stylebox_override("panel", box)
+	_tutorial.z_index = 5
+	add_child(_tutorial)
+	# Поверх журнала (внизу), чтобы не закрывать карточки и кнопки.
+	_tutorial.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_tutorial.offset_left = 16
+	_tutorial.offset_right = -130
+	_tutorial.offset_top = -124
+	_tutorial.offset_bottom = -16
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_tutorial.add_child(row)
+	var badge := Label.new()
+	badge.text = "Обучение"
+	badge.add_theme_color_override("font_color", Color("ffd35a"))
+	badge.add_theme_font_size_override("font_size", 15)
+	badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(badge)
+	_tutorial_label = RichTextLabel.new()
+	_tutorial_label.bbcode_enabled = true
+	_tutorial_label.fit_content = true
+	_tutorial_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tutorial_label.add_theme_font_size_override("normal_font_size", 16)
+	_tutorial_label.add_theme_font_size_override("bold_font_size", 17)
+	row.add_child(_tutorial_label)
+	var hide := Button.new()
+	hide.text = "Скрыть обучение"
+	hide.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hide.pressed.connect(func() -> void:
+		Settings.set_value("tutorial", false)
+		_stop_pulse()
+		_tutorial.queue_free()
+		_tutorial = null)
+	row.add_child(hide)
+
+
+func _tutorial_step() -> void:
+	if _tutorial == null:
+		return
+	_tutorial.visible = TUTORIAL.has(state)
+	_tutorial_label.text = TUTORIAL.get(state, "")
+	match state:
+		State.CHOOSE_TARGET, State.ITEM_TARGET, State.ABILITY_TARGET:
+			_pulse([_party_box, _enemy_box])
+		State.CHOOSE_BOOK:
+			_pulse([_book_box])
+		State.DRAWING:
+			_pulse([_draw_button, _bag_button])
+		State.READY:
+			_pulse([_cast_button])
+		_:
+			_stop_pulse()
+
+
+## Мягко мигает золотом то, куда нужно нажать.
+func _pulse(targets: Array) -> void:
+	_stop_pulse()
+	for t in targets:
+		if t is Control and t.visible:
+			_pulsed.append(t)
+			t.set_meta("pulse_base", t.modulate)
+	if _pulsed.is_empty():
+		return
+	_pulse_tween = create_tween().set_loops()
+	for t in _pulsed:
+		var base: Color = t.get_meta("pulse_base")
+		_pulse_tween.parallel().tween_property(t, "modulate", base * Color(1.3, 1.18, 0.7), 0.45)
+	_pulse_tween.chain()
+	for t in _pulsed:
+		_pulse_tween.parallel().tween_property(t, "modulate", t.get_meta("pulse_base"), 0.45)
+
+
+func _stop_pulse() -> void:
+	if _pulse_tween:
+		_pulse_tween.kill()
+		_pulse_tween = null
+	for t in _pulsed:
+		if is_instance_valid(t) and t.has_meta("pulse_base"):
+			t.modulate = t.get_meta("pulse_base")
+			t.remove_meta("pulse_base")
+	_pulsed.clear()
 
 
 # --- Построение интерфейса -----------------------------------------------
@@ -627,6 +762,10 @@ func _build_ui() -> void:
 	info.tooltip_text = "Что значат иконки эффектов"
 	info.pressed.connect(func() -> void: StatusInfo.open(self))
 	top.add_child(info)
+	var gear := Button.new()
+	gear.text = "Настройки"
+	gear.pressed.connect(func() -> void: SettingsView.open(self))
+	top.add_child(gear)
 	_queue_label = _label("", 16)
 	_queue_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -805,6 +944,9 @@ func _build_ui() -> void:
 	_log = BattleLog.new()
 	_log.custom_minimum_size = Vector2(0, 150)
 	root.add_child(_log)
+
+	if Settings.value("tutorial") and not fast:
+		_build_tutorial()
 
 	_auto_timer = Timer.new()
 	_auto_timer.one_shot = true

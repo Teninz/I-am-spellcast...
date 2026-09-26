@@ -54,7 +54,13 @@ func _ready() -> void:
 	title.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02))
 	title.add_theme_constant_override("outline_size", 8)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
+	var gear := Button.new()
+	gear.text = "Настройки"
+	gear.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	gear.pressed.connect(func() -> void: SettingsView.open(self))
+	head.add_child(gear)
 	_hint = Label.new()
 	_hint.add_theme_font_size_override("font_size", 15)
 	_hint.modulate = Color(1, 1, 1, 0.75)

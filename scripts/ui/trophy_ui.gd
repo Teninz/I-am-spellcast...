@@ -93,6 +93,7 @@ func _ready() -> void:
 	_take.add_theme_font_size_override("font_size", 18)
 	_take.pressed.connect(func() -> void:
 		adventure.award_trophy(_kind, _wizard)
+		Sfx.play("trophy")
 		done.emit())
 	bottom.add_child(_take)
 	_sync()

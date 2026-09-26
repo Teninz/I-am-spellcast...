@@ -40,6 +40,7 @@ static func open(parent: Control, book_data: Dictionary, book_odds: Dictionary, 
 
 
 func _ready() -> void:
+	Sfx.play("book_open")
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	top_level = true
 	z_index = 10

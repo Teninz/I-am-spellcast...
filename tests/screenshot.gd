@@ -23,6 +23,8 @@ func _initialize() -> void:
 			out = a.substr(4)
 	Profile.path = "user://test_profile.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	Settings.path = "user://test_ui_settings.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	SaveGame.path = "user://test_shot_adventure.json"
 	SaveGame.clear()
 	game = load("res://scenes/main.tscn").instantiate()
@@ -40,9 +42,15 @@ func _process(_delta: float) -> bool:
 		camp_shot = true
 		busy = true
 		_shot("camp.png", func() -> void:
-			AutoPlayer.camp(game.adventure)
-			s._continue.pressed.emit()
-			busy = false)
+			var w: Wizard = game.adventure.wizards[0]
+			s._book_link(w.books[0], 30).pressed.emit()
+			_shot("camp_book.png", func() -> void:
+				for c in s.get_children():
+					if c is BookView:
+						c.queue_free()
+				AutoPlayer.camp(game.adventure)
+				s._continue.pressed.emit()
+				busy = false))
 		return false
 	if s.get_script() == PartySelectUI:
 		if not select_shot:
@@ -92,7 +100,12 @@ func _play(ui: Node) -> void:
 				if casts_in_second == 5:
 					busy = true
 					ui.fast = false
+					ui._build_tutorial()
+					ui._tutorial_step()
 					_shot("battle.png", func() -> void:
+						ui._tutorial.queue_free()
+						ui._tutorial = null
+						ui._stop_pulse()
 						var card := StatusIcon.big_card("aching", "7", "")
 						card.top_level = true
 						ui.add_child(card)
@@ -123,7 +136,9 @@ func _play(ui: Node) -> void:
 											game._show_trophy(false, [])
 											_shot("trophy.png", func() -> void:
 												game.new_adventure()
-												_shot("select_continue.png", func() -> void: quit()))))), 0.25)))
+												_shot("select_continue.png", func() -> void:
+													SettingsView.open(game.screen)
+													_shot("settings.png", func() -> void: quit())))))), 0.25)))
 					return
 			ui._on_cast_pressed()
 
