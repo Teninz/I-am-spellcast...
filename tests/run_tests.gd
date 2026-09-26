@@ -16,6 +16,7 @@ func _initialize() -> void:
 	test_rat_pack_simulation(books)
 	test_rest_and_fortify()
 	test_loot_rules()
+	test_map()
 	test_revive_after_battle()
 	test_party_scaling()
 	test_profile_unlocks()
@@ -269,6 +270,62 @@ func test_bard_and_paladin() -> void:
 
 
 ## Лут: правила выпадения и инвентаря.
+func test_map() -> void:
+	print("Карта с развилками:")
+	var adv := Adventure.new(["pyromancer", "priest", "water"], 5)
+	var nodes := adv.map_nodes
+	var last := adv.level_count()
+	var ok_fork := true
+	var ok_distinct := true
+	var ok_no_repeat := true
+	var bosses := 0
+	for n in nodes:
+		if n.level == last:
+			bosses += 1
+			continue
+		if n.children.size() != 2 and adv.map_nodes[n.children[0]].level != last:
+			ok_fork = false
+		if n.children.size() == 2 and nodes[n.children[0]].encounter == nodes[n.children[1]].encounter:
+			ok_distinct = false
+		var seen := {}
+		for e in adv._path_encounters(n.id):
+			if seen.has(e):
+				ok_no_repeat = false
+			seen[e] = true
+	check(nodes[0].level == 1 and nodes[0].encounter == "rat_pack", "старт — Крысиная стая")
+	check(ok_fork, "после каждого уровня — две дороги")
+	check(ok_distinct, "на развилке разные банды")
+	check(ok_no_repeat, "на одном пути банды не повторяются")
+	check(bosses == 1 and nodes.back().parents.size() == 8, "все дороги сходятся к одному боссу")
+	check(not adv.needs_choice() and adv.choices().is_empty(), "до первого боя выбирать нечего")
+	adv.level = 2  # пройден 1-й уровень
+	var ch := adv.choices()
+	check(adv.needs_choice() and ch.size() == 2, "после 1-го уровня — выбор из двух")
+	check(not adv.choose(nodes[0].id), "нельзя пойти не на соседнюю локацию")
+	var other: int = ch[1].id
+	check(adv.choose(ch[0].id) and adv.encounter().id == ch[0].encounter, "следующий бой — выбранная банда")
+	var closed: bool = adv.is_closed(other) and nodes[other].children.all(func(c: int) -> bool: return adv.is_closed(c))
+	check(closed and not adv.is_closed(nodes[ch[0].id].children[0]), "вторая ветка закрылась со всеми продолжениями")
+	check(not adv.is_closed(nodes.back().id), "босс по-прежнему впереди")
+	# Локация сдвигает добычу: в библиотеке чаще книги, в погребе — предметы.
+	for w in adv.wizards:
+		w.books.assign(["fire", "storm"])
+	adv.level = 3
+	var rates := {}
+	for site in ["library", "cellar"]:
+		adv.map_nodes[adv.node_id].site = site
+		var got := 0
+		var total := 0
+		for i in 300:
+			for o in adv.roll_loot(false):
+				if o.kind == "book":
+					got += 1
+				total += 1
+		rates[site] = float(got) / total
+	check(rates.library > 0.7 and rates.cellar < 0.3,
+		"добыча зависит от локации: книги в библиотеке %.0f %%, в погребе %.0f %%" % [rates.library * 100, rates.cellar * 100])
+
+
 func test_loot_rules() -> void:
 	print("Лут и инвентарь:")
 	var adv := Adventure.new(["pyromancer", "priest", "water"], 11)

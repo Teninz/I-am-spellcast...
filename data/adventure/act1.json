@@ -6,16 +6,20 @@
       "rat_pack"
     ],
     [
-      "goblin_gang"
+      "goblin_gang",
+      "wild_beasts"
     ],
     [
       "bandits",
-      "kobold_crew"
+      "kobold_crew",
+      "goblin_gang",
+      "mushroom_ring"
     ],
     [
       "geese_gang",
       "bandits",
-      "kobold_crew"
+      "kobold_crew",
+      "mushroom_ring"
     ],
     [
       "rat_king"
@@ -52,5 +56,30 @@
   "enemy_scaling": {
     "hp": 1.5,
     "boss_hp": 1.8
+  },
+  "sites": {
+    "path": {
+      "name": "Просёлочная дорога",
+      "weight": 50,
+      "desc": "Обычная добыча: книга или предмет пополам."
+    },
+    "library": {
+      "name": "Сгоревшая библиотека",
+      "weight": 25,
+      "desc": "Добыча — чаще книги (80 %).",
+      "loot_kind": {
+        "book": 80,
+        "item": 20
+      }
+    },
+    "cellar": {
+      "name": "Погреб трактира",
+      "weight": 25,
+      "desc": "Добыча — чаще расходуемые предметы (80 %).",
+      "loot_kind": {
+        "book": 20,
+        "item": 80
+      }
+    }
   }
 }

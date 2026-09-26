@@ -4,6 +4,7 @@ extends Control
 const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
 const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
+const MapUI := preload("res://scripts/ui/map_ui.gd")
 
 ## Для тестов: ускоряет задержки в бою.
 var fast := false
@@ -59,8 +60,25 @@ func _on_battle_finished(outcome: String) -> void:
 	adventure.roll_loot()
 	var camp: Control = CampUI.new()
 	camp.setup(adventure, rest, torn)
-	camp.continue_pressed.connect(_show_battle)
+	camp.continue_pressed.connect(_after_camp)
 	_swap(camp)
+
+
+func _after_camp() -> void:
+	if adventure.needs_choice():
+		_show_map()
+	else:
+		_show_battle()
+
+
+## Карта: выбор одной из двух следующих локаций.
+func _show_map() -> void:
+	var m: Control = MapUI.new()
+	m.setup(adventure)
+	m.chosen.connect(func(id: int) -> void:
+		if adventure.choose(id):
+			_show_battle())
+	_swap(m)
 
 
 func _show_end(victory: bool) -> void:

@@ -1,17 +1,19 @@
 extends SceneTree
 ## Снимки экранов (нужен дисплей, например xvfb-run):
 ##   godot --path . --script res://tests/screenshot.gd -- out=/tmp/shots
-## Сохраняет camp.png (первый привал), battle.png (середина 2-го боя) и info.png (окно «Инфо»).
+## Сохраняет camp.png (первый привал), map.png и map_hover.png (развилка), battle.png (середина 2-го боя) и info.png (окно «Инфо»).
 
 const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
 const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
+const MapUI := preload("res://scripts/ui/map_ui.gd")
 
 var game: Node
 var out := "user://"
 var busy := false
 var camp_shot := false
 var select_shot := false
+var map_shot := false
 var casts_in_second := 0
 
 
@@ -49,6 +51,19 @@ func _process(_delta: float) -> bool:
 				busy = false)
 		else:
 			s.start_pressed.emit(["pyromancer", "priest", "water", "magus"])
+		return false
+	if s.get_script() == MapUI:
+		var first: int = game.adventure.choices()[0].id
+		if map_shot:
+			s._on_node_clicked(first)
+			return false
+		map_shot = true
+		busy = true
+		_shot("map.png", func() -> void:
+			s._view.set_hover(first)
+			_shot("map_hover.png", func() -> void:
+				busy = false
+				s._on_node_clicked(first)))
 		return false
 	if s.get_script() == BattleUI:
 		_play(s)

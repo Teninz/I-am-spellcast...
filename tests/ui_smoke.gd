@@ -5,6 +5,7 @@ extends SceneTree
 const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
 const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
+const MapUI := preload("res://scripts/ui/map_ui.gd")
 
 var game: Node
 var frames := 0
@@ -12,6 +13,7 @@ var runs := 0
 var wins := 0
 var camps := 0
 var items_used := 0
+var forks := 0
 var last_screen: Node = null
 
 
@@ -57,14 +59,20 @@ func _process(_delta: float) -> bool:
 				quit(1)
 				return true
 			s._continue.pressed.emit()
+	elif s.get_script() == MapUI:
+		if s != last_screen:
+			last_screen = s
+			forks += 1
+			var ch: Array = game.adventure.choices()
+			s._on_node_clicked(ch[forks % ch.size()].id)
 	elif s != last_screen:
 		last_screen = s
 		runs += 1
 		if s.get_meta("victory", false):
 			wins += 1
 		if runs >= 6:
-			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, предметов в бою: %d)"
-				% [runs, wins, camps, items_used])
+			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, предметов в бою: %d)"
+				% [runs, wins, camps, forks, items_used])
 			quit(0)
 			return true
 		game.new_adventure()

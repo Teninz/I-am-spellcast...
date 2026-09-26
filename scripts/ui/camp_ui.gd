@@ -112,16 +112,17 @@ func _build() -> void:
 func _rebuild() -> void:
 	var done := adventure.level - 1
 	_header.text = "Привал после уровня %d" % done
-	var enc := adventure.encounter()
-	_info.text = "Следующий бой: уровень %d из %d — %s%s.   Отказов от книг у отряда осталось: %d." % [
-		adventure.level, adventure.level_count(), enc.name,
-		" (БОСС)" if adventure.is_last_level() else "", adventure.refusals_left]
+	var next := "Дальше — развилка: выбор пути на карте" if adventure.needs_choice() \
+		else "Следующий бой: %s%s" % [adventure.encounter().name, " (БОСС)" if adventure.is_last_level() else ""]
+	_info.text = "Уровень %d из %d. %s.   Отказов от книг у отряда осталось: %d." % [
+		adventure.level, adventure.level_count(), next, adventure.refusals_left]
 	for c in _columns.get_children():
 		c.queue_free()
 	for i in adventure.wizards.size():
 		_columns.add_child(_wizard_column(i))
 	_continue.disabled = not adventure.all_resolved()
-	_continue.text = "В бой!" if adventure.all_resolved() else "Сначала разбери добычу"
+	var go := "К карте" if adventure.needs_choice() else "В бой!"
+	_continue.text = go if adventure.all_resolved() else "Сначала разбери добычу"
 
 
 func _wizard_column(i: int) -> Control:

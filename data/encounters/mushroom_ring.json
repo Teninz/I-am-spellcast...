@@ -1,0 +1,36 @@
+{
+  "id": "mushroom_ring",
+  "name": "Грибная поляна",
+  "members": [
+    {
+      "name": "Кусачий гриб",
+      "hp": 3,
+      "damage": 1,
+      "speed": 9
+    },
+    {
+      "name": "Кусачий гриб",
+      "hp": 3,
+      "damage": 1,
+      "speed": 9
+    },
+    {
+      "name": "Старый Мухомор",
+      "hp": 7,
+      "damage": 1,
+      "speed": 10,
+      "leader": true,
+      "specials": [
+        {
+          "id": "aoe",
+          "name": "Споровое облако",
+          "cooldown": 3,
+          "damage": 0,
+          "status": "poison",
+          "turns": 2,
+          "text": "Яд на всех волшебников на 2 хода"
+        }
+      ]
+    }
+  ]
+}

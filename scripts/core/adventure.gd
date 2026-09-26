@@ -21,7 +21,12 @@ var offers: Array[Dictionary] = []
 var resurrection_dropped := false
 var last_was_boss := false  # был ли последний пройденный бой с боссом
 var unlocked_classes: Array = []
-var _plan: Array[String] = []
+## Карта акта: дерево локаций. Узел: {id, level, encounter, site, children: [id], parents: [id]}.
+## После каждого уровня отряд выбирает одного из двух потомков текущего узла —
+## вторая ветка со всеми продолжениями закрывается.
+var map_nodes: Array[Dictionary] = []
+var node_id := 0  # узел текущего (или только что пройденного) боя
+var path: Array[int] = [0]
 
 
 func _init(party: Array, seed_value: int = 0, act_id: String = "act1", unlocked: Array = []) -> void:
@@ -45,30 +50,155 @@ func _init(party: Array, seed_value: int = 0, act_id: String = "act1", unlocked:
 		wizards.append(Wizard.new(cid, classes[cid], equipment))
 		if not unlocked_classes.has(cid):
 			unlocked_classes.append(cid)
-	_plan_levels()
+	_build_map()
 
 
-func _plan_levels() -> void:
-	var used := {}
-	for options in config.levels:
-		var free: Array = options.filter(func(o: String) -> bool: return not used.has(o))
-		if free.is_empty():
-			free = options
-		var pick: String = free[rng.randi_range(0, free.size() - 1)]
-		used[pick] = true
-		_plan.append(pick)
+# --- Карта ----------------------------------------------------------------
+
+## Строит дерево: у каждого узла два потомка с разными бандами (если пул уровня позволяет),
+## банды не повторяются на одном пути. Если на уровне одна банда (босс акта) —
+## все ветки сходятся в один узел.
+func _build_map() -> void:
+	map_nodes.clear()
+	var levels: Array = config.levels
+	var root := _new_node(1, _pick_encounter(levels[0], []), [])
+	var frontier: Array[int] = [root]
+	for li in range(1, levels.size()):
+		var pool: Array = levels[li]
+		var next: Array[int] = []
+		if pool.size() == 1:
+			var shared := _new_node(li + 1, pool[0], frontier)
+			for p in frontier:
+				map_nodes[p].children.append(shared)
+			next.append(shared)
+		else:
+			for p in frontier:
+				var taken := _path_encounters(p)
+				for k in 2:
+					var avoid := taken.duplicate()
+					for c in map_nodes[p].children:
+						avoid.append(map_nodes[c].encounter)
+					var child := _new_node(li + 1, _pick_encounter(pool, avoid), [p])
+					map_nodes[p].children.append(child)
+					next.append(child)
+		frontier = next
+
+
+func _new_node(lvl: int, enc: String, parents: Array) -> int:
+	var id := map_nodes.size()
+	var site := "path" if lvl == 1 or parents.size() > 1 else _weighted(_site_weights())
+	map_nodes.append({"id": id, "level": lvl, "encounter": enc, "site": site,
+		"children": [], "parents": parents.duplicate()})
+	return id
+
+
+func _site_weights() -> Dictionary:
+	var out := {}
+	var sites: Dictionary = config.get("sites", {})
+	for k in sites:
+		out[k] = int(sites[k].get("weight", 1))
+	return out if not out.is_empty() else {"path": 1}
+
+
+func _pick_encounter(pool: Array, avoid: Array) -> String:
+	var free: Array = pool.filter(func(o: String) -> bool: return not avoid.has(o))
+	if free.is_empty():
+		free = pool.filter(func(o: String) -> bool: return o != avoid.back()) if not avoid.is_empty() else pool
+	if free.is_empty():
+		free = pool
+	return free[rng.randi_range(0, free.size() - 1)]
+
+
+## Банды на пути от старта до узла (включительно).
+func _path_encounters(id: int) -> Array:
+	var out := []
+	var cur := id
+	while true:
+		out.append(map_nodes[cur].encounter)
+		if map_nodes[cur].parents.is_empty():
+			break
+		cur = map_nodes[cur].parents[0]
+	return out
+
+
+func node() -> Dictionary:
+	return map_nodes[node_id]
+
+
+## Нужно ли выбрать следующую локацию (после победы, перед следующим боем).
+func needs_choice() -> bool:
+	return node().level < level and not node().children.is_empty()
+
+
+## Куда можно пойти дальше.
+func choices() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if needs_choice():
+		for c in node().children:
+			out.append(map_nodes[c])
+	return out
+
+
+func choose(id: int) -> bool:
+	if not needs_choice() or not node().children.has(id):
+		return false
+	node_id = id
+	path.append(id)
+	return true
+
+
+## Узел закрыт: он не на пройденном пути и до него уже не дойти.
+func is_closed(id: int) -> bool:
+	if path.has(id):
+		return false
+	return not _reachable_from(node_id).has(id)
+
+
+func _reachable_from(id: int) -> Dictionary:
+	var out := {}
+	var stack: Array = [id]
+	while not stack.is_empty():
+		var cur: int = stack.pop_back()
+		for c in map_nodes[cur].children:
+			if not out.has(c):
+				out[c] = true
+				stack.append(c)
+	return out
+
+
+## Видно ли, какая банда ждёт в узле: пройденный путь и два уровня вперёд.
+func is_revealed(id: int) -> bool:
+	return path.has(id) or map_nodes[id].level <= level + 1 or map_nodes[id].parents.size() > 1
+
+
+## Без выбора игрока (симуляторы, автоигрок) — случайная ветка.
+func _ensure_node() -> void:
+	while needs_choice():
+		var ch: Array = node().children
+		choose(ch[rng.randi_range(0, ch.size() - 1)])
+
+
+func site_info(site: String) -> Dictionary:
+	return config.get("sites", {}).get(site, {"name": "Дорога"})
+
+
+## Банда узла с усилением под отряд — для превью на карте.
+func node_encounter(id: int) -> Dictionary:
+	return Adventure.scale_encounter(GameData.load_encounter(map_nodes[id].encounter), wizards.size(), config)
 
 
 func level_count() -> int:
-	return _plan.size()
+	return config.levels.size()
 
 
 func is_last_level() -> bool:
 	return level >= level_count()
 
 
+## Банда следующего боя. Если игрок не выбрал путь — ветка выбирается случайно.
 func encounter() -> Dictionary:
-	return Adventure.scale_encounter(GameData.load_encounter(_plan[level - 1]), wizards.size(), config)
+	_ensure_node()
+	return node_encounter(node_id)
 
 
 ## Усиление врагов под размер отряда (настройки — config.party_scaling["<размер>"]):
@@ -168,7 +298,7 @@ func roll_loot(boss: Variant = null) -> Array[Dictionary]:
 			if was_boss and rng.randf() < float(config.get("boss_item_chance", 0.2)):
 				offers.append(_make_offer(i, "item"))
 		else:
-			var kind := "book" if w.books.size() <= 1 else _weighted(config.loot_kind)
+			var kind := "book" if w.books.size() <= 1 else _weighted(loot_kind())
 			offers.append(_make_offer(i, kind))
 	# Гарантия: свиток или зелье воскрешения до уровня N.
 	if not resurrection_dropped and level >= int(config.resurrection_guarantee_level) - 1:
@@ -179,6 +309,12 @@ func roll_loot(boss: Variant = null) -> Array[Dictionary]:
 			resurrection_dropped = true
 	_auto_resolve_destroyed()
 	return offers
+
+
+## Что выпадает на обычном уровне: книга или предмет. Локация может сдвигать шансы
+## (в библиотеке чаще книги, в погребе — предметы).
+func loot_kind() -> Dictionary:
+	return site_info(node().site).get("loot_kind", config.loot_kind)
 
 
 func _make_offer(i: int, kind: String) -> Dictionary:
