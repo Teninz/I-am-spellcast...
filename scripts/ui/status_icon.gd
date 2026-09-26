@@ -99,23 +99,33 @@ func _draw() -> void:
 	var frame: Color = FRAME_COLORS.get(info.get("kind", "special"), Color.GRAY)
 	var tex := StatusIcon.texture_for(status_id)
 	if tex:
+		# Единая тёмная подложка: у части картинок прозрачный фон.
+		draw_rect(r.grow(-2), Color("15161f"))
 		draw_texture_rect(tex, r.grow(-2), false)
 	else:
 		draw_rect(r.grow(-2), Color(info.get("color", "#777777")))
 		_draw_text_centered(String(info.get("short", "?")), Rect2(0, 0, size.x, size.y * 0.72), int(size.y * 0.38), Color.WHITE)
 	draw_rect(r.grow(-1), frame, false, 2.0)
-	var font := ThemeDB.fallback_font
-	var fs := int(size.y * 0.4)
+	var fs := clampi(int(size.y * 0.34), 10, 18)
 	if counter != "":
-		var w := font.get_string_size(counter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var pos := Vector2(size.x - w - 1, size.y - 2)
-		draw_string_outline(font, pos, counter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color.BLACK)
-		draw_string(font, pos, counter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+		_badge(counter, fs, true)
 	if stacks > 1:
-		var t := "×%d" % stacks
-		var pos2 := Vector2(2, fs)
-		draw_string_outline(font, pos2, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 2, 4, Color.BLACK)
-		draw_string(font, pos2, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 2, Color("ffd35a"))
+		_badge("×%d" % stacks, fs, false)
+
+
+## Число на тёмном жетоне: справа снизу (ходы) или слева сверху (стаки).
+func _badge(text: String, fs: int, bottom_right: bool) -> void:
+	var font := ThemeDB.fallback_font
+	var ts := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	var pad := Vector2(3, 1)
+	var bs := Vector2(ts.x + pad.x * 2, fs + pad.y * 2)
+	var pos := Vector2(size.x - bs.x, size.y - bs.y) if bottom_right else Vector2.ZERO
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0, 0, 0, 0.8)
+	box.set_corner_radius_all(3)
+	draw_style_box(box, Rect2(pos, bs))
+	var color := Color.WHITE if bottom_right else Color("ffd35a")
+	draw_string(font, pos + Vector2(pad.x, pad.y + fs * 0.82), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, color)
 
 
 func _draw_text_centered(text: String, r: Rect2, fs: int, color: Color) -> void:

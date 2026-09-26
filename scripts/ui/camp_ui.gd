@@ -150,9 +150,9 @@ func _wizard_column(i: int) -> Control:
 	col.add_child(_label(hp_line, 16))
 	var icons := HFlowContainer.new()
 	if w.fortify > 0.0:
-		icons.add_child(StatusIcon.make("fortify", Unit._num(w.fortify), 0, 28))
+		icons.add_child(StatusIcon.make("fortify", Unit._num(w.fortify), 0, 36))
 	for id in w.carry_statuses:
-		icons.add_child(StatusIcon.make(id, str(w.carry_statuses[id]), 0, 28))
+		icons.add_child(StatusIcon.make(id, str(w.carry_statuses[id]), 0, 36))
 	if icons.get_child_count() > 0:
 		col.add_child(icons)
 	col.add_child(_small("Мдр %d · Защ %d · Удача %d · Сопр %d · Скор %s" % [

@@ -18,6 +18,8 @@ static func open(parent: Control) -> StatusInfo:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	top_level = true  # поверх всего, включая «штампы» эффектов
+	z_index = 10
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.6)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

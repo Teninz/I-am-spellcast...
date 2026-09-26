@@ -321,7 +321,7 @@ func _update_card(card: Button, u: Unit) -> void:
 		var names := {}
 		for x in combat.units:
 			names[x.id] = x.name
-		for icon in StatusIcon.icons_for(u, 30, names):
+		for icon in StatusIcon.icons_for(u, 38, names):
 			icons.add_child(icon)
 
 
@@ -374,9 +374,9 @@ func _show_effects(spell: Dictionary) -> void:
 	for s in spec.statuses:
 		ids.append(s.id)
 	for id in ids:
-		_effects_box.add_child(StatusIcon.make(id, "", 0, 60))
+		_effects_box.add_child(StatusIcon.make(id, "", 0, 72))
 	for s in spec.caster_statuses:
-		var icon := StatusIcon.make(s.id, "", 0, 44)
+		var icon := StatusIcon.make(s.id, "", 0, 52)
 		icon.tooltip_text += "\n(накладывается на самого кастующего)"
 		_effects_box.add_child(icon)
 
@@ -386,18 +386,18 @@ func _stamp(u: Unit, id: String) -> void:
 	if fast or not _cards.has(u.id):
 		return
 	var card: Control = _cards[u.id]
-	var big := StatusIcon.make(id, "", 0, 96)
+	var big := StatusIcon.make(id, "", 0, 128)
 	big.rich_tooltip = false
 	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	big.top_level = true
 	add_child(big)
 	var rect := card.get_global_rect()
-	big.size = Vector2(96, 96)
-	big.pivot_offset = Vector2(48, 48)
-	big.global_position = rect.get_center() - Vector2(48, 60)
+	big.size = Vector2(128, 128)
+	big.pivot_offset = Vector2(64, 64)
+	big.global_position = rect.get_center() - Vector2(64, 80)
 	big.scale = Vector2(1.4, 1.4)
 	big.modulate.a = 0.0
-	var target_pos := Vector2(rect.position.x + 8 - 48 + 15, rect.end.y - 23 - 48)
+	var target_pos := Vector2(rect.position.x + 8 - 64 + 19, rect.end.y - 27 - 64)
 	var tw := create_tween()
 	tw.tween_property(big, "modulate:a", 1.0, 0.12)
 	tw.parallel().tween_property(big, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -503,7 +503,7 @@ func _build_ui() -> void:
 	_effects_box = HBoxContainer.new()
 	_effects_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_effects_box.add_theme_constant_override("separation", 10)
-	_effects_box.custom_minimum_size = Vector2(0, 64)
+	_effects_box.custom_minimum_size = Vector2(0, 76)
 	center.add_child(_effects_box)
 
 	_shout_label = _label("", 40)
@@ -570,7 +570,7 @@ func _build_ui() -> void:
 
 func _make_card(u: Unit) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(260, 78)
+	b.custom_minimum_size = Vector2(260, 86)
 	b.pressed.connect(_on_card_pressed.bind(u))
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color("2d3a52") if u.is_wizard() else Color("522d2d")

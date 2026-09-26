@@ -66,13 +66,19 @@ func _play(ui: Node) -> void:
 						card.position = Vector2(420, 430)
 						_shot("card.png", func() -> void:
 							card.queue_free()
-							StatusInfo.open(ui)
-							_shot("info.png", func() -> void: quit())))
+							# Демонстрация: предпросмотр эффектов и «штамп» в полёте.
+							ui._show_effects(ui.combat.spell_for("pact", "DDT"))
+							ui._stamp(ui.combat.living(Unit.ENEMIES)[0], "burn")
+							_shot("stamp.png", func() -> void:
+								StatusInfo.open(ui)
+								_shot("info.png", func() -> void: quit()), 0.25)))
 					return
 			ui._on_cast_pressed()
 
 
-func _shot(file: String, then: Callable) -> void:
+func _shot(file: String, then: Callable, delay: float = 0.0) -> void:
+	if delay > 0.0:
+		await create_timer(delay).timeout
 	for i in 12:
 		await process_frame
 	root.get_texture().get_image().save_png(out.path_join(file))
