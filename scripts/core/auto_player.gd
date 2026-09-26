@@ -62,6 +62,7 @@ static func play(combat: Combat) -> String:
 			break
 		if u.is_wizard():
 			maybe_use_item(combat, u)
+			use_abilities(combat, u)
 			if combat.outcome != "":
 				break
 			var casts := 1 + u.extra_casts
@@ -76,10 +77,24 @@ static func play(combat: Combat) -> String:
 				var bag := combat.new_bag(u, book)
 				while not bag.is_complete():
 					bag.draw(combat.rng)
+				# Хаос — перевытянуть, если есть чем (Сожжение, Муза).
+				if bag.chips.has(ChipBag.CHAOS) and combat.can_reroll(u):
+					combat.reroll_chip(u, bag, bag.chips.find(ChipBag.CHAOS))
 				combat.cast(u, target, book, bag, i == casts - 1)
 		else:
 			combat.enemy_act(u)
 	return combat.outcome
+
+
+## Бесплатные способности: Наложение рук раненым, Вдохновение союзнику.
+static func use_abilities(combat: Combat, u: Unit) -> void:
+	if combat.can_lay_on_hands(u):
+		for t in combat.lay_on_hands_targets(u):
+			if t.hp < t.max_hp * 0.5:
+				combat.lay_on_hands(u, t)
+				break
+	if combat.can_inspire(u):
+		combat.inspire(u, combat.inspire_targets(u)[0])
 
 
 static func _someone_hurt(combat: Combat, u: Unit) -> bool:

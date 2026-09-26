@@ -32,9 +32,8 @@
     "epic": 5
   },
   "loot_kind": {
-    "book": 45,
-    "item": 40,
-    "equipment": 15
+    "book": 50,
+    "item": 50
   },
   "rest_heal": 0.75,
   "fortify_rate": 0.1,
@@ -44,9 +43,14 @@
   "resurrection_guarantee_level": 10,
   "party_scaling": {
     "4": {
-      "hp": 1.7,
+      "hp": 1.5,
       "extra_members": 1,
-      "boss_hp": 2.8
+      "boss_hp": 2.4
     }
+  },
+  "boss_item_chance": 0.2,
+  "enemy_scaling": {
+    "hp": 1.5,
+    "boss_hp": 1.8
   }
 }

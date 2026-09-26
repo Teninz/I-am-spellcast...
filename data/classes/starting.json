@@ -12,7 +12,8 @@
     "forbidden_books": [
       "water"
     ],
-    "forbidden_text": "Пиромант не может пользоваться Книгой Воды — её нужно отдать или выбросить."
+    "forbidden_text": "Пиромант не может пользоваться Книгой Воды — её нужно отдать или выбросить.",
+    "unlocked": true
   },
   "priest": {
     "name": "Священник",
@@ -27,7 +28,8 @@
       "necronomicon"
     ],
     "forbidden_text": "Священник уничтожает Некрономикон.",
-    "destroys_forbidden": true
+    "destroys_forbidden": true,
+    "unlocked": true
   },
   "water": {
     "name": "Волшебник Воды",
@@ -38,7 +40,8 @@
     ],
     "ability": "elemental_form",
     "ability_text": "Элементальная форма: 20 % шанс проигнорировать любой урон, кроме огня.",
-    "forbidden_books": []
+    "forbidden_books": [],
+    "unlocked": true
   },
   "magus": {
     "name": "Магус с тростью",
@@ -49,8 +52,43 @@
     ],
     "ability": "cane",
     "max_books": 2,
-    "unlocked": false,
+    "unlocked": true,
     "forbidden_books": [],
-    "ability_text": "Удар тростью: если каст по противнику не нанёс урона, Магус добивает его тростью на 1. Носит только 2 книги."
+    "ability_text": "Удар тростью: если каст по противнику не нанёс урона, Магус добивает его тростью на 1. Носит только 2 книги.",
+    "ability_charges": 0
+  },
+  "bard": {
+    "name": "Бард-на-пенсии",
+    "hp": 10,
+    "speed": 10,
+    "books": [
+      "bard"
+    ],
+    "ability": "inspiration",
+    "ability_charges": 2,
+    "unlocked": false,
+    "unlock": {
+      "type": "first_run",
+      "text": "Закончить первое приключение (даже поражением)."
+    },
+    "forbidden_books": [],
+    "ability_text": "Вдохновение: 2 раза за бой даёт союзнику право перевытянуть одну фишку (клик по ней). Критики: 10 % — баллада фальшивая, весь отряд Замедлен на 1 ход."
+  },
+  "paladin": {
+    "name": "Паладин в отставке",
+    "hp": 10,
+    "speed": 10,
+    "books": [
+      "oath"
+    ],
+    "ability": "lay_on_hands",
+    "ability_charges": 5,
+    "unlocked": false,
+    "unlock": {
+      "type": "first_victory",
+      "text": "Впервые пройти приключение до конца."
+    },
+    "forbidden_books": [],
+    "ability_text": "Наложение рук: запас 5 лечения на бой, можно раздавать союзникам в свой ход (ход не тратится). Клятва: если каст ранил союзника, запас сгорает до конца боя."
   }
 }

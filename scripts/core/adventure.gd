@@ -19,11 +19,12 @@ var level := 1  # номер следующего боя
 var refusals_left: int
 var offers: Array[Dictionary] = []
 var resurrection_dropped := false
-var unlocked_classes: Array = ["pyromancer", "priest", "water"]
+var last_was_boss := false  # был ли последний пройденный бой с боссом
+var unlocked_classes: Array = []
 var _plan: Array[String] = []
 
 
-func _init(party: Array, seed_value: int = 0, act_id: String = "act1") -> void:
+func _init(party: Array, seed_value: int = 0, act_id: String = "act1", unlocked: Array = []) -> void:
 	if seed_value != 0:
 		rng.seed = seed_value
 	else:
@@ -35,6 +36,11 @@ func _init(party: Array, seed_value: int = 0, act_id: String = "act1") -> void:
 		equipment[e.id] = e
 	config = GameData.load_json("res://data/adventure/%s.json" % act_id)
 	refusals_left = int(config.refusals)
+	unlocked_classes = unlocked.duplicate()
+	if unlocked_classes.is_empty():
+		for cid in classes:
+			if classes[cid].get("unlocked", false):
+				unlocked_classes.append(cid)
 	for cid in party:
 		wizards.append(Wizard.new(cid, classes[cid], equipment))
 		if not unlocked_classes.has(cid):
@@ -70,12 +76,15 @@ func encounter() -> Dictionary:
 ## (копии первого рядового), boss_hp — отдельный множитель для боссов.
 static func scale_encounter(enc: Dictionary, party_size: int, cfg: Dictionary) -> Dictionary:
 	var rule: Dictionary = cfg.get("party_scaling", {}).get(str(party_size), {})
-	if rule.is_empty():
+	var base: Dictionary = cfg.get("enemy_scaling", {})
+	if rule.is_empty() and base.is_empty():
 		return enc
 	var out: Dictionary = enc.duplicate(true)
 	var grunt: Dictionary = {}
 	for m in out.members:
-		var mult := float(rule.get("boss_hp", rule.get("hp", 1.0))) if m.get("boss", false) else float(rule.get("hp", 1.0))
+		var boss: bool = m.get("boss", false)
+		var mult := float(rule.get("boss_hp", rule.get("hp", 1.0))) if boss else float(rule.get("hp", 1.0))
+		mult *= float(base.get("boss_hp", base.get("hp", 1.0))) if boss else float(base.get("hp", 1.0))
 		m.hp = maxi(1, roundi(float(m.hp) * mult))
 		if grunt.is_empty() and not m.get("leader", false) and not m.get("boss", false):
 			grunt = m
@@ -93,7 +102,10 @@ func start_combat(seed_value: int = 0) -> Combat:
 ## Записывает итоги боя в волшебников. Возвращает порванные книги: [{wizard, book}].
 func finish_combat(c: Combat) -> Array:
 	var torn := []
+	last_was_boss = false
 	for u in c.units:
+		if u.is_boss:
+			last_was_boss = true
 		if u.wizard == null:
 			continue
 		var w := u.wizard
@@ -106,7 +118,7 @@ func finish_combat(c: Combat) -> Array:
 			torn.append({"wizard": w, "book": b})
 		# Победа: выбывший поднимается с 50 % ЗД и Разбитостью на 10 ходов.
 		if c.outcome == "victory" and not w.alive():
-			w.hp = w.max_hp() * REVIVE_HP
+			w.hp = Unit.q(w.max_hp() * REVIVE_HP)
 			w.carry_statuses["aching"] = ACHING_TURNS
 			w.just_revived = true
 	if c.outcome == "victory":
@@ -129,25 +141,39 @@ func rest() -> Array:
 			continue
 		var mx := w.max_hp()
 		var total := w.hp + mx * float(config.rest_heal)
-		var healed := minf(total, mx) - w.hp
-		w.fortify = maxf(0.0, total - mx) * float(config.fortify_rate)
-		w.hp = minf(total, mx)
+		var healed := Unit.q(minf(total, mx) - w.hp)
+		w.fortify = Unit.q(maxf(0.0, total - mx) * float(config.fortify_rate))
+		w.hp = Unit.q(minf(total, mx))
 		out.append({"wizard": w, "healed": healed, "fortify": w.fortify, "dead": false})
 	return out
 
 
 # --- Выпадение лута -----------------------------------------------------
 
-func roll_loot() -> Array[Dictionary]:
+## Лут после пройденного уровня:
+## - после 1-го уровня и после босса: каждому +1 книга и +1 шляпа/ботинки;
+##   после босса ещё и расходуемый предмет с шансом 20 % каждому;
+## - после остальных уровней: каждому +1 книга ИЛИ +1 расходуемый предмет
+##   (у кого одна книга — всегда книга).
+## boss — был ли пройденный уровень боссом (по умолчанию — из последнего боя).
+func roll_loot(boss: Variant = null) -> Array[Dictionary]:
 	offers.clear()
+	var was_boss: bool = last_was_boss if boss == null else bool(boss)
+	var big := level - 1 == 1 or was_boss
 	for i in wizards.size():
 		var w := wizards[i]
-		var kind := "book" if w.books.size() <= 1 else _weighted(config.loot_kind)
-		offers.append(_make_offer(i, kind))
+		if big:
+			offers.append(_make_offer(i, "book"))
+			offers.append(_make_offer(i, "equipment"))
+			if was_boss and rng.randf() < float(config.get("boss_item_chance", 0.2)):
+				offers.append(_make_offer(i, "item"))
+		else:
+			var kind := "book" if w.books.size() <= 1 else _weighted(config.loot_kind)
+			offers.append(_make_offer(i, kind))
 	# Гарантия: свиток или зелье воскрешения до уровня N.
 	if not resurrection_dropped and level >= int(config.resurrection_guarantee_level) - 1:
-		var i := rng.randi_range(0, offers.size() - 1)
-		offers[i] = {"wizard": i, "kind": "item", "id": "scroll_resurrect", "resolved": false}
+		var i := rng.randi_range(0, wizards.size() - 1)
+		offers.append({"wizard": i, "kind": "item", "id": "scroll_resurrect", "resolved": false})
 	for o in offers:
 		if o.kind == "item" and items[o.id].get("resurrection", false):
 			resurrection_dropped = true
@@ -388,9 +414,9 @@ func use_item_camp(owner: Wizard, target: Wizard) -> String:
 	var e: Dictionary = it.effect
 	owner.item = ""
 	if e.has("revive") and not target.alive():
-		target.hp = minf(target.max_hp(), float(e.revive))
+		target.hp = Unit.q(minf(target.max_hp(), float(e.revive)))
 	if e.has("heal") and target.alive():
-		target.hp = minf(target.max_hp(), target.hp + float(e.heal))
+		target.hp = Unit.q(minf(target.max_hp(), target.hp + float(e.heal)))
 		target.carry_statuses.erase("aching")  # положительный эффект снимает Разбитость
 	if e.get("reset_wear", false):
 		target.wear_book = ""

@@ -11,7 +11,7 @@ const DEBUFFS := ["burn", "poison", "stun", "slow", "vulnerable", "weak", "fear"
 ## «Разбитость» после воскрешения: скорость −25 %.
 const ACHING_SPEED := 0.75
 const BUFFS := ["regen", "haste", "invisible", "reflect", "invulnerable", "stoneskin",
-	"inspire", "bless", "focus", "elemental", "taunt"]
+	"inspire", "bless", "focus", "elemental", "taunt", "muse"]
 
 var id: int
 var name: String
@@ -40,6 +40,7 @@ var books: Array[String] = []
 var books_used: Dictionary = {}  # книги, из которых кастовал в этом бою
 var ability: String = ""
 var ability_charges: int = 0
+var ability_pool: float = 0.0  # запас лечения Паладина на бой
 var no_chaos := false
 var extra_casts: int = 0
 
@@ -54,6 +55,11 @@ var passive: String = ""
 var specials: Array = []  # [{..., "cd": ходов до готовности}]
 
 var statuses: Dictionary = {}  # id -> {turns, stacks, source} (source — id участника или -1)
+
+
+## Здоровье считается с точностью до 0.1.
+static func q(v: float) -> float:
+	return roundf(v * 10.0) / 10.0
 
 
 func alive() -> bool:
@@ -146,7 +152,7 @@ func tick_down() -> void:
 			statuses.erase(s)
 	if fortify_turns > 0:
 		fortify_turns -= 1
-		fortify = maxf(0.0, fortify - fortify_decay)
+		fortify = Unit.q(maxf(0.0, fortify - fortify_decay))
 		if fortify_turns == 0:
 			fortify = 0.0
 
@@ -156,8 +162,7 @@ func hp_text() -> String:
 
 
 static func _num(v: float) -> String:
+	v = Unit.q(v)
 	if is_equal_approx(v, roundf(v)):
 		return str(int(roundf(v)))
-	if is_equal_approx(v * 10.0, roundf(v * 10.0)):
-		return "%.1f" % v
-	return "%.2f" % v
+	return "%.1f" % v

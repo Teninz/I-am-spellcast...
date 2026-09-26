@@ -155,6 +155,9 @@ static func _parse(spell: Dictionary) -> Dictionary:
 			list.append({"id": "poison", "turns": 3, "stacks": int(pm.get_string(1))})
 		if s.contains("жаб"):
 			list.append({"id": "toad", "turns": 1, "stacks": 1})
+		# «Вызов на дуэль»: противники бьют только кастующего.
+		if s.contains("бьёт только кастующего"):
+			spec.caster_statuses.append({"id": "taunt", "turns": _turns_after("провокация:", s, "taunt"), "stacks": 1})
 		if s.contains("водным элементалем"):
 			list.append({"id": "elemental", "turns": _turns_after("на", s, "elemental"), "stacks": 1})
 

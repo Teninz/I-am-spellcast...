@@ -52,6 +52,8 @@ func _add_wizard(w: Wizard, fortify_turns: int, fortify_decay: float) -> void:
 	u.books = w.books.duplicate()
 	u.ability = w.ability
 	u.ability_charges = w.ability_charges
+	if w.ability == "lay_on_hands":
+		u.ability_pool = float(w.ability_charges)
 	u.wisdom = st.wisdom
 	u.defense_bonus = st.defense
 	u.luck_bonus = st.luck
@@ -278,11 +280,92 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	_log("%s: «Я кастую!» — %s." % [caster.name, spell.name])
 	_apply_spell(caster, target, spell, bag.chips)
 	_cane_strike(caster, target, spell)
+	_bard_critics(caster)
 	if finish:
 		end_turn(caster)
 	else:
 		_check_outcome()
 	return spell
+
+
+# --- Способности классов ------------------------------------------------
+
+## Можно ли перевытянуть фишку: Сожжение Пироманта или Муза от Барда.
+func can_reroll(caster: Unit) -> bool:
+	return (caster.ability == "burn" and caster.ability_charges > 0) or caster.has("muse")
+
+
+## Перевытягивает фишку в ячейке. Возвращает описание для журнала или "".
+func reroll_chip(caster: Unit, bag: ChipBag, slot: int) -> String:
+	if slot < 0 or slot >= bag.chips.size() or not can_reroll(caster):
+		return ""
+	var how := ""
+	if caster.ability == "burn" and caster.ability_charges > 0:
+		caster.ability_charges -= 1
+		how = "сжигает фишку (осталось %d)" % caster.ability_charges
+	else:
+		caster.statuses.erase("muse")
+		how = "по вдохновению перевытягивает фишку"
+	bag.reroll(slot, rng)
+	var text := "%s %s." % [caster.name, how]
+	_log(text)
+	return text
+
+
+## Паладин: Наложение рук — лечит союзника из запаса на бой.
+func can_lay_on_hands(paladin: Unit) -> bool:
+	return paladin.ability == "lay_on_hands" and paladin.ability_pool > 0.0 \
+		and not lay_on_hands_targets(paladin).is_empty()
+
+
+func lay_on_hands_targets(paladin: Unit) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u in living(paladin.side):
+		if u.hp < u.max_hp:
+			out.append(u)
+	return out
+
+
+func lay_on_hands(paladin: Unit, target: Unit) -> void:
+	var amount := Unit.q(minf(paladin.ability_pool, target.max_hp - target.hp))
+	paladin.ability_pool = Unit.q(paladin.ability_pool - amount)
+	_log("%s: Наложение рук на %s (запас %s)." % [paladin.name, target.name, Unit._num(paladin.ability_pool)])
+	_restore(target, amount)
+
+
+## Бард: Вдохновение — союзник может перевытянуть одну фишку в следующем касте.
+func can_inspire(bard: Unit) -> bool:
+	return bard.ability == "inspiration" and bard.ability_charges > 0 and not inspire_targets(bard).is_empty()
+
+
+func inspire_targets(bard: Unit) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u in living(bard.side):
+		if u != bard and not u.has("muse"):
+			out.append(u)
+	return out
+
+
+func inspire(bard: Unit, target: Unit) -> void:
+	bard.ability_charges -= 1
+	_log("%s поёт для %s: Вдохновение!" % [bard.name, target.name])
+	_apply_status(target, {"id": "muse", "turns": 99}, bard)
+
+
+## Бард, дебафф «Критики»: 10 % — фальшивая баллада замедляет весь отряд.
+func _bard_critics(caster: Unit) -> void:
+	if caster.ability == "inspiration" and rng.randf() < 0.1:
+		_log("Критики освистали балладу — отряд приуныл!")
+		for u in living(caster.side):
+			u.add_status("slow", 1)
+			status_applied.emit(u, "slow")
+
+
+## Паладин, клятва: каст ранил союзника — запас Наложения рук сгорает.
+func _check_oath(caster: Unit, hurt_ally: bool) -> void:
+	if hurt_ally and caster.ability == "lay_on_hands" and caster.ability_pool > 0.0:
+		caster.ability_pool = 0.0
+		_log("%s нарушает клятву — Наложение рук недоступно до конца боя." % caster.name)
 
 
 ## Магус: каст по противнику без урона — добивает тростью на 1.
@@ -302,6 +385,7 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		_log("Ничего не произошло.")
 	var element := "F" if chips.has("F") else "?"
 	var bonus := caster.power_bonus()
+	var hurt_ally := false
 	var harmful: bool = spec.damage > 0 or spec.meter < 0 or spec.strip_buffs or spec.statuses.any(
 		func(s: Dictionary) -> bool: return Unit.DEBUFFS.has(s.id))
 
@@ -321,6 +405,8 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 			continue
 		if spec.damage > 0:
 			_hit(who, float(maxi(0, spec.damage + bonus)), caster, element)
+			if who != caster and who.side == caster.side:
+				hurt_ally = true
 		if spec.heal > 0 and who.alive():
 			var times := 1
 			if caster.ability == "double_grace" and who.side == caster.side \
@@ -351,6 +437,9 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		for u in living(target.side):
 			if u != target:
 				_hit(u, float(spec.splash), caster, element)
+				if u != caster and u.side == caster.side:
+					hurt_ally = true
+	_check_oath(caster, hurt_ally)
 	if spec.self_damage > 0:
 		_log("Отдача по %s." % caster.name)
 		_hurt(caster, float(spec.self_damage), null)
@@ -508,17 +597,18 @@ func _hit(who: Unit, amount: float, source: Unit, element: String = "?") -> void
 ## Урон без проверок защиты (яд, горение, отдача).
 ## Сначала тратится Укрепление, потом Щит, потом здоровье.
 func _hurt(who: Unit, amount: float, source: Unit) -> void:
+	amount = Unit.q(amount)
 	for layer in ["fortify", "shield"]:
 		var pool: float = who.get(layer)
 		if pool <= 0.0 or amount <= 0.0:
 			continue
 		var absorbed := minf(pool, amount)
-		who.set(layer, pool - absorbed)
-		amount -= absorbed
+		who.set(layer, Unit.q(pool - absorbed))
+		amount = Unit.q(amount - absorbed)
 		_log("%s %s поглощает %s." % ["Укрепление" if layer == "fortify" else "Щит", who.name, Unit._num(absorbed)])
 	if amount <= 0.0:
 		return
-	who.hp = maxf(0.0, who.hp - amount)
+	who.hp = Unit.q(maxf(0.0, who.hp - amount))
 	_log("%s получает %s урона (%s)." % [who.name, Unit._num(amount), who.hp_text()])
 	if not who.alive():
 		_on_down(who, source)
@@ -541,7 +631,7 @@ func _on_down(who: Unit, source: Unit) -> void:
 
 
 func _revive(who: Unit, hp: float) -> void:
-	who.hp = minf(who.max_hp, hp)
+	who.hp = Unit.q(minf(who.max_hp, hp))
 	who.statuses.clear()
 	_log("%s возвращается в бой с %s ЗД!" % [who.name, Unit._num(who.hp)])
 
@@ -552,7 +642,7 @@ func _restore(who: Unit, amount: float) -> void:
 	if who.has("disease"):
 		amount *= 0.5
 	var before := who.hp
-	who.hp = minf(who.max_hp, who.hp + amount)
+	who.hp = Unit.q(minf(who.max_hp, who.hp + amount))
 	if who.hp > before:
 		_log("%s лечится на %s (%s)." % [who.name, Unit._num(who.hp - before), who.hp_text()])
 

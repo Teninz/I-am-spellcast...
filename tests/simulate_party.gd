@@ -20,7 +20,7 @@ func _initialize() -> void:
 	print("Бой                    | 3 волшебника       | 4 волшебника (с усилением врагов)")
 	for f in FIGHTS:
 		var enc := GameData.load_encounter(f)
-		var s3: Dictionary = sim.run(enc, PARTY3, n)
+		var s3: Dictionary = sim.run(Adventure.scale_encounter(enc, 3, cfg), PARTY3, n)
 		var s4: Dictionary = sim.run(Adventure.scale_encounter(enc, 4, cfg), PARTY4, n)
 		print("%-22s | %5.1f %% · урон %.2f | %5.1f %% · урон %.2f" % [enc.name, s3.win_rate, s3.damage_per_round, s4.win_rate, s4.damage_per_round])
 	var act = load("res://tests/simulate_act.gd")

@@ -8,7 +8,7 @@ extends Control
 
 signal finished(outcome: String)
 
-enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, ITEM_TARGET, OVER }
+enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, ITEM_TARGET, ABILITY_TARGET, OVER }
 
 const AUTO_DRAW_DELAY := 2.0
 const AUTO_CAST_DELAY := 1.2
@@ -58,6 +58,7 @@ var _draw_button: Button
 var _cast_button: Button
 var _auto_check: CheckBox
 var _item_button: Button
+var _ability_button: Button
 var _title_label: Label
 var _log: RichTextLabel
 var _auto_timer: Timer
@@ -137,6 +138,14 @@ func _advance() -> void:
 
 
 func _on_card_pressed(u: Unit) -> void:
+	if state == State.ABILITY_TARGET:
+		if _ability_targets().has(u):
+			if actor.ability == "lay_on_hands":
+				combat.lay_on_hands(actor, u)
+			else:
+				combat.inspire(actor, u)
+			_after_item()
+		return
 	if state == State.ITEM_TARGET:
 		if combat.item_targets(actor, actor.wizard.item).has(u):
 			combat.use_item(actor, u)
@@ -176,15 +185,13 @@ func _on_draw_pressed() -> void:
 
 
 func _on_chip_pressed(slot: int) -> void:
-	if actor == null or actor.ability != "burn" or actor.ability_charges <= 0:
+	if actor == null or not combat.can_reroll(actor):
 		return
 	if not (state == State.DRAWING or state == State.READY) or slot >= bag.chips.size():
 		return
-	actor.ability_charges -= 1
 	var old := bag.chips[slot]
-	bag.reroll(slot, combat.rng)
-	_on_log("%s сжигает фишку «%s» → «%s» (осталось %d)." % [actor.name,
-		ELEMENT_NAMES[old], ELEMENT_NAMES[bag.chips[slot]], actor.ability_charges])
+	combat.reroll_chip(actor, bag, slot)
+	_on_log("«%s» → «%s»." % [ELEMENT_NAMES[old], ELEMENT_NAMES[bag.chips[slot]]])
 	_update_chips()
 	if state == State.READY:
 		_show_preview()
@@ -215,6 +222,30 @@ func _on_cast_pressed() -> void:
 		_prompt_label.text = "%s, второй каст: выбери цель." % actor.name
 	else:
 		_advance()
+
+
+## Способность класса, которую применяют кликом по союзнику (Паладин, Бард).
+func _ability_available() -> bool:
+	return actor != null and actor.is_wizard() and (combat.can_lay_on_hands(actor) or combat.can_inspire(actor))
+
+
+func _ability_targets() -> Array[Unit]:
+	if actor.ability == "lay_on_hands":
+		return combat.lay_on_hands_targets(actor)
+	return combat.inspire_targets(actor)
+
+
+func _on_ability_pressed() -> void:
+	if state != State.CHOOSE_TARGET or not _ability_available():
+		return
+	_set_state(State.ABILITY_TARGET)
+	_prompt_label.text = "%s: выбери союзника." % _ability_name()
+
+
+func _ability_name() -> String:
+	if actor.ability == "lay_on_hands":
+		return "Наложение рук (запас %s)" % Unit._num(actor.ability_pool)
+	return "Вдохновение (осталось %d)" % actor.ability_charges
 
 
 func _on_item_pressed() -> void:
@@ -271,6 +302,9 @@ func _set_state(s: State) -> void:
 	_cast_button.disabled = s != State.READY
 	_item_button.visible = s in [State.CHOOSE_TARGET, State.ITEM_TARGET] and actor != null \
 		and actor.is_wizard() and combat.can_use_item(actor)
+	_ability_button.visible = s in [State.CHOOSE_TARGET, State.ABILITY_TARGET] and _ability_available()
+	if _ability_button.visible:
+		_ability_button.text = _ability_name()
 	if _item_button.visible:
 		_item_button.text = "Предмет: %s" % adventure.items[actor.wizard.item].name
 	for c in _book_box.get_children():
@@ -315,7 +349,9 @@ func _refresh() -> void:
 		var targetable := state == State.CHOOSE_TARGET and combat.can_target(actor, u)
 		if state == State.ITEM_TARGET:
 			targetable = combat.item_targets(actor, actor.wizard.item).has(u)
-		card.disabled = state in [State.CHOOSE_TARGET, State.ITEM_TARGET] and not targetable
+		if state == State.ABILITY_TARGET:
+			targetable = _ability_targets().has(u)
+		card.disabled = state in [State.CHOOSE_TARGET, State.ITEM_TARGET, State.ABILITY_TARGET] and not targetable
 		card.modulate = Color(1, 1, 1, 1) if u.alive() else Color(1, 1, 1, 0.35)
 		if u == actor:
 			card.modulate = Color(1.25, 1.2, 0.8)
@@ -407,6 +443,8 @@ func _show_preview() -> void:
 	var hint := "Нажми «Я кастую!»."
 	if actor.ability == "burn" and actor.ability_charges > 0:
 		hint = "Нажми «Я кастую!» или кликни по фишке, чтобы сжечь её."
+	elif actor.has("muse"):
+		hint = "Нажми «Я кастую!» или кликни по фишке — Муза позволит её перевытянуть."
 	_prompt_label.text = hint
 
 
@@ -602,6 +640,9 @@ func _build_ui() -> void:
 	_item_button = _button("Предмет", _on_item_pressed)
 	_item_button.visible = false
 	controls.add_child(_item_button)
+	_ability_button = _button("Способность", _on_ability_pressed)
+	_ability_button.visible = false
+	controls.add_child(_ability_button)
 	_auto_check = CheckBox.new()
 	_auto_check.text = "Авто (фишка раз в 2 с)"
 	_auto_check.button_pressed = auto_draw

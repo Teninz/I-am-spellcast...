@@ -9,6 +9,7 @@
 - Банды с предводителями: [docs/gangs.md](docs/gangs.md)
 - Баланс и эффекты: [docs/balance.md](docs/balance.md)
 - Обмундирование: [docs/equipment.md](docs/equipment.md)
+- Достижения и открытие классов: [docs/achievements.md](docs/achievements.md)
 - Книги заклинаний (26 книг, таблицы и шансы): [docs/spells/README.md](docs/spells/README.md)
 
 Таблицы книг хранятся в `data/books/*.json`. После правки пересоберите документы:
@@ -21,7 +22,11 @@ python3 tools/gen_spells.py
 
 Проект Godot лежит в корне репозитория (`project.godot`) и читает книги прямо из `data/books`.
 В прототипе — **акт I целиком**: 4 уровня с бандами и босс Крысиный Король на 5-м.
+Перед приключением — выбор отряда из 3 или 4 волшебников (сразу открыты Пиромант, Священник,
+Волшебник Воды и Магус; Бард — после первого приключения, Паладин — после первой победы).
 Между уровнями — привал: отдых (75 % ЗД + Укрепление), лут и инвентарь.
+
+![Выбор отряда](docs/images/prototype-select.png)
 
 ![Бой](docs/images/prototype-battle.png)
 ![Привал](docs/images/prototype-camp.png)
@@ -54,7 +59,9 @@ python3 tools/gen_spells.py
 ![Фишки](docs/images/chips.png)
 ![Книги](docs/images/books.png)
 
-Промпты для фишек стихий и обложек книг: [docs/art_prompts_chips_books.md](docs/art_prompts_chips_books.md).
+Промпты для фишек стихий и обложек книг: [docs/art_prompts_chips_books.md](docs/art_prompts_chips_books.md);
+для интерфейса, карточек и привала: [docs/art_prompts_ui.md](docs/art_prompts_ui.md);
+для персонажей (16 классов × 4 состояния): [docs/art_prompts_characters.md](docs/art_prompts_characters.md).
 Промпты, по которым сделаны иконки: [docs/icon_prompts.md](docs/icon_prompts.md);
 готовые PNG клади в `assets/icons/status/<id>.png` — игра подхватит их сама
 (подходит любой размер, лучше 512×512: картинка сглаженно уменьшается до маленьких иконок).

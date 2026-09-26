@@ -1,13 +1,15 @@
 extends Control
 ## Корневой экран: бой → привал → бой … → итог акта.
 
-const PARTY := ["pyromancer", "priest", "water"]
 const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
+const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
 
 ## Для тестов: ускоряет задержки в бою.
 var fast := false
 var adventure: Adventure
+var profile: Profile
+var classes: Dictionary
 var screen: Control
 var _auto_draw := false
 
@@ -17,8 +19,18 @@ func _ready() -> void:
 	new_adventure()
 
 
+## Экран выбора отряда перед каждым приключением.
 func new_adventure() -> void:
-	adventure = Adventure.new(PARTY)
+	classes = GameData.load_classes()
+	profile = Profile.load_or_new(classes)
+	var sel: Control = PartySelectUI.new()
+	sel.setup(classes, profile)
+	sel.start_pressed.connect(start_adventure)
+	_swap(sel)
+
+
+func start_adventure(party: Array) -> void:
+	adventure = Adventure.new(party, 0, "act1", profile.unlocked)
 	_show_battle()
 
 
@@ -51,6 +63,7 @@ func _on_battle_finished(outcome: String) -> void:
 
 
 func _show_end(victory: bool) -> void:
+	var fresh := profile.record_run(victory, classes)
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
@@ -70,6 +83,13 @@ func _show_end(victory: bool) -> void:
 	title.add_theme_font_size_override("font_size", 28)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
+	for cid in fresh:
+		var unlocked := Label.new()
+		unlocked.text = "Открыт новый класс: %s!" % classes[cid].name
+		unlocked.add_theme_font_size_override("font_size", 22)
+		unlocked.add_theme_color_override("font_color", Color("ffd35a"))
+		unlocked.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(unlocked)
 	var again := Button.new()
 	again.text = "Новое приключение"
 	again.custom_minimum_size = Vector2(260, 52)

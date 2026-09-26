@@ -28,6 +28,13 @@ static func load_json(path: String) -> Variant:
 
 
 static var _statuses: Dictionary = {}
+static var _books: Dictionary = {}
+
+
+static func load_books_cached() -> Dictionary:
+	if _books.is_empty():
+		_books = load_books()
+	return _books
 
 
 ## Справочник эффектов (названия, описания, вид) — data/statuses.json.

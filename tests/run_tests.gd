@@ -17,6 +17,8 @@ func _initialize() -> void:
 	test_loot_rules()
 	test_revive_after_battle()
 	test_party_scaling()
+	test_profile_unlocks()
+	test_bard_and_paladin()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -77,7 +79,7 @@ func test_combo_odds(books: Dictionary) -> void:
 ## Каждое заклинание стартовых книг должно что-то делать в прототипе.
 func test_parser_coverage(books: Dictionary) -> void:
 	print("Разбор заклинаний стартовых книг:")
-	for id in ["fire", "water", "holy"]:
+	for id in ["fire", "water", "holy", "blade", "bard", "oath"]:
 		var missing: Array[String] = []
 		var partial: Array[String] = []
 		for s in books[id].spells:
@@ -109,20 +111,20 @@ func test_rest_and_fortify() -> void:
 	var pyro := adv.wizards[0]
 	var water := adv.wizards[2]
 	pyro.hp = 2.0      # 2 + 7.5 = 9.5 → без излишка
-	adv.wizards[1].hp = 10.0  # 10 + 7.5 → излишек 7.5 → Укрепление 0.75
+	adv.wizards[1].hp = 10.0  # 10 + 7.5 → излишек 7.5 → Укрепление 0.75 → 0.8 (шаг 0.1)
 	water.hp = 0.0     # выбыл — не лечится
 	adv.rest()
 	check(is_equal_approx(pyro.hp, 9.5) and is_equal_approx(pyro.fortify, 0.0), "раненый: 2 → 9.5, без Укрепления")
-	check(is_equal_approx(adv.wizards[1].fortify, 0.75), "полный: Укрепление 0.75 (%.2f)" % adv.wizards[1].fortify)
+	check(is_equal_approx(adv.wizards[1].fortify, 0.8), "полный: Укрепление 0.8 — шаг 0.1 (%.2f)" % adv.wizards[1].fortify)
 	check(water.hp == 0.0, "выбывший не лечится")
 	var c := adv.start_combat(5)
 	var priest_unit: Unit = c.units[1]
-	check(is_equal_approx(priest_unit.fortify, 0.75) and priest_unit.fortify_turns == 5, "Укрепление перешло в бой на 5 ходов")
+	check(is_equal_approx(priest_unit.fortify, 0.8) and priest_unit.fortify_turns == 5, "Укрепление перешло в бой на 5 ходов")
 	check(adv.wizards[1].fortify == 0.0, "в волшебнике Укрепление обнулилось (только на один бой)")
 	priest_unit.shield = 1.0
 	c._hurt(priest_unit, 2.0, null)
 	check(is_equal_approx(priest_unit.fortify, 0.0) and is_equal_approx(priest_unit.shield, 0.0)
-		and is_equal_approx(priest_unit.hp, 9.75), "урон 2: сначала Укрепление 0.75, потом Щит 1, потом 0.25 ЗД (%.2f)" % priest_unit.hp)
+		and is_equal_approx(priest_unit.hp, 9.8), "урон 2: сначала Укрепление 0.8, потом Щит 1, потом 0.2 ЗД (%s)" % Unit._num(priest_unit.hp))
 	var u := Unit.new()
 	u.fortify = 3.0
 	u.fortify_turns = 5
@@ -173,24 +175,93 @@ func test_party_scaling() -> void:
 	var gob := GameData.load_encounter("goblin_gang")
 	var g4 := Adventure.scale_encounter(gob, 4, cfg)
 	check(g4.members.size() == gob.members.size() + 1, "в банде на одного рядового больше")
-	check(int(g4.members[3].hp) == roundi(float(gob.members[3].hp) * 1.7), "здоровье предводителя ×1.7")
-	check(Adventure.scale_encounter(gob, 3, cfg).members.size() == gob.members.size(), "для 3 волшебников бой не меняется")
+	check(int(g4.members[3].hp) == roundi(float(gob.members[3].hp) * 1.5 * 1.5), "здоровье предводителя ×1.5 (общее) ×1.5 (отряд из 4)")
+	var g3 := Adventure.scale_encounter(gob, 3, cfg)
+	check(g3.members.size() == gob.members.size() and int(g3.members[3].hp) == roundi(float(gob.members[3].hp) * 1.5),
+		"для 3 волшебников — только общий множитель ×1.5")
 	var king := Adventure.scale_encounter(GameData.load_encounter("rat_king"), 4, cfg)
-	check(int(king.members[0].hp) == roundi(22 * 2.8), "здоровье босса ×2.8 (%d)" % int(king.members[0].hp))
+	check(int(king.members[0].hp) == roundi(22 * 1.8 * 2.4), "здоровье босса ×1.8 ×2.4 (%d)" % int(king.members[0].hp))
 	var adv := Adventure.new(["pyromancer", "priest", "water", "magus"], 5)
 	check(adv.wizards[3].max_books == 2 and adv.book_pool().has("blade"), "Магус: 2 слота книг, его книга в пуле лута")
+
+
+## Прогресс: 4 стартовых класса, Бард после первого приключения, Паладин после первой победы.
+func test_profile_unlocks() -> void:
+	print("Открытие классов:")
+	Profile.path = "user://test_profile.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	var classes := GameData.load_classes()
+	var p := Profile.load_or_new(classes)
+	p.unlocked.sort()
+	check(p.unlocked == ["magus", "priest", "pyromancer", "water"], "сразу открыты: Огонь, Вода, Священник, Магус")
+	var fresh := p.record_run(false, classes)
+	check(fresh == ["bard"], "поражение в первом приключении открывает Барда")
+	fresh = p.record_run(true, classes)
+	check(fresh == ["paladin"], "первая победа открывает Паладина")
+	var again := Profile.load_or_new(classes)
+	check(again.unlocked.has("bard") and again.unlocked.has("paladin") and again.runs == 2, "прогресс сохраняется в профиле")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+
+
+func test_bard_and_paladin() -> void:
+	print("Бард и Паладин:")
+	var adv := Adventure.new(["pyromancer", "priest", "bard", "paladin"], 31)
+	var c := adv.start_combat(31)
+	var pyro: Unit = c.units[0]
+	var bard: Unit = c.units[2]
+	var pal: Unit = c.units[3]
+	check(c.can_inspire(bard) and bard.ability_charges == 2, "Бард: 2 Вдохновения за бой")
+	c.inspire(bard, pyro)
+	check(pyro.has("muse") and c.can_reroll(pyro), "Муза даёт право перевытянуть фишку")
+	pyro.ability_charges = 0
+	var bag := c.new_bag(pyro, "fire")
+	while not bag.is_complete():
+		bag.draw(c.rng)
+	c.reroll_chip(pyro, bag, 0)
+	check(not pyro.has("muse"), "Муза тратится на одно перевытягивание")
+	pyro.hp = 4.0
+	c.lay_on_hands(pal, pyro)
+	check(is_equal_approx(pyro.hp, 9.0) and is_equal_approx(pal.ability_pool, 0.0), "Наложение рук: 5 лечения из запаса")
+	pal.ability_pool = 5.0
+	c._check_oath(pal, true)
+	check(pal.ability_pool == 0.0, "каст ранил союзника — клятва нарушена, запас сгорел")
 
 
 ## Лут: правила выпадения и инвентаря.
 func test_loot_rules() -> void:
 	print("Лут и инвентарь:")
 	var adv := Adventure.new(["pyromancer", "priest", "water"], 11)
+	adv.level = 2  # пройден 1-й уровень
+	var first := adv.roll_loot(false)
+	var per_w := {}
+	for o in first:
+		per_w[o.wizard] = per_w.get(o.wizard, []) + [o.kind]
+	check(per_w.values().all(func(k: Array) -> bool: return k.has("book") and k.has("equipment")),
+		"после 1-го уровня: каждому книга и шляпа/ботинки")
+	adv.level = 3
 	var ok_books := true
+	var no_equipment := true
 	for i in 200:
-		for o in adv.roll_loot():
+		for o in adv.roll_loot(false):
 			if o.kind != "book":
 				ok_books = false
 	check(ok_books, "у кого одна книга — всегда выпадает книга")
+	for w in adv.wizards:
+		w.books.assign(["fire", "storm"])
+	var kinds := {}
+	for i in 300:
+		for o in adv.roll_loot(false):
+			kinds[o.kind] = true
+			if o.kind == "equipment":
+				no_equipment = false
+	check(no_equipment and kinds.has("book") and kinds.has("item"), "обычный уровень: книга или расходуемый предмет, без вещей")
+	var boss_items := 0
+	for i in 500:
+		for o in adv.roll_loot(true):
+			if o.kind == "item" and o.id != "scroll_resurrect":
+				boss_items += 1
+	var rate := boss_items / 1500.0
+	check(absf(rate - 0.2) < 0.04, "после босса: книга + вещь, и предмет с шансом 20 %% (%.0f %%)" % (rate * 100))
 	var pool := adv.book_pool()
 	check(pool.has("fire") and pool.has("storm") and not pool.has("sheep") and not pool.has("bard"),
 		"в пуле: книги лута и открытых классов, без овцы и закрытых классов")

@@ -5,11 +5,13 @@ extends SceneTree
 
 const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
+const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
 
 var game: Node
 var out := "user://"
 var busy := false
 var camp_shot := false
+var select_shot := false
 var casts_in_second := 0
 
 
@@ -17,6 +19,8 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="):
 			out = a.substr(4)
+	Profile.path = "user://test_profile.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
 	game = load("res://scenes/main.tscn").instantiate()
 	game.fast = true
 	root.add_child(game)
@@ -36,6 +40,16 @@ func _process(_delta: float) -> bool:
 			s._continue.pressed.emit()
 			busy = false)
 		return false
+	if s.get_script() == PartySelectUI:
+		if not select_shot:
+			select_shot = true
+			busy = true
+			_shot("select.png", func() -> void:
+				s.start_pressed.emit(["pyromancer", "priest", "water", "magus"])
+				busy = false)
+		else:
+			s.start_pressed.emit(["pyromancer", "priest", "water", "magus"])
+		return false
 	if s.get_script() == BattleUI:
 		_play(s)
 	elif s.get_script() != CampUI:
@@ -49,6 +63,8 @@ func _play(ui: Node) -> void:
 			var t: Array = ui.combat.valid_targets(ui.actor).filter(
 				func(u): return u.side != ui.actor.side and u.alive())
 			ui._on_card_pressed(t[0] if not t.is_empty() else ui.actor)
+		ui.State.ABILITY_TARGET:
+			ui._on_card_pressed(ui._ability_targets()[0])
 		ui.State.CHOOSE_BOOK:
 			ui._select_book(ui.actor.books[0])
 		ui.State.DRAWING:
