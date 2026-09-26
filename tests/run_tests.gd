@@ -28,6 +28,7 @@ func _initialize() -> void:
 	test_achievements()
 	test_save_and_load()
 	test_settings_and_sound()
+	test_class_abilities()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -579,6 +580,133 @@ func test_settings_and_sound() -> void:
 	check(ok, "у всех %d звуков есть файл или временный звук" % Sfx.MIX.size())
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reload()
+
+
+func _party_fight(party: Array, enc: String = "rat_king", seed_value: int = 11) -> Combat:
+	var classes := GameData.load_classes()
+	var ws: Array[Wizard] = []
+	for cid in party:
+		ws.append(Wizard.new(cid, classes[cid], {}))
+	return Combat.new(GameData.load_books_cached(), ws, GameData.load_encounter(enc), seed_value, GameData.load_json("res://data/items.json"))
+
+
+func _full_bag(c: Combat, u: Unit, book: String) -> ChipBag:
+	var bag := c.new_bag(u, book)
+	while not bag.is_complete():
+		bag.draw(c.rng)
+	return bag
+
+
+func test_class_abilities() -> void:
+	print("Способности классов:")
+	# Некромант: Поднятие — зомби с 6 ЗД из 12, одна книга потеряна, слотов 2.
+	var c := _party_fight(["necromancer", "priest", "pyromancer"])
+	var necro: Unit = c.living(Unit.PARTY)[0]
+	var pyro: Unit = c.living(Unit.PARTY)[2]
+	pyro.wizard.books.append("storm")
+	pyro.books.append("storm")
+	c._hurt(pyro, 99.0, null)
+	check(c.can_use_ability(necro) and c.ability_targets(necro) == [pyro], "Поднятие: цель — выбывший союзник")
+	c.use_target_ability(necro, pyro)
+	check(pyro.alive() and pyro.hp == 6.0 and pyro.max_hp == 12.0 and pyro.wizard.zombie
+		and pyro.wizard.books.size() == 1 and pyro.wizard.max_books == 2, "зомби: 6/12 ЗД, одна книга потеряна, 2 слота")
+	pyro.wizard.cure_zombie()
+	check(not pyro.wizard.zombie and pyro.wizard.max_books == 3 and pyro.wizard.max_hp() == 10.0, "свиток воскрешения снова делает живым")
+	# Обратный эффект: урон ↔ лечение.
+	var inv := EffectParser.invert({"damage": 3, "heal": 0, "shield": 2, "splash": 0, "statuses": [{"id": "stun", "turns": 1}],
+		"meter": -30, "cleanse": false, "strip_buffs": false, "revive_hp": 0})
+	check(inv.heal == 3 and inv.damage == 0 and inv.meter == 30 and inv.statuses.any(func(x): return x.id == "vulnerable")
+		and inv.statuses.any(func(x): return x.id == "haste"), "обратный эффект: урон → лечение, щит → Уязвимость, контроль → Ускорение")
+	# Иллюзионист: Двойник принимает следующий удар.
+	c = _party_fight(["illusionist", "priest", "water"])
+	var ill: Unit = c.living(Unit.PARTY)[0]
+	var pr: Unit = c.living(Unit.PARTY)[1]
+	c.use_target_ability(ill, pr)
+	var hp := pr.hp
+	c._hit(pr, 3.0, c.living(Unit.ENEMIES)[0], "?")
+	check(pr.hp == hp and not pr.has("invulnerable") and ill.ability_charges == 0, "Двойник принял удар и исчез")
+	# Учёный: Мастерская заменяет ход; овца ломается от Хаоса II.
+	c = _party_fight(["scientist", "priest", "water"])
+	var sci: Unit = c.living(Unit.PARTY)[0]
+	var king: Unit = c.living(Unit.ENEMIES)[0]
+	hp = king.hp
+	c.use_workshop(sci, "wolf", king)
+	check(king.hp < hp and sci.has("taunt") and sci.ability_charges == 1, "Стальной волк кусает врага, Учёный провоцирует")
+	var bag := ChipBag.new(c.books.sheep.bag)
+	bag.chips.assign(["X", "X", "M"])
+	var sw := sci.wizard
+	c.cast(sci, king, "sheep", bag)
+	check(sw.sheep_broken and not sw.books.has("sheep") and sw.max_books == 3, "Хаос II ломает овцу — её слоты свободны")
+	var adv := Adventure.new(["scientist", "priest", "water"], 2)
+	var aw := adv.wizards[0]
+	aw.books.assign(["storm", "fire", "ice"])
+	aw.sheep_broken = true
+	aw.max_books = 3
+	check(adv.repair_sheep(aw, "fire", "ice") and aw.books == ["sheep", "storm"] and aw.max_books == 2, "починка: 2 книги выброшены, овца снова в слотах")
+	# Друид: Зов зверя меняет тройку или цель.
+	c = _party_fight(["druid", "priest", "water"])
+	var dr: Unit = c.living(Unit.PARTY)[0]
+	bag = _full_bag(c, dr, "druid")
+	check(c.can_use_ability(dr, bag), "Зов зверя — когда тройка вытянута")
+	var beast := c.beast_call(dr, bag, c.living(Unit.ENEMIES)[0])
+	check(beast in ["bear", "hare", "raven", "cat"] and dr.ability_charges == 1, "пришёл зверь: %s" % beast)
+	check(not c.living(Unit.PARTY)[0].wizard.can_use_book("fire"), "Друид не пользуется Книгой Огня")
+	# Дикий маг: Всплеск превращает фишку в Хаос.
+	c = _party_fight(["wild_mage", "priest", "water"])
+	var wm: Unit = c.living(Unit.PARTY)[0]
+	bag = ChipBag.new(c.books.wild.bag)
+	bag.chips.assign(["F", "W", "F"])
+	c.surge(wm, bag)
+	check(bag.combo_key() == "X1" and wm.extra_chaos == 2, "Всплеск: тройка стала Хаосом I; у Дикого мага +2 фишки Хаоса")
+	# Чернокнижник: Сделка — 2 ЗД за выбранную фишку.
+	c = _party_fight(["warlock", "priest", "water"])
+	var wl: Unit = c.living(Unit.PARTY)[0]
+	bag = c.new_bag(wl, "pact")
+	var letter: String = Combat.letters_by_count(c.books.pact.bag)[2]
+	check(c.pact_deal(wl, bag, letter) and wl.hp == 8.0, "Сделка стоит 2 ЗД")
+	bag.draw(c.rng)
+	check(bag.chips[0] == letter, "следующая фишка — выбранная (%s)" % letter)
+	var adv2 := Adventure.new(["warlock", "priest", "water"], 2)
+	adv2.patron_due.append(adv2.wizards[0])
+	adv2.pay_patron(adv2.wizards[0], "hp")
+	check(adv2.wizards[0].max_hp() == 9.0 and adv2.patron_due.is_empty(), "Покровитель голоден: −1 макс. ЗД после босса")
+	# Прорицатель: 2 видения, любой может заменить тройку.
+	c = _party_fight(["seer", "priest", "pyromancer"])
+	var pyro2: Unit = c.living(Unit.PARTY)[2]
+	check(c.visions.size() == 2, "Видения: 2 тройки увидены заранее")
+	bag = _full_bag(c, pyro2, "fire")
+	var want := c.vision_chips(c.visions[0], "fire")
+	c.use_vision(pyro2, bag, 0, "fire")
+	check(bag.chips == want and c.visions.size() == 1, "Пиромант заменил тройку видением: %s" % "".join(want))
+	# Хрономант: Перемотка возвращает бой к моменту перед кастом.
+	c = _party_fight(["chronomancer", "priest", "water"])
+	var ch: Unit = c.living(Unit.PARTY)[0]
+	var pw: Unit = c.living(Unit.PARTY)[1]
+	var hp_before := pw.hp
+	bag = ChipBag.new(c.books.chrono.bag)
+	bag.chips.assign(["C", "C", "C"])
+	c.cast(pw, pw, "chrono", bag)
+	c._hurt(pw, 3.0, null)
+	c.last_cast = {"caster": pw.id, "bad": true}
+	check(c.can_rewind(), "после неудачного каста можно перемотать")
+	var again := c.rewind()
+	check(again == pw and pw.hp == hp_before and ch.ability_charges == 0 and not c.can_rewind(),
+		"Перемотка: здоровье вернулось, кастует снова тот же, заряд потрачен")
+	# Алхимик: 2 предмета и смешивание.
+	var adv3 := Adventure.new(["alchemist", "priest", "water"], 3)
+	var al := adv3.wizards[0]
+	adv3.take_item({"wizard": 0, "kind": "item", "id": "potion_heal", "resolved": false})
+	adv3.take_item({"wizard": 0, "kind": "item", "id": "bomb", "resolved": false})
+	check(al.item == "potion_heal" and al.item2 == "bomb", "Алхимик носит 2 предмета")
+	var made := adv3.mix_items(al)
+	check(made != "" and al.item == made and al.item2 == "" and int(adv3.items[made].weight) < 6,
+		"смешал в более редкий: %s" % adv3.items.get(made, {}).get("name", made))
+	# Оракул: шрам с начала, +1 Мудрость за каждые 5 уровней.
+	var adv4 := Adventure.new(["oracle", "priest", "water"], 4)
+	var orc := adv4.wizards[0]
+	adv4.level = 6
+	adv4.start_combat(1)
+	check(orc.scars.size() == 1 and orc.bonus_wisdom == 1 and orc.stats().wisdom >= 1, "Оракул: шрам с начала, на 6-м уровне +1 Мудрость")
 
 
 func test_loot_rules() -> void:

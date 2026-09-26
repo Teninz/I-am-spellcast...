@@ -172,7 +172,7 @@ func _wizard_column(i: int) -> Control:
 	col.add_theme_constant_override("separation", 6)
 	inner.add_child(col)
 
-	col.add_child(_label(w.name, 19))
+	col.add_child(_label(w.name + ("  (зомби)" if w.zombie else ""), 19))
 	var st := w.stats()
 	var hp_line := "ЗД %s/%s" % [Unit._num(w.hp), Unit._num(w.max_hp())] if w.alive() else "ВЫБЫЛ"
 	if w.fortify > 0.0:
@@ -219,7 +219,30 @@ func _wizard_column(i: int) -> Control:
 				_rebuild()))
 		col.add_child(row)
 
-	col.add_child(_section("Предмет"))
+	# Учёный: починка овцы — выбросить две книги.
+	if adventure.can_repair_sheep(w):
+		col.add_child(_small("Овца сломана. Починить — выбросить 2 книги:"))
+		var pairs := _row()
+		for a in w.books.size():
+			for b in range(a + 1, w.books.size()):
+				var ba: String = w.books[a]
+				var bb: String = w.books[b]
+				pairs.add_child(_btn("✕ %s + %s" % [adventure.books[ba].name, adventure.books[bb].name], func() -> void:
+					if adventure.repair_sheep(w, ba, bb):
+						_say("%s чинит механическую овцу!" % w.name)
+					_rebuild()))
+		col.add_child(pairs)
+
+	col.add_child(_section("Предметы (%d)" % w.max_items if w.max_items > 1 else "Предмет"))
+	if w.item2 != "":
+		col.add_child(_small("Второй: %s — %s" % [adventure.items[w.item2].name, adventure.items[w.item2].text]))
+	if adventure.can_mix(w):
+		col.add_child(_btn("Смешать два предмета в один редкий", func() -> void:
+			var made := adventure.mix_items(w)
+			if made != "":
+				_say("%s смешивает зелья — получилось «%s»!" % [w.name, adventure.items[made].name])
+				Sfx.play("luck")
+			_rebuild()))
 	if w.item == "":
 		col.add_child(_small("—"))
 	else:
@@ -237,7 +260,7 @@ func _wizard_column(i: int) -> Control:
 				_say(adventure.use_item_camp(w, t))
 				_rebuild()))
 		for ally in adventure.wizards:
-			if ally != w and ally.item == "":
+			if ally != w and ally.has_item_slot():
 				row.add_child(_btn("→ %s" % ally.name, func() -> void:
 					adventure.give_item(w, ally)
 					_rebuild()))
@@ -315,11 +338,11 @@ func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
 				row.add_child(_btn(label, func() -> void: _act(adventure.refuse_book(o), "От «%s» отказались." % book_name)))
 		"item":
 			var item_name: String = adventure.items[o.id].name
-			row.add_child(_btn("Взять" if w.item == "" else "Взять (вместо своего)", func() -> void:
+			row.add_child(_btn("Взять" if w.has_item_slot() else "Взять (вместо своего)", func() -> void:
 				adventure.take_item(o)
 				_act(true, "%s берёт «%s»." % [w.name, item_name])))
 			for ally in adventure.wizards:
-				if ally != w and ally.item == "":
+				if ally != w and ally.has_item_slot():
 					row.add_child(_btn("Отдать: %s" % ally.name, func() -> void:
 						_act(adventure.give_offer_item(o, ally), "«%s» → %s." % [item_name, ally.name])))
 			row.add_child(_btn("Выбросить", func() -> void:

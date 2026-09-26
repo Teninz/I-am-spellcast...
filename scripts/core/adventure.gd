@@ -38,6 +38,8 @@ var earned: Array[String] = []
 var fresh_achievements: Array[String] = []
 var act_id := "act1"
 var finished := false  # приключение закончено (победа в акте или поражение)
+## Чернокнижники, которые после босса должны заплатить Покровителю (ЗД или предмет).
+var patron_due: Array[Wizard] = []
 
 
 func _init(party: Array, seed_value: int = 0, act: String = "act1", unlocked: Array = []) -> void:
@@ -63,6 +65,12 @@ func _init(party: Array, seed_value: int = 0, act: String = "act1", unlocked: Ar
 		if not unlocked_classes.has(cid):
 			unlocked_classes.append(cid)
 	_build_map()
+	# Оракул: случайный шрам босса с начала приключения.
+	for w in wizards:
+		if w.ability == "revelation" and w.scars.is_empty():
+			var bosses := GameData.bosses().keys()
+			bosses.sort()
+			w.scars.append(bosses[rng.randi_range(0, bosses.size() - 1)])
 	# Учёный: «книга скептика» — случайная книга в свободный слот.
 	for w in wizards:
 		if classes[w.class_id].get("random_book", false) and w.free_book_slots() > 0:
@@ -250,6 +258,9 @@ static func scale_encounter(enc: Dictionary, party_size: int, cfg: Dictionary) -
 
 
 func start_combat(seed_value: int = 0) -> Combat:
+	for w in wizards:
+		if w.ability == "revelation":
+			w.bonus_wisdom = (level - 1) / 5  # Оракул: +1 Мудрость за каждые 5 пройденных уровней
 	return Combat.new(books, wizards, encounter(), seed_value, items,
 		int(config.fortify_turns), float(config.fortify_decay))
 
@@ -291,6 +302,8 @@ func finish_combat(c: Combat) -> Array:
 				last_scars.append({"wizard": u.wizard, "boss": trophy_boss})
 		for w in wizards:
 			w.no_item_battle = w.has_effect("robbed")
+			if w.ability == "pact_deal":
+				patron_due.append(w)
 	var act_done := c.outcome == "victory" and is_last_level()
 	if c.outcome == "victory":
 		level += 1
@@ -317,6 +330,62 @@ func award_trophy(kind: String, w: Wizard) -> bool:
 		w.hp = clampf(w.hp + (w.max_hp() - old_max), 1.0, w.max_hp())
 	trophy_boss = ""
 	return true
+
+
+# --- Способности классов вне боя ------------------------------------------
+
+## Чернокнижник платит Покровителю: "hp" — −1 макс. ЗД навсегда, "item" — отдаёт предмет.
+func pay_patron(w: Wizard, how: String) -> bool:
+	if not patron_due.has(w):
+		return false
+	if how == "item" and w.item != "":
+		w.item = ""
+		w.shift_items()
+	else:
+		w.base_hp = maxf(1.0, w.base_hp - 1.0)
+		w.hp = minf(w.hp, w.max_hp())
+	patron_due.erase(w)
+	return true
+
+
+## Учёный чинит овцу, выбросив две книги.
+func can_repair_sheep(w: Wizard) -> bool:
+	return w.sheep_broken and w.books.size() >= 2
+
+
+func repair_sheep(w: Wizard, a: String, b: String) -> bool:
+	if not can_repair_sheep(w) or a == b or not w.books.has(a) or not w.books.has(b):
+		return false
+	w.books.erase(a)
+	w.books.erase(b)
+	w.sheep_broken = false
+	w.max_books -= 1
+	w.books.insert(0, "sheep")
+	return true
+
+
+## Алхимик смешивает два предмета в один более редкий (реже выпадающий).
+func can_mix(w: Wizard) -> bool:
+	return w.ability == "mix" and w.item != "" and w.item2 != ""
+
+
+func mix_items(w: Wizard) -> String:
+	if not can_mix(w):
+		return ""
+	var limit := mini(int(items[w.item].weight), int(items[w.item2].weight))
+	var pool := []
+	for id in items:
+		if int(items[id].weight) < limit and id != w.item and id != w.item2:
+			pool.append(id)
+	if pool.is_empty():
+		for id in items:
+			if id != w.item and id != w.item2:
+				pool.append(id)
+	pool.sort()
+	var out: String = pool[rng.randi_range(0, pool.size() - 1)]
+	w.item = out
+	w.item2 = ""
+	return out
 
 
 # --- Достижения ------------------------------------------------------------
@@ -602,15 +671,17 @@ func refuse_book(o: Dictionary) -> bool:
 
 
 ## Предмет: берёт себе (старый выбрасывается).
+## Предмет: в свободный слот (у Алхимика их 2), иначе заменяет первый.
 func take_item(o: Dictionary) -> void:
-	wizards[o.wizard].item = o.id
+	var w := wizards[o.wizard]
+	if not w.add_item(o.id):
+		w.item = o.id
 	o.resolved = true
 
 
 func give_offer_item(o: Dictionary, to: Wizard) -> bool:
-	if to.item != "":
+	if not to.add_item(o.id):
 		return false
-	to.item = o.id
 	o.resolved = true
 	return true
 
@@ -644,10 +715,11 @@ func discard_book(w: Wizard, book_id: String) -> bool:
 
 
 func give_item(from: Wizard, to: Wizard) -> bool:
-	if from.item == "" or to.item != "":
+	if from.item == "" or not to.has_item_slot():
 		return false
-	to.item = from.item
+	to.add_item(from.item)
 	from.item = ""
+	from.shift_items()
 	return true
 
 
@@ -665,7 +737,7 @@ func camp_item_targets(owner: Wizard) -> Array[Wizard]:
 		"ally":
 			out.assign(wizards.filter(func(w: Wizard) -> bool: return w.alive()))
 		"dead_ally":
-			out.assign(wizards.filter(func(w: Wizard) -> bool: return not w.alive()))
+			out.assign(wizards.filter(func(w: Wizard) -> bool: return not w.alive() or w.zombie))
 	return out
 
 
@@ -675,10 +747,13 @@ func use_item_camp(owner: Wizard, target: Wizard) -> String:
 	var it: Dictionary = items[owner.item]
 	var e: Dictionary = it.effect
 	owner.item = ""
+	owner.shift_items()
 	run.items += 1
 	if run.items >= 12:
 		_earn("hoarder")
-	if e.has("revive") and not target.alive():
+	if e.has("revive") and target.alive() and target.zombie:
+		target.cure_zombie()
+	elif e.has("revive") and not target.alive():
 		target.hp = Unit.q(minf(target.max_hp(), float(e.revive)))
 	if e.has("heal") and target.alive():
 		target.hp = Unit.q(minf(target.max_hp(), target.hp + float(e.heal)))

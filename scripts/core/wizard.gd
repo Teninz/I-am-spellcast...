@@ -35,6 +35,16 @@ var trophies: Array[String] = []
 var scars: Array[String] = []
 ## Шрам «Обобранный»: в этом бою предметом пользоваться нельзя.
 var no_item_battle := false
+## Некромант поднял его зомби: ЗД ×1.2, только 2 книги. Лечится свитком или зельем воскрешения.
+var zombie := false
+## Учёный: овца сломана (её 2 слота свободны).
+var sheep_broken := false
+## Алхимик носит 2 предмета: второй лежит здесь.
+var item2 := ""
+var max_items := 1
+## Оракул: +1 Мудрость за каждые 5 пройденных уровней.
+var bonus_wisdom := 0
+var class_max_books := MAX_BOOKS
 
 var _equipment_db: Dictionary  # id -> данные вещи
 
@@ -50,6 +60,8 @@ func _init(id: String, cfg: Dictionary, equipment_db: Dictionary) -> void:
 		forbidden_books.append(String(b))
 	destroys_forbidden = bool(cfg.get("destroys_forbidden", false))
 	max_books = int(cfg.get("max_books", MAX_BOOKS))
+	class_max_books = max_books
+	max_items = int(cfg.get("max_items", 1))
 	extra_chaos = int(cfg.get("extra_chaos", 0))
 	for b in cfg.books:
 		books.append(String(b))
@@ -94,6 +106,9 @@ func stats() -> Dictionary:
 			s.start_status.append(p.start_status)
 		s.no_wear = s.no_wear or bool(p.get("no_wear", false))
 		s.random_target = maxf(s.random_target, float(p.get("random_target", 0.0)))
+	s.wisdom += bonus_wisdom
+	if zombie:
+		s.hp *= 1.2
 	s.hp = maxf(1.0, s.hp)
 	return s
 
@@ -129,6 +144,50 @@ func cursed_things(book_db: Dictionary) -> int:
 		if t.ends_with(":cursed"):
 			n += 1
 	return n
+
+
+## Есть ли место под ещё один предмет.
+func has_item_slot() -> bool:
+	return item == "" or (max_items >= 2 and item2 == "")
+
+
+## Кладёт предмет в свободный слот. Возвращает false, если места нет.
+func add_item(id: String) -> bool:
+	if item == "":
+		item = id
+	elif max_items >= 2 and item2 == "":
+		item2 = id
+	else:
+		return false
+	return true
+
+
+## Первый предмет потрачен — второй (у Алхимика) переходит в руки.
+func shift_items() -> void:
+	if item == "" and item2 != "":
+		item = item2
+		item2 = ""
+
+
+## Становится зомби: навсегда теряет одну книгу (если их больше одной), носит только 2.
+func become_zombie(rng: RandomNumberGenerator) -> String:
+	zombie = true
+	var lost := ""
+	if books.size() > 1:
+		lost = books[rng.randi_range(0, books.size() - 1)]
+		books.erase(lost)
+	max_books = mini(max_books, 2)
+	while books.size() > max_books:
+		books.pop_back()
+	return lost
+
+
+## Свиток или зелье воскрешения возвращают зомби к жизни (потерянная книга не возвращается).
+func cure_zombie() -> void:
+	var old_max := max_hp()
+	zombie = false
+	max_books = class_max_books if not sheep_broken else class_max_books + 1
+	_after_max_hp_change(old_max)
 
 
 func max_hp() -> float:

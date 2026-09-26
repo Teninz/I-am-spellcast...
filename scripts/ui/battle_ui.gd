@@ -8,7 +8,7 @@ extends Control
 
 signal finished(outcome: String)
 
-enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, ITEM_TARGET, ABILITY_TARGET, OVER }
+enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, ITEM_TARGET, ABILITY_TARGET, REWIND, OVER }
 
 const AUTO_DRAW_DELAY := 2.0
 const AUTO_CAST_DELAY := 1.2
@@ -61,6 +61,11 @@ var _cast_button: Button
 var _auto_check: CheckBox
 var _item_button: Button
 var _ability_button: Button
+## Ряд под кнопками: видения Прорицателя, выбор фишки для Сделки, Перемотка.
+var _extra_box: HFlowContainer
+var _critter := ""        # зверушка Учёного, ждущая цель
+var _pact_picking := false
+var _rewind_again := false
 var _title_label: Label
 var _log: BattleLog
 var _auto_timer: Timer
@@ -153,11 +158,12 @@ func _advance() -> void:
 func _on_card_pressed(u: Unit) -> void:
 	if state == State.ABILITY_TARGET:
 		if _ability_targets().has(u):
-			if actor.ability == "lay_on_hands":
-				combat.lay_on_hands(actor, u)
+			if actor.ability == "workshop":
+				combat.use_workshop(actor, _critter, u)
+				_after_turn_ability()
 			else:
-				combat.inspire(actor, u)
-			_after_item()
+				combat.use_target_ability(actor, u)
+				_after_item()
 		return
 	if state == State.ITEM_TARGET:
 		if combat.item_targets(actor, actor.wizard.item).has(u):
@@ -195,6 +201,8 @@ func _on_draw_pressed() -> void:
 	if bag.is_complete():
 		_set_state(State.READY)
 		_show_preview()
+	else:
+		_ability_button.visible = _ability_available()
 	if _auto_check.button_pressed:
 		_auto_step()
 
@@ -230,6 +238,16 @@ func _on_cast_pressed() -> void:
 	await _wait(0.6)
 	if state == State.OVER:
 		return
+	# Хрономант: неудачный каст можно отмотать.
+	if combat.outcome == "" and combat.last_cast.get("bad", false) and combat.can_rewind() and not _auto_check.button_pressed:
+		_rewind_again = again
+		_set_state(State.REWIND)
+		_prompt_label.text = "Каст вышел неудачным. Хрономант может отмотать время (1 раз за бой)."
+		return
+	_after_cast(again)
+
+
+func _after_cast(again: bool) -> void:
 	if combat.outcome != "":
 		_game_over()
 	elif again and actor.alive():
@@ -241,28 +259,149 @@ func _on_cast_pressed() -> void:
 		_advance()
 
 
-## Способность класса, которую применяют кликом по союзнику (Паладин, Бард).
+## Кнопка способности: своя для каждой фазы хода (см. Combat.ABILITY_PHASE).
 func _ability_available() -> bool:
-	return actor != null and actor.is_wizard() and (combat.can_lay_on_hands(actor) or combat.can_inspire(actor))
+	if actor == null or not actor.is_wizard():
+		return false
+	match combat.ability_phase(actor):
+		"target", "turn":
+			return state == State.CHOOSE_TARGET and combat.can_use_ability(actor)
+		"chips":
+			return state == State.READY and combat.can_use_ability(actor, bag)
+		"draw":
+			return state == State.DRAWING and combat.can_use_ability(actor, bag) and not _pact_picking
+	return false
 
 
 func _ability_targets() -> Array[Unit]:
-	if actor.ability == "lay_on_hands":
-		return combat.lay_on_hands_targets(actor)
-	return combat.inspire_targets(actor)
+	return combat.ability_targets(actor)
 
 
 func _on_ability_pressed() -> void:
-	if state != State.CHOOSE_TARGET or not _ability_available():
+	if not _ability_available():
 		return
-	_set_state(State.ABILITY_TARGET)
-	_prompt_label.text = "%s: выбери союзника." % _ability_name()
+	match combat.ability_phase(actor):
+		"target":
+			_set_state(State.ABILITY_TARGET)
+			_prompt_label.text = "%s: выбери %s." % [_ability_name(),
+				"выбывшего союзника" if actor.ability == "raise_dead" else "союзника"]
+		"turn":
+			_critter = combat.roll_workshop()
+			if combat.critter_needs_target(_critter):
+				_set_state(State.ABILITY_TARGET)
+				_prompt_label.text = "%s: выбери, на кого натравить." % Combat.CRITTER_NAMES[_critter]
+			else:
+				combat.use_workshop(actor, _critter, null)
+				_after_turn_ability()
+		"chips":
+			if actor.ability == "beast_call":
+				combat.beast_call(actor, bag, target)
+			else:
+				combat.surge(actor, bag)
+			_chips_changed()
+		"draw":
+			_pact_picking = true
+			_prompt_label.text = "Сделка: выбери фишку, которую достанешь (−%d ЗД)." % int(Combat.PACT_COST)
+			_ability_button.visible = false
+			_rebuild_extra()
 
 
 func _ability_name() -> String:
-	if actor.ability == "lay_on_hands":
-		return "Наложение рук (запас %s)" % Unit._num(actor.ability_pool)
-	return "Вдохновение (осталось %d)" % actor.ability_charges
+	return combat.ability_name(actor)
+
+
+## Мастерская заняла ход Учёного.
+func _after_turn_ability() -> void:
+	_critter = ""
+	_refresh()
+	if combat.outcome != "":
+		_game_over()
+	else:
+		await _wait(0.5)
+		_advance()
+
+
+## Тройка изменилась способностью (зверь, всплеск, видение).
+func _chips_changed() -> void:
+	_update_chips()
+	_refresh()
+	if combat.outcome != "":
+		_game_over()
+		return
+	_set_state(State.READY)
+	_show_preview()
+
+
+## Ряд дополнительных действий под кнопками.
+func _rebuild_extra() -> void:
+	for c in _extra_box.get_children():
+		_extra_box.remove_child(c)
+		c.queue_free()
+	if actor == null or combat == null:
+		return
+	if state == State.READY and combat.can_use_vision(actor, bag):
+		for i in combat.visions.size():
+			var chips := combat.vision_chips(combat.visions[i], book_id)
+			var spell := combat.spell_for(book_id, ChipBag.key_for(chips))
+			var b := _button("Видение: %s" % spell.get("name", "?"), _on_vision.bind(i))
+			b.tooltip_text = "Заменить тройку видением Прорицателя: %s — %s" % [spell.get("name", ""), spell.get("effect", "")]
+			_extra_box.add_child(b)
+	if state == State.DRAWING and _pact_picking and bag != null:
+		for letter in Combat.letters_by_count(books[book_id].bag):
+			if int(bag.counts.get(letter, 0)) <= 0:
+				continue
+			var b := _button(ELEMENT_NAMES.get(letter, letter), _on_pact.bind(letter))
+			b.icon = Art.chip(letter)
+			b.expand_icon = true
+			b.add_theme_constant_override("icon_max_width", 28)
+			_extra_box.add_child(b)
+		_extra_box.add_child(_button("Отмена", func() -> void:
+			_pact_picking = false
+			_set_state(State.DRAWING)))
+	if state == State.REWIND:
+		_extra_box.add_child(_button("Перемотка!", _on_rewind))
+		_extra_box.add_child(_button("Оставить как есть", _on_rewind_skip))
+
+
+func _on_vision(i: int) -> void:
+	if state != State.READY or not combat.can_use_vision(actor, bag) or i >= combat.visions.size():
+		return
+	combat.use_vision(actor, bag, i, book_id)
+	_chips_changed()
+
+
+func _on_pact(letter: String) -> void:
+	_pact_picking = false
+	if combat.pact_deal(actor, bag, letter):
+		_refresh()
+		_set_state(State.DRAWING)
+		_on_draw_pressed()
+	else:
+		_set_state(State.DRAWING)
+
+
+func _on_rewind() -> void:
+	if state != State.REWIND:
+		return
+	var u := combat.rewind()
+	for id in _cards.keys():
+		if not combat.units.any(func(x: Unit) -> bool: return x.id == id):
+			_cards[id].queue_free()
+			_cards.erase(id)
+	_refresh()
+	if u == null:
+		_after_cast(_rewind_again)
+		return
+	actor = u
+	_clear_chips()
+	_show_book_cover("")
+	_set_state(State.CHOOSE_TARGET)
+	_prompt_label.text = "Время отмотано! %s, кастуй заново: выбери цель." % u.name
+
+
+func _on_rewind_skip() -> void:
+	if state == State.REWIND:
+		_after_cast(_rewind_again)
 
 
 func _on_item_pressed() -> void:
@@ -326,7 +465,7 @@ func _set_state(s: State) -> void:
 	_cast_button.disabled = s != State.READY
 	_item_button.visible = s in [State.CHOOSE_TARGET, State.ITEM_TARGET] and actor != null \
 		and actor.is_wizard() and combat.can_use_item(actor)
-	_ability_button.visible = s in [State.CHOOSE_TARGET, State.ABILITY_TARGET] and _ability_available()
+	_ability_button.visible = _ability_available()
 	if _ability_button.visible:
 		_ability_button.text = _ability_name()
 	if _item_button.visible:
@@ -364,6 +503,7 @@ func _set_state(s: State) -> void:
 			open.pressed.connect(_open_book.bind(b, true))
 			holder.add_child(open)
 			_book_box.add_child(holder)
+	_rebuild_extra()
 	_refresh()
 	_tutorial_step()
 
@@ -391,12 +531,16 @@ func _refresh() -> void:
 			card.modulate = Color(1.25, 1.2, 0.8)
 	_ability_label.text = ""
 	if actor and actor.is_wizard():
-		_ability_label.text = String(classes[actor.class_id].ability_text)
+		var lines := []
 		if actor.wizard.item != "":
-			_ability_label.text += "\nПредмет: %s — %s" % [adventure.items[actor.wizard.item].name,
-				adventure.items[actor.wizard.item].text]
+			lines.append("Предмет: %s — %s" % [adventure.items[actor.wizard.item].name,
+				adventure.items[actor.wizard.item].text])
+		var ab := String(classes[actor.class_id].ability_text)
 		if actor.ability == "burn":
-			_ability_label.text += "  Осталось: %d." % actor.ability_charges
+			ab += "  Осталось: %d." % actor.ability_charges
+		lines.append(ab)
+		_ability_label.text = "\n".join(lines)
+	_ability_label.tooltip_text = _ability_label.text
 
 
 func _update_card(card: Button, u: Unit) -> void:
@@ -888,9 +1032,10 @@ func _build_ui() -> void:
 	_book_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(_book_box)
 
-	var controls := HBoxContainer.new()
-	controls.alignment = BoxContainer.ALIGNMENT_CENTER
-	controls.add_theme_constant_override("separation", 12)
+	var controls := HFlowContainer.new()  # переносится, если кнопок много
+	controls.alignment = FlowContainer.ALIGNMENT_CENTER
+	controls.add_theme_constant_override("h_separation", 12)
+	controls.add_theme_constant_override("v_separation", 6)
 	center.add_child(controls)
 	_draw_button = _button("Достать фишку", _on_draw_pressed)
 	controls.add_child(_draw_button)
@@ -914,8 +1059,14 @@ func _build_ui() -> void:
 	_ability_button = _button("Способность", _on_ability_pressed)
 	_ability_button.visible = false
 	controls.add_child(_ability_button)
+	_extra_box = HFlowContainer.new()
+	_extra_box.alignment = FlowContainer.ALIGNMENT_CENTER
+	_extra_box.add_theme_constant_override("h_separation", 8)
+	_extra_box.add_theme_constant_override("v_separation", 6)
+	center.add_child(_extra_box)
 	_auto_check = CheckBox.new()
-	_auto_check.text = "Авто (фишка раз в 2 с)"
+	_auto_check.text = "Авто"
+	_auto_check.tooltip_text = "Автотяга: фишка раз в 2 секунды, затем «Я кастую!»"
 	_auto_check.button_pressed = auto_draw
 	_auto_check.toggled.connect(func(on: bool) -> void:
 		auto_draw = on
@@ -927,6 +1078,11 @@ func _build_ui() -> void:
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ability_label.modulate = Color(1, 1, 1, 0.7)
+	# Не больше двух строк, полный текст — в подсказке (иначе журнал уезжает за край).
+	_ability_label.max_lines_visible = 2
+	_ability_label.custom_minimum_size = Vector2(0, 46)
+	_ability_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_ability_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	center.add_child(_ability_label)
 
 	var enemy_col := VBoxContainer.new()

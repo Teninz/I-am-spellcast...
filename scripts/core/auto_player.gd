@@ -83,7 +83,8 @@ static func play(combat: Combat) -> String:
 			break
 		if u.is_wizard():
 			maybe_use_item(combat, u)
-			use_abilities(combat, u)
+			if use_abilities(combat, u):
+				continue  # ход занят способностью (Мастерская Учёного)
 			if combat.outcome != "":
 				break
 			var casts := 1 + u.extra_casts
@@ -94,19 +95,33 @@ static func play(combat: Combat) -> String:
 				var book := choose_book(u, combat)
 				var target := combat.resolve_target(u, choose_target(combat, u, book))
 				var bag := combat.new_bag(u, book, luck_plan(combat, u, book))
+				# Чернокнижник: сделка на первую фишку, пока здоровья с запасом.
+				if u.ability == "pact_deal" and u.hp > 6.0:
+					combat.pact_deal(u, bag, Combat.letters_by_count(combat.books[book].bag)[0])
 				while not bag.is_complete():
 					bag.draw(combat.rng)
+				_fix_chips(combat, u, bag, book, target)
 				# Хаос — перевытянуть, если есть чем (Сожжение, Муза).
 				if bag.chips.has(ChipBag.CHAOS) and combat.can_reroll(u):
 					combat.reroll_chip(u, bag, bag.chips.find(ChipBag.CHAOS))
 				combat.cast(u, target, book, bag, i == casts - 1)
+				# Хрономант: неудачный каст — перемотка, и тот же волшебник кастует снова.
+				if combat.outcome == "" and combat.last_cast.get("bad", false) and combat.can_rewind():
+					var again := combat.rewind()
+					if again == u:
+						book = choose_book(u, combat)
+						target = combat.resolve_target(u, choose_target(combat, u, book))
+						bag = combat.new_bag(u, book)
+						while not bag.is_complete():
+							bag.draw(combat.rng)
+						combat.cast(u, target, book, bag, i == casts - 1)
 		else:
 			combat.enemy_act(u)
 	return combat.outcome
 
 
-## Бесплатные способности: Наложение рук раненым, Вдохновение союзнику.
-static func use_abilities(combat: Combat, u: Unit) -> void:
+## Способности в начале хода. Возвращает true, если ход занят (Мастерская Учёного).
+static func use_abilities(combat: Combat, u: Unit) -> bool:
 	if combat.can_lay_on_hands(u):
 		for t in combat.lay_on_hands_targets(u):
 			if t.hp < t.max_hp * 0.5:
@@ -114,6 +129,42 @@ static func use_abilities(combat: Combat, u: Unit) -> void:
 				break
 	if combat.can_inspire(u):
 		combat.inspire(u, combat.inspire_targets(u)[0])
+	if u.ability == "raise_dead" and combat.can_use_ability(u):
+		combat.use_target_ability(u, combat.ability_targets(u)[0])
+	if u.ability == "decoy" and combat.can_use_ability(u):
+		for t in combat.ability_targets(u):
+			if t.hp < t.max_hp * 0.5:
+				combat.use_target_ability(u, t)
+				break
+	if u.ability == "workshop" and combat.can_use_ability(u) and combat.rng.randf() < 0.35:
+		var critter := combat.roll_workshop()
+		var foes := combat.living(Unit.ENEMIES)
+		combat.use_workshop(u, critter, foes[0] if not foes.is_empty() else null)
+		return true
+	return false
+
+
+## Тройка вытянута: если заклинание по врагу не наносит урона — Видение, Зов зверя или Всплеск.
+static func _fix_chips(combat: Combat, u: Unit, bag: ChipBag, book: String, target: Unit) -> void:
+	if target == null or target.side == u.side:
+		return
+	if _deals_damage(combat, book, bag.combo_key()):
+		return
+	if combat.can_use_vision(u, bag):
+		for i in combat.visions.size():
+			var key := ChipBag.key_for(combat.vision_chips(combat.visions[i], book))
+			if _deals_damage(combat, book, key):
+				combat.use_vision(u, bag, i, book)
+				return
+	if u.ability == "beast_call" and combat.can_use_ability(u, bag):
+		combat.beast_call(u, bag, target)
+	elif u.ability == "surge" and combat.can_use_ability(u, bag):
+		combat.surge(u, bag)
+
+
+static func _deals_damage(combat: Combat, book: String, combo: String) -> bool:
+	var spec := EffectParser.parse(combat.spell_for(book, combo))
+	return spec.damage > 0 or spec.splash > 0
 
 
 static func _someone_hurt(combat: Combat, u: Unit) -> bool:
@@ -146,10 +197,10 @@ static func camp(adv: Adventure) -> void:
 				else:
 					adv.take_book(o, w.books[w.books.size() - 1])
 			"item":
-				if w.item == "":
+				if w.has_item_slot():
 					adv.take_item(o)
 				else:
-					var ally_free := adv.wizards.filter(func(a: Wizard) -> bool: return a.item == "")
+					var ally_free := adv.wizards.filter(func(a: Wizard) -> bool: return a.has_item_slot())
 					if not ally_free.is_empty():
 						adv.give_offer_item(o, ally_free[0])
 					else:
@@ -166,6 +217,9 @@ static func camp(adv: Adventure) -> void:
 					adv.equip_offer(o, target)
 				else:
 					adv.discard_offer(o)
+	for w in adv.wizards:
+		if adv.can_mix(w):
+			adv.mix_items(w)
 	# Лечебные предметы: воскресить выбывших, подлечить раненых.
 	for w in adv.wizards:
 		for t in adv.camp_item_targets(w):
@@ -220,3 +274,9 @@ static func luck_plan(combat: Combat, u: Unit, book_id: String) -> Dictionary:
 		return {}
 	var cat := "damage" if book_lean(combat.books, book_id) >= 0.0 else "support"
 	return Luck.clean(combat.books[book_id], combat.book_odds(u, book_id), {Luck.cat_key(cat): Luck.BUDGET})
+
+
+## После босса: Чернокнижник платит Покровителю предметом, если он есть, иначе здоровьем.
+static func pay_patrons(adv: Adventure) -> void:
+	for w in adv.patron_due.duplicate():
+		adv.pay_patron(w, "item" if w.item != "" else "hp")

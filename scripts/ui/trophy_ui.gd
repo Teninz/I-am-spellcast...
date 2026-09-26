@@ -10,6 +10,7 @@ var _wizard: Wizard
 var _kind_cards := {}
 var _wizard_buttons := {}
 var _take: Button
+var _patron := {}  # Чернокнижник -> "hp" или "item"
 
 
 func setup(adv: Adventure) -> void:
@@ -85,6 +86,29 @@ func _ready() -> void:
 		scars.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(scars)
 
+	# Чернокнижник: «Покровитель голоден» — 1 макс. ЗД или предмет.
+	for w in adventure.patron_due:
+		var pr := HBoxContainer.new()
+		pr.alignment = BoxContainer.ALIGNMENT_CENTER
+		pr.add_theme_constant_override("separation", 10)
+		var l := Label.new()
+		l.text = "Покровитель голоден — %s отдаёт:" % w.name
+		l.add_theme_color_override("font_color", Color("d07cff"))
+		pr.add_child(l)
+		var group := ButtonGroup.new()
+		for how in ["hp", "item"]:
+			if how == "item" and w.item == "":
+				continue
+			var b := Button.new()
+			b.text = "1 макс. ЗД" if how == "hp" else "предмет «%s»" % adventure.items[w.item].name
+			b.toggle_mode = true
+			b.button_group = group
+			b.button_pressed = how == "hp"
+			b.pressed.connect(func() -> void: _patron[w] = how)
+			pr.add_child(b)
+		_patron[w] = "hp"
+		col.add_child(pr)
+
 	var bottom := HBoxContainer.new()
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_child(bottom)
@@ -93,6 +117,8 @@ func _ready() -> void:
 	_take.add_theme_font_size_override("font_size", 18)
 	_take.pressed.connect(func() -> void:
 		adventure.award_trophy(_kind, _wizard)
+		for w in _patron:
+			adventure.pay_patron(w, _patron[w])
 		Sfx.play("trophy")
 		done.emit())
 	bottom.add_child(_take)

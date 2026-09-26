@@ -187,3 +187,29 @@ static func has_effect(spec: Dictionary) -> bool:
 		or spec.splash > 0 or spec.revive_hp > 0 or not spec.statuses.is_empty()
 		or not spec.caster_statuses.is_empty() or spec.cleanse or spec.strip_buffs
 		or spec.meter != 0 or not spec.remove.is_empty())
+
+
+## Обратный эффект (GDD 3.5): урон ↔ лечение, щит → Уязвимость, бафф → Слабость,
+## контроль → Ускорение цели, воскрешение → цель теряет половину здоровья (как урон).
+static func invert(spec: Dictionary) -> Dictionary:
+	var out := spec.duplicate(true)
+	out.damage = spec.heal
+	out.heal = spec.damage + spec.splash
+	out.splash = 0
+	out.shield = 0
+	out.statuses = []
+	if spec.shield > 0:
+		out.statuses.append({"id": "vulnerable", "turns": 2})
+	for st in spec.statuses:
+		if Unit.BUFFS.has(st.id):
+			out.statuses.append({"id": "weak", "turns": int(st.turns)})
+		elif Unit.DEBUFFS.has(st.id):
+			out.statuses.append({"id": "haste", "turns": 2})
+	if spec.meter != 0:
+		out.meter = -spec.meter
+	out.cleanse = false
+	out.strip_buffs = spec.cleanse
+	if spec.revive_hp > 0:
+		out.revive_hp = 0
+		out.damage = maxi(out.damage, 3)
+	return out

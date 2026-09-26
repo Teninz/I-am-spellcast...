@@ -63,6 +63,8 @@ static func dump(adv: Adventure) -> Dictionary:
 			"books": w.books, "item": w.item, "hat": w.hat, "boots": w.boots,
 			"wear_book": w.wear_book, "wear_streak": w.wear_streak,
 			"trophies": w.trophies, "scars": w.scars, "no_item_battle": w.no_item_battle,
+			"zombie": w.zombie, "sheep_broken": w.sheep_broken, "item2": w.item2,
+			"max_books": w.max_books, "base_hp": w.base_hp,
 		})
 	var offers := []
 	for o in adv.offers:
@@ -73,6 +75,7 @@ static func dump(adv: Adventure) -> Dictionary:
 		"last_was_boss": adv.last_was_boss, "unlocked_classes": adv.unlocked_classes,
 		"map_nodes": adv.map_nodes, "node_id": adv.node_id, "path": adv.path,
 		"trophy_boss": adv.trophy_boss, "run": adv.run, "earned": adv.earned,
+		"patron_due": adv.patron_due.map(func(w: Wizard) -> int: return adv.wizards.find(w)),
 		"offers": offers, "wizards": wizards,
 	}
 
@@ -107,6 +110,9 @@ static func restore(d: Dictionary) -> Adventure:
 		if run.has(k):
 			adv.run[k] = run[k] if k == "books_cast" else int(run[k])
 	adv.earned.assign(d.get("earned", []))
+	for i in d.get("patron_due", []):
+		if int(i) >= 0 and int(i) < adv.wizards.size():
+			adv.patron_due.append(adv.wizards[int(i)])
 	adv.offers.clear()
 	for o in d.get("offers", []):
 		var offer: Dictionary = o.duplicate()
@@ -130,4 +136,9 @@ static func restore(d: Dictionary) -> Adventure:
 		w.wear_book = String(s.wear_book)
 		w.wear_streak = int(s.wear_streak)
 		w.no_item_battle = bool(s.get("no_item_battle", false))
+		w.zombie = bool(s.get("zombie", false))
+		w.sheep_broken = bool(s.get("sheep_broken", false))
+		w.item2 = String(s.get("item2", ""))
+		w.max_books = int(s.get("max_books", w.max_books))
+		w.base_hp = float(s.get("base_hp", w.base_hp))
 	return adv

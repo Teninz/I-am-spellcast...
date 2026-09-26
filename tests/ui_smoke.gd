@@ -18,6 +18,7 @@ var forks := 0
 var books_opened := 0
 var trophies := 0
 var resumed := 0
+var abilities_used := 0
 var last_screen: Node = null
 
 
@@ -48,9 +49,12 @@ func _process(_delta: float) -> bool:
 		if s != last_screen:
 			last_screen = s
 			# Чередуем отряды: 3 стартовых и 4 с Магусом (и Бардом, если открыт).
-			var party := ["pyromancer", "priest", "water"]
+			# Каждый забег — новые классы: так в интерфейсе пробуются все способности.
+			var all := ["druid", "necromancer", "scientist", "seer", "illusionist", "wild_mage",
+				"warlock", "alchemist", "chronomancer", "oracle", "bard", "paladin"]
+			var party := ["pyromancer", all[(runs * 2) % all.size()], all[(runs * 2 + 1) % all.size()]]
 			if runs % 2 == 1:
-				party.append("bard" if s.profile.unlocked.has("bard") else "magus")
+				party.append("water")
 			s.selected = party
 			s.start_pressed.emit(party)
 		return false
@@ -102,8 +106,8 @@ func _process(_delta: float) -> bool:
 		if s.get_meta("victory", false):
 			wins += 1
 		if runs >= 6:
-			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, книг открыто: %d, трофеев: %d, продолжений с сохранения: %d, предметов в бою: %d)"
-				% [runs, wins, camps, forks, books_opened, trophies, resumed, items_used])
+			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, книг открыто: %d, трофеев: %d, продолжений с сохранения: %d, способностей: %d, предметов в бою: %d)"
+				% [runs, wins, camps, forks, books_opened, trophies, resumed, abilities_used, items_used])
 			quit(0)
 			return true
 		game.new_adventure()
@@ -112,8 +116,12 @@ func _process(_delta: float) -> bool:
 
 func _play_battle(ui: Node) -> void:
 	match ui.state:
+		ui.State.REWIND:
+			abilities_used += 1
+			ui._on_rewind()
 		ui.State.CHOOSE_TARGET:
 			if ui._ability_button.visible:
+				abilities_used += 1
 				ui._on_ability_pressed()
 				return
 			if ui.combat.can_use_item(ui.actor) and ui._item_button.visible:
@@ -137,13 +145,33 @@ func _play_battle(ui: Node) -> void:
 			view.cast_pressed.emit(view.plan)
 			view.queue_free()
 		ui.State.ABILITY_TARGET:
-			ui._on_card_pressed(ui._ability_targets()[0])
+			var ts: Array = ui._ability_targets()
+			if ts.is_empty():
+				ui._set_state(ui.State.CHOOSE_TARGET)
+			else:
+				ui._on_card_pressed(ts[0])
 		ui.State.ITEM_TARGET:
 			var ts: Array = ui.combat.item_targets(ui.actor, ui.actor.wizard.item)
 			ui._on_card_pressed(ts[0])
 		ui.State.DRAWING:
+			if ui._ability_button.visible and ui.bag.chips.is_empty():
+				abilities_used += 1
+				ui._on_ability_pressed()  # Сделка: выбрать первую фишку
+				var picks: Array = ui._extra_box.get_children().filter(func(b): return b is Button and b.text != "Отмена")
+				if not picks.is_empty():
+					picks[0].pressed.emit()
+				return
 			ui._on_draw_pressed()
 		ui.State.READY:
+			if ui._ability_button.visible and ui.actor.ability_charges > 0 and randf() < 0.5:
+				abilities_used += 1
+				ui._on_ability_pressed()  # Зов зверя, Всплеск
+				return
+			var visions: Array = ui._extra_box.get_children().filter(func(b): return b is Button)
+			if not visions.is_empty() and randf() < 0.3:
+				abilities_used += 1
+				visions[0].pressed.emit()
+				return
 			if ui.combat.can_reroll(ui.actor) and ui.bag.chips.has("X"):
 				ui._on_chip_pressed(ui.bag.chips.find("X"))
 			ui._on_cast_pressed()
