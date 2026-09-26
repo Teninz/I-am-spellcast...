@@ -106,7 +106,15 @@ func _play(ui: Node) -> void:
 								ui._log._render()
 								_shot("log_key.png", func() -> void:
 									StatusInfo.open(ui)
-									_shot("info.png", func() -> void: quit())), 0.25)))
+									_shot("info.png", func() -> void:
+										for c in ui.get_children():
+											if c is StatusInfo:
+												c.queue_free()
+										# Книга с Благословением: 10 % вложено в «Огненный шар» и тип «Контроль».
+										var plan := {Luck.spell_key("FFF"): 6, Luck.cat_key("control"): 4}
+										BookView.open(ui, ui.books["fire"], ChipBag.odds(ui.books["fire"].bag), true, plan,
+											"Кастовать из этой книги")
+										_shot("book.png", func() -> void: quit()))), 0.25)))
 					return
 			ui._on_cast_pressed()
 

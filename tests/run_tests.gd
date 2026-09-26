@@ -12,6 +12,7 @@ func _initialize() -> void:
 	test_art_assets(books)
 	test_chaos_odds(books)
 	test_combo_odds(books)
+	test_luck_scale(books)
 	test_parser_coverage(books)
 	test_rat_pack_simulation(books)
 	test_rest_and_fortify()
@@ -120,6 +121,54 @@ func test_combo_odds(books: Dictionary) -> void:
 
 
 ## Каждое заклинание стартовых книг должно что-то делать в прототипе.
+func test_luck_scale(books: Dictionary) -> void:
+	print("Просмотр книги и шкала удачи:")
+	var fire: Dictionary = books.fire
+	var odds := ChipBag.odds(fire.bag)
+	var total := 0.0
+	for k in odds:
+		total += odds[k]
+	check(absf(total - 1.0) < 1e-9 and absf(odds.X1 * 100.0 - 18.01) < 0.1,
+		"точные шансы: сумма 100 %%, Хаос I %.2f %% (как у симуляции)" % (odds.X1 * 100.0))
+	var p: float = odds.FFF
+	var plan := {Luck.spell_key("FFF"): 10}
+	var now := Luck.shifted(fire, odds, plan)
+	var sum_now := 0.0
+	for k in now:
+		sum_now += now[k]
+	check(absf(now.FFF - (p + 0.1 * (1.0 - p))) < 1e-9 and absf(sum_now - 1.0) < 1e-9,
+		"10 %% в «Огненный шар»: %.1f %% → %.1f %%, сумма по-прежнему 100 %%" % [p * 100.0, now.FFF * 100.0])
+	var other: String = "FFW"
+	check(absf(now[other] - odds[other] * 0.9) < 1e-9, "остальные шансы уменьшаются пропорционально (×0.9)")
+	var cats := Luck.by_category(fire, odds)
+	var cats_now := Luck.by_category(fire, Luck.shifted(fire, odds, {Luck.cat_key("damage"): 10}))
+	check(absf(cats_now.damage - (cats.damage + 0.1 * (1.0 - cats.damage))) < 1e-9,
+		"10 %% в тип «Урон»: %.0f %% → %.0f %%" % [cats.damage * 100.0, cats_now.damage * 100.0])
+	var split := Luck.shifted(fire, odds, {Luck.spell_key("FFF"): 4, Luck.cat_key("control"): 6})
+	check(absf(split.FFF - (0.9 * p + 0.04)) < 1e-9, "шкалу можно разделить: 4 % в заклинание и 6 % в тип")
+	check(Luck.spent(Luck.clean(fire, odds, {Luck.spell_key("FFF"): 8, Luck.spell_key("FWF"): 8})) == 10,
+		"больше 10 % вложить нельзя")
+	# Сам бросок: с Благословением «Огненный шар» выпадает чаще, без — как обычно.
+	var w := Wizard.new("pyromancer", GameData.load_classes().pyromancer, {})
+	var c := Combat.new(books, [w], GameData.load_encounter("rat_pack"), 5, {})
+	var u: Unit = c.living(Unit.PARTY)[0]
+	var n := 20000
+	var hits := [0, 0]
+	for with_bless in [false, true]:
+		if with_bless:
+			u.add_status("bless", 99)
+		for i in n:
+			var bag := c.new_bag(u, "fire", plan)
+			while not bag.is_complete():
+				bag.draw(c.rng)
+			if bag.combo_key() == "FFF":
+				hits[int(with_bless)] += 1
+	var base_rate: float = 100.0 * hits[0] / n
+	var luck_rate: float = 100.0 * hits[1] / n
+	check(absf(base_rate - p * 100.0) < 0.7, "без баффа удачи план не действует (%.1f %%)" % base_rate)
+	check(absf(luck_rate - now.FFF * 100.0) < 0.8, "с Благословением «Огненный шар» выпадает в %.1f %% (ожидается %.1f %%)" % [luck_rate, now.FFF * 100.0])
+
+
 func test_parser_coverage(books: Dictionary) -> void:
 	print("Разбор заклинаний стартовых книг:")
 	for id in ["fire", "water", "holy", "blade", "bard", "oath"]:

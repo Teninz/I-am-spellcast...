@@ -93,7 +93,7 @@ static func play(combat: Combat) -> String:
 					break
 				var book := choose_book(u, combat)
 				var target := combat.resolve_target(u, choose_target(combat, u, book))
-				var bag := combat.new_bag(u, book)
+				var bag := combat.new_bag(u, book, luck_plan(combat, u, book))
 				while not bag.is_complete():
 					bag.draw(combat.rng)
 				# Хаос — перевытянуть, если есть чем (Сожжение, Муза).
@@ -212,3 +212,11 @@ static func book_lean(books: Dictionary, book_id: String) -> float:
 		sum += float(value.get(bag.combo_key(), 0.0))
 	_lean[book_id] = sum / LEAN_SAMPLES
 	return _lean[book_id]
+
+
+## Шкала удачи автоигрока: всё в урон (для книг поддержки — в пользу).
+static func luck_plan(combat: Combat, u: Unit, book_id: String) -> Dictionary:
+	if not Luck.has_luck(u):
+		return {}
+	var cat := "damage" if book_lean(combat.books, book_id) >= 0.0 else "support"
+	return Luck.clean(combat.books[book_id], combat.book_odds(u, book_id), {Luck.cat_key(cat): Luck.BUDGET})

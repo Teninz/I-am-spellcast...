@@ -268,12 +268,29 @@ func resolve_target(caster: Unit, chosen: Unit) -> Unit:
 	return chosen
 
 
-func new_bag(caster: Unit, book_id: String) -> ChipBag:
+## luck_plan — вложения шкалы удачи (см. Luck); действуют только при баффе удачи.
+func new_bag(caster: Unit, book_id: String, luck_plan: Dictionary = {}) -> ChipBag:
 	var bag: Dictionary = books[book_id].bag
-	var extra := caster.extra_chaos_chips()
+	var extra := bag_extra_chaos(caster, book_id)
+	var out := ChipBag.new(bag, extra)
+	if not luck_plan.is_empty() and Luck.has_luck(caster):
+		var odds := ChipBag.odds(bag, extra)
+		var combo := Luck.roll(books[book_id], odds, Luck.clean(books[book_id], odds, luck_plan), rng)
+		if combo != "":
+			out.forced = ChipBag.chips_for(combo, bag, rng)
+	return out
+
+
+## Сколько фишек Хаоса добавлено (или убрано) в мешочек книги у этого волшебника.
+func bag_extra_chaos(caster: Unit, book_id: String) -> int:
 	if caster.no_chaos:
-		extra = -int(bag.get("X", 0))
-	return ChipBag.new(bag, extra)
+		return -int(books[book_id].bag.get("X", 0))
+	return caster.extra_chaos_chips()
+
+
+## Шансы троек книги для этого волшебника (с учётом лишних или убранных фишек Хаоса).
+func book_odds(caster: Unit, book_id: String) -> Dictionary:
+	return ChipBag.odds(books[book_id].bag, bag_extra_chaos(caster, book_id))
 
 
 func spell_for(book_id: String, combo: String) -> Dictionary:
@@ -292,6 +309,8 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	caster.books_used[book_id] = true
 	var aim := "" if target == null or target == caster else " → %s" % target.name
 	_log("%s: «Я кастую!» — %s%s." % [caster.name, spell.name, aim], "chaos" if bag.chips.has(ChipBag.CHAOS) else "cast")
+	if not bag.forced.is_empty():
+		_log("Удача подправила фишки!", "luck")
 	_apply_spell(caster, target, spell, bag.chips)
 	_pay_cast_cost(caster, book_id)
 	_cane_strike(caster, target, spell)

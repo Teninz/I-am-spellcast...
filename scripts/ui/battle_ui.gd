@@ -45,6 +45,7 @@ var _cards := {}  # id участника -> Button
 var _chip_buttons: Array[Button] = []
 var _bag_button: TextureButton
 var _book_cover_holder: CenterContainer
+var _luck_plans := {}  # книга -> вложения шкалы удачи на этот ход
 var _queue_label: Label
 var _prompt_label: Label
 var _spell_label: Label
@@ -122,6 +123,7 @@ func _advance() -> void:
 		_game_over()
 		return
 	actor = u
+	_luck_plans.clear()
 	if not u.is_wizard():
 		_set_state(State.ENEMY_TURN)
 		_prompt_label.text = "Ходит %s…" % u.name
@@ -139,6 +141,8 @@ func _advance() -> void:
 		return
 	_set_state(State.CHOOSE_TARGET)
 	_prompt_label.text = "%s, выбери цель: противника или союзника." % u.name
+	if Luck.has_luck(u):
+		_prompt_label.text += " Удача с тобой: открой книгу и вложи шкалу удачи."
 
 
 func _on_card_pressed(u: Unit) -> void:
@@ -167,7 +171,7 @@ func _on_card_pressed(u: Unit) -> void:
 
 func _select_book(id: String) -> void:
 	book_id = id
-	bag = combat.new_bag(actor, id)
+	bag = combat.new_bag(actor, id, _luck_plans.get(id, {}))
 	_show_book_cover(id)
 	_set_state(State.DRAWING)
 	_prompt_label.text = "%s → %s. Книга: %s. Доставай фишки!" % [actor.name, target.name, books[id].name]
@@ -334,7 +338,16 @@ func _set_state(s: State) -> void:
 			l.add_theme_font_size_override("font_size", 11)
 			col.add_child(l)
 			btn.add_child(col)
-			_book_box.add_child(btn)
+			var holder := VBoxContainer.new()
+			holder.add_theme_constant_override("separation", 4)
+			holder.add_child(btn)
+			var open := Button.new()
+			open.text = "Открыть" + (" · удача" if Luck.has_luck(actor) else "")
+			open.tooltip_text = "Все заклинания книги с шансами" + (" и шкала удачи" if Luck.has_luck(actor) else "")
+			open.add_theme_font_size_override("font_size", 12)
+			open.pressed.connect(_open_book.bind(b, true))
+			holder.add_child(open)
+			_book_box.add_child(holder)
 	_refresh()
 
 
@@ -441,7 +454,40 @@ func _show_book_cover(id: String) -> void:
 	for c in _book_cover_holder.get_children():
 		c.queue_free()
 	if id != "":
-		_book_cover_holder.add_child(Art.book_cover(books[id], 60))
+		# Обложка текущей книги — кнопка: открыть книгу (до первой фишки — со шкалой удачи).
+		var btn := Button.new()
+		btn.flat = true
+		btn.tooltip_text = "Открыть книгу: заклинания и шансы"
+		btn.custom_minimum_size = Vector2(64, 94)
+		var cover := Art.book_cover(books[id], 60)
+		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(cover)
+		btn.pressed.connect(_open_book.bind(id, false))
+		_book_cover_holder.add_child(btn)
+
+
+## Просмотр книги. Вкладывать удачу можно, пока у волшебника Благословение и фишки ещё не тянули.
+## choosing — открыто из выбора книги: внизу кнопка «Кастовать из этой книги».
+func _open_book(id: String, choosing: bool) -> void:
+	if actor == null or not actor.is_wizard():
+		return
+	var before_draw := state == State.CHOOSE_BOOK or (state == State.DRAWING and bag != null and bag.chips.is_empty())
+	var can := Luck.has_luck(actor) and before_draw
+	var note := ""
+	if Luck.has_luck(actor) and not before_draw:
+		note = "Фишки уже тянутся — удачу можно вложить только до первой фишки."
+	var view := BookView.open(self, books[id], combat.book_odds(actor, id), can, _luck_plans.get(id, {}),
+		"Кастовать из этой книги" if choosing else "", note)
+	view.plan_changed.connect(func(plan: Dictionary) -> void:
+		_luck_plans[id] = plan
+		# Книга уже выбрана, фишек ещё нет — пересобираем мешочек с новой удачей.
+		if not choosing and state == State.DRAWING and bag != null and bag.chips.is_empty() and book_id == id:
+			bag = combat.new_bag(actor, id, plan))
+	if choosing:
+		view.cast_pressed.connect(func(plan: Dictionary) -> void:
+			_luck_plans[id] = plan
+			if state == State.CHOOSE_BOOK:
+				_select_book(id))
 
 
 func _show_preview() -> void:

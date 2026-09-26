@@ -14,6 +14,7 @@ var wins := 0
 var camps := 0
 var items_used := 0
 var forks := 0
+var books_opened := 0
 var last_screen: Node = null
 
 
@@ -71,8 +72,8 @@ func _process(_delta: float) -> bool:
 		if s.get_meta("victory", false):
 			wins += 1
 		if runs >= 6:
-			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, предметов в бою: %d)"
-				% [runs, wins, camps, forks, items_used])
+			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, книг открыто: %d, предметов в бою: %d)"
+				% [runs, wins, camps, forks, books_opened, items_used])
 			quit(0)
 			return true
 		game.new_adventure()
@@ -93,7 +94,18 @@ func _play_battle(ui: Node) -> void:
 			var pick = targets.filter(func(u): return u.side != ui.actor.side and u.alive())
 			ui._on_card_pressed(pick[0] if not pick.is_empty() else targets[0])
 		ui.State.CHOOSE_BOOK:
-			ui._select_book(AutoPlayer.choose_book(ui.actor))
+			# Через просмотр книги: вложить удачу (если есть Благословение) и кастовать кнопкой книги.
+			var b := AutoPlayer.choose_book(ui.actor)
+			ui.actor.add_status("bless", 2)
+			ui._open_book(b, true)
+			var view: BookView = null
+			for c in ui.get_children():
+				if c is BookView:
+					view = c
+			view._invest(Luck.cat_key(ui.books[b].spells[0].category), 3)
+			books_opened += 1
+			view.cast_pressed.emit(view.plan)
+			view.queue_free()
 		ui.State.ABILITY_TARGET:
 			ui._on_card_pressed(ui._ability_targets()[0])
 		ui.State.ITEM_TARGET:
