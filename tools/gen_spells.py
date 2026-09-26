@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Проверяет таблицы книг из data/books/*.json и собирает docs/spells/*.md.
 
-Мешочек: 20 фишек, фишка возвращается сразу после вытягивания,
-поэтому шанс каждой фишки постоянен в течение каста.
+Правило вытягивания:
+- в мешочке 19 фишек стихий и 1 фишка Хаоса;
+- фишки тянутся по одной, всего 3 вытягивания;
+- на каждом вытягивании шанс Хаоса — CHAOS_PER_CHIP за каждую фишку Хаоса;
+  Хаос оставляет чёрную метку в ячейке и возвращается в мешочек;
+- иначе выпадает фишка стихии из оставшихся; она остаётся на столе до конца каста.
 """
 import itertools
 import json
+import math
 import pathlib
 import sys
 
@@ -13,39 +18,71 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BOOKS = ROOT / "data" / "books"
 OUT = ROOT / "docs" / "spells"
 
-ICON = {"F": "🔥", "W": "💧", "H": "✨", "X": "🌀"}
-ELEMENT = {"F": "Огонь", "W": "Вода", "H": "Святость", "X": "Хаос"}
-CATEGORY = {"damage": "Урон", "control": "Контроль", "support": "Польза"}
+CHAOS_PER_CHIP = 0.069
+
+ICON = {"F": "🔥", "W": "💧", "H": "✨", "D": "🌑", "E": "🌿", "M": "⚙️"}
+ELEMENT = {"F": "Огонь", "W": "Вода", "H": "Святость", "D": "Тьма", "E": "Земля", "M": "Механика"}
+CATEGORY = {
+    "damage": "Урон",
+    "control": "Контроль",
+    "support": "Польза",
+    "summon": "Призыв",
+    "disease": "Болезнь",
+    "roots": "Щиты и корни",
+    "glitch": "Сбой",
+}
 CHAOS = {"X1": "Хаос I", "X2": "Хаос II", "X3": "Хаос III"}
 
 
-def combo_probabilities(bag):
-    total = sum(bag.values())
-    p = {k: v / total for k, v in bag.items()}
-    x = p.get("X", 0)
+def elements(book):
+    return [k for k in book["bag"] if k != "X"]
+
+
+def sequence_probability(counts, seq):
+    """Шанс вытянуть фишки стихий в этом порядке без возвращения."""
+    counts = dict(counts)
+    total = sum(counts.values())
+    p = 1.0
+    for e in seq:
+        if counts[e] <= 0:
+            return 0.0
+        p *= counts[e] / total
+        counts[e] -= 1
+        total -= 1
+    return p
+
+
+def combo_probabilities(book):
+    counts = {k: v for k, v in book["bag"].items() if k != "X"}
+    c = CHAOS_PER_CHIP * book["bag"].get("X", 0)
     probs = {}
-    for combo in itertools.product("FWH", repeat=3):
-        probs["".join(combo)] = p[combo[0]] * p[combo[1]] * p[combo[2]]
-    probs["X1"] = 3 * x * (1 - x) ** 2
-    probs["X2"] = 3 * x**2 * (1 - x)
-    probs["X3"] = x**3
+    for seq in itertools.product(elements(book), repeat=3):
+        probs["".join(seq)] = (1 - c) ** 3 * sequence_probability(counts, seq)
+    for k in (1, 2, 3):
+        probs[f"X{k}"] = math.comb(3, k) * c**k * (1 - c) ** (3 - k)
     return probs
 
 
 def validate(book):
     errors = []
     combos = [s["combo"] for s in book["spells"]]
-    expected = {"".join(c) for c in itertools.product("FWH", repeat=3)} | set(CHAOS)
+    expected = {"".join(s) for s in itertools.product(elements(book), repeat=3)} | set(CHAOS)
     if set(combos) != expected or len(combos) != 30:
         errors.append(f"комбинации: лишние {set(combos) - expected}, "
                       f"нет {expected - set(combos)}, всего {len(combos)}")
-    if sum(book["bag"].values()) != 20:
-        errors.append(f"в мешочке {sum(book['bag'].values())} фишек, а не 20")
-    counts = {c: 0 for c in CATEGORY}
+    if sum(book["bag"].values()) != 20 or book["bag"].get("X") != 1:
+        errors.append("в мешочке должно быть 19 фишек стихий и 1 фишка Хаоса")
+    counts = {c: 0 for c in book["target_split"]}
     for s in book["spells"]:
+        if s["category"] not in counts:
+            errors.append(f"{s['combo']}: категория {s['category']} не в распределении книги")
+            continue
         counts[s["category"]] += 1
     if counts != book["target_split"]:
         errors.append(f"распределение {counts}, ожидалось {book['target_split']}")
+    total = sum(combo_probabilities(book).values())
+    if abs(total - 1) > 1e-9:
+        errors.append(f"сумма шансов {total}, а не 1")
     return errors
 
 
@@ -53,10 +90,16 @@ def fmt_combo(combo):
     return CHAOS.get(combo) or "".join(ICON[c] for c in combo)
 
 
+def fmt_chance(p):
+    p *= 100
+    return f"{p:.2f} %" if p >= 0.1 else f"{p:.3f} %"
+
+
 def render(book):
-    probs = combo_probabilities(book["bag"])
+    probs = combo_probabilities(book)
     spells = sorted(book["spells"], key=lambda s: (s["combo"] in CHAOS, -probs[s["combo"]], s["combo"]))
-    by_cat = {c: 0.0 for c in CATEGORY}
+    cats = list(book["target_split"])
+    by_cat = {c: 0.0 for c in cats}
     exp_damage = exp_heal = 0.0
     for s in book["spells"]:
         p = probs[s["combo"]]
@@ -64,7 +107,7 @@ def render(book):
         exp_damage += p * s.get("damage", 0)
         exp_heal += p * (s.get("heal", 0) + s.get("shield", 0))
 
-    bag = " · ".join(f"{ICON[k]} {ELEMENT[k]} ×{v}" for k, v in book["bag"].items())
+    bag = " · ".join(f"{ICON[k]} {ELEMENT[k]} ×{v}" for k, v in book["bag"].items() if k != "X")
     split = " · ".join(f"{CATEGORY[c]} {n}" for c, n in book["target_split"].items())
     lines = [
         f"# {book['name']}",
@@ -72,21 +115,26 @@ def render(book):
         f"*{book['flavor']}*",
         "",
         f"- **Класс:** {book['class']}",
-        f"- **Мешочек (20 фишек):** {bag}",
+        f"- **Мешочек:** {bag} · 🌀 Хаос ×1 ({CHAOS_PER_CHIP * 100:.1f} % на каждое вытягивание)",
         f"- **Распределение заклинаний:** {split}",
+    ]
+    if book.get("notes"):
+        lines += [f"- **Особое:** {book['notes']}"]
+    lines += [
         "",
         "## Сводка шансов",
         "",
         "| Показатель | Значение |",
         "|---|---|",
     ]
-    for c, name in CATEGORY.items():
-        lines.append(f"| Шанс заклинания «{name}» | {by_cat[c] * 100:.1f} % |")
+    for c in cats:
+        lines.append(f"| Шанс заклинания «{CATEGORY[c]}» | {by_cat[c] * 100:.1f} % |")
     lines += [
-        f"| Средний урон по цели за каст | {exp_damage:.2f} |",
+        f"| Средний прямой урон по цели за каст | {exp_damage:.2f} |",
         f"| Среднее лечение/щит по цели за каст | {exp_heal:.2f} |",
         "",
         "Числа — без Мудрости. Мудрость добавляет +1 к каждому урону, лечению и щиту.",
+        "Урон призванных существ, ядов и болезней в среднее не входит.",
         "",
         "## Заклинания",
         "",
@@ -96,10 +144,8 @@ def render(book):
         "|---|---|---|---|---|",
     ]
     for s in spells:
-        p = probs[s["combo"]] * 100
-        chance = f"{p:.2f} %" if p >= 0.1 else f"{p:.3f} %"
         lines.append(f"| {fmt_combo(s['combo'])} | **{s['name']}** | "
-                     f"{CATEGORY[s['category']]} | {s['effect']} | {chance} |")
+                     f"{CATEGORY[s['category']]} | {s['effect']} | {fmt_chance(probs[s['combo']])} |")
     lines += ["", "*Файл собран скриптом `tools/gen_spells.py` из "
               f"`data/books/{book['id']}.json`. Правьте JSON, а не этот файл.*", ""]
     return "\n".join(lines)

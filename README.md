@@ -8,7 +8,7 @@
 - Боссы: [docs/bosses.md](docs/bosses.md)
 - Баланс и эффекты: [docs/balance.md](docs/balance.md)
 - Обмундирование: [docs/equipment.md](docs/equipment.md)
-- Таблицы заклинаний: [Огонь](docs/spells/fire.md) · [Вода](docs/spells/water.md) · [Святость](docs/spells/holy.md)
+- Таблицы заклинаний: [Огонь](docs/spells/fire.md) · [Вода](docs/spells/water.md) · [Святость](docs/spells/holy.md) · [Некрономикон](docs/spells/necronomicon.md) · [Друид](docs/spells/druid.md) · [Механическая овца](docs/spells/sheep.md)
 
 Таблицы книг хранятся в `data/books/*.json`. После правки пересоберите документы:
 
