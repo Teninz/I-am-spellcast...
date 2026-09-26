@@ -1,0 +1,100 @@
+{
+  "potion_heal": {
+    "name": "Зелье здоровья",
+    "text": "Восстанавливает 5 ЗД союзнику.",
+    "target": "ally",
+    "weight": 10,
+    "camp": true,
+    "effect": {
+      "heal": 5
+    }
+  },
+  "scroll_resurrect": {
+    "name": "Свиток воскрешения",
+    "text": "Поднимает выбывшего союзника с 5 ЗД.",
+    "target": "dead_ally",
+    "weight": 3,
+    "camp": true,
+    "resurrection": true,
+    "effect": {
+      "revive": 5
+    }
+  },
+  "potion_resurrect": {
+    "name": "Зелье воскрешения",
+    "text": "Срабатывает само: когда владелец выбывает, поднимает его с 3 ЗД.",
+    "target": "passive",
+    "weight": 3,
+    "resurrection": true,
+    "effect": {
+      "auto_revive": 3
+    }
+  },
+  "shield_scroll": {
+    "name": "Свиток щита",
+    "text": "Щит 4 союзнику.",
+    "target": "ally",
+    "weight": 6,
+    "effect": {
+      "shield": 4
+    }
+  },
+  "holy_water": {
+    "name": "Святая вода",
+    "text": "Очищение и лечение 2 союзнику.",
+    "target": "ally",
+    "weight": 5,
+    "camp": true,
+    "effect": {
+      "cleanse": true,
+      "heal": 2
+    }
+  },
+  "bomb": {
+    "name": "Бомба алхимика",
+    "text": "3 урона противнику.",
+    "target": "enemy",
+    "weight": 6,
+    "effect": {
+      "damage": 3
+    }
+  },
+  "sand_bag": {
+    "name": "Мешочек с песком",
+    "text": "До конца боя из мешочков владельца убираются фишки Хаоса.",
+    "target": "self",
+    "weight": 5,
+    "effect": {
+      "no_chaos": true
+    }
+  },
+  "horn": {
+    "name": "Громкий рог",
+    "text": "Все противники 2 хода бьют только владельца (Провокация).",
+    "target": "self",
+    "weight": 4,
+    "effect": {
+      "status": "taunt",
+      "turns": 2
+    }
+  },
+  "double_cast": {
+    "name": "Свиток «Я кастую дважды»",
+    "text": "В этот ход владелец кастует дважды.",
+    "target": "self",
+    "weight": 4,
+    "effect": {
+      "extra_cast": 1
+    }
+  },
+  "glue": {
+    "name": "Клей для переплёта",
+    "text": "Сбрасывает износ всех книг владельца. Только на привале.",
+    "target": "self",
+    "weight": 4,
+    "camp_only": true,
+    "effect": {
+      "reset_wear": true
+    }
+  }
+}

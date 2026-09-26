@@ -21,12 +21,14 @@
       "damage": 1,
       "speed": 11,
       "leader": true,
-      "special": {
-        "id": "all_attack_one",
-        "name": "Крысиный писк",
-        "cooldown": 3,
-        "text": "все крысы сразу атакуют одну цель"
-      }
+      "specials": [
+        {
+          "id": "all_attack_one",
+          "name": "Крысиный писк",
+          "cooldown": 3,
+          "text": "все крысы сразу атакуют одну цель"
+        }
+      ]
     }
   ]
 }

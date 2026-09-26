@@ -1,0 +1,38 @@
+{
+  "id": "geese_gang",
+  "name": "Гусиная банда",
+  "members": [
+    {
+      "name": "Бешеный гусь",
+      "hp": 3,
+      "damage": 1,
+      "speed": 10,
+      "attacks": 2
+    },
+    {
+      "name": "Бешеный гусь",
+      "hp": 3,
+      "damage": 1,
+      "speed": 10,
+      "attacks": 2
+    },
+    {
+      "name": "Гусак Бронированный",
+      "hp": 8,
+      "damage": 1,
+      "speed": 11,
+      "leader": true,
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Га-га-атака",
+          "cooldown": 3,
+          "damage": 2,
+          "status": "fear",
+          "turns": 2,
+          "text": "2 урона и Страх"
+        }
+      ]
+    }
+  ]
+}

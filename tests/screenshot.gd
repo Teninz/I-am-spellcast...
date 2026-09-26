@@ -1,53 +1,72 @@
 extends SceneTree
-## Снимок экрана боя в середине хода (нужен дисплей, например xvfb-run):
-##   godot --path . --script res://tests/screenshot.gd -- out=/tmp/battle.png
+## Снимки экранов (нужен дисплей, например xvfb-run):
+##   godot --path . --script res://tests/screenshot.gd -- out=/tmp/shots
+## Сохраняет camp.png (первый привал) и battle.png (середина 2-го боя, после отдыха).
 
-var ui: Node
-var frames := 0
-var casts := 0
-var out := "user://battle.png"
-var capturing := false
+const BattleUI := preload("res://scripts/ui/battle_ui.gd")
+const CampUI := preload("res://scripts/ui/camp_ui.gd")
+
+var game: Node
+var out := "user://"
+var busy := false
+var camp_shot := false
+var casts_in_second := 0
 
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="):
 			out = a.substr(4)
-	ui = load("res://scenes/main.tscn").instantiate()
-	ui.fast = true
-	root.add_child(ui)
+	game = load("res://scenes/main.tscn").instantiate()
+	game.fast = true
+	root.add_child(game)
 
 
 func _process(_delta: float) -> bool:
-	frames += 1
-	if capturing:
+	if busy:
 		return false
-	match ui.state:
-		ui.State.CHOOSE_TARGET:
-			if casts >= 4:
-				var enemies: Array = ui.combat.valid_targets(ui.actor).filter(
-					func(u): return u.side != ui.actor.side and u.alive())
-				ui._on_card_pressed(enemies[-1])
-			else:
-				var t: Array = ui.combat.valid_targets(ui.actor).filter(
-					func(u): return u.side != ui.actor.side and u.alive())
-				ui._on_card_pressed(t[0])
-		ui.State.DRAWING:
-			ui._on_draw_pressed()
-		ui.State.READY:
-			if casts >= 4:
-				capturing = true
-				_capture()
-				return false
-			ui._on_cast_pressed()
-			casts += 1
+	var s: Node = game.screen
+	if s == null or not is_instance_valid(s):
+		return false
+	if s.get_script() == CampUI and not camp_shot:
+		camp_shot = true
+		busy = true
+		_shot("camp.png", func() -> void:
+			AutoPlayer.camp(game.adventure)
+			s._continue.pressed.emit()
+			busy = false)
+		return false
+	if s.get_script() == BattleUI:
+		_play(s)
+	elif s.get_script() != CampUI:
+		game.new_adventure()  # проиграли первый бой — начнём заново
 	return false
 
 
-func _capture() -> void:
-	for i in 10:
+func _play(ui: Node) -> void:
+	match ui.state:
+		ui.State.CHOOSE_TARGET:
+			var t: Array = ui.combat.valid_targets(ui.actor).filter(
+				func(u): return u.side != ui.actor.side and u.alive())
+			ui._on_card_pressed(t[0] if not t.is_empty() else ui.actor)
+		ui.State.CHOOSE_BOOK:
+			ui._select_book(ui.actor.books[0])
+		ui.State.DRAWING:
+			ui._on_draw_pressed()
+		ui.State.READY:
+			if camp_shot:
+				casts_in_second += 1
+				if casts_in_second == 2:
+					busy = true
+					ui.fast = false
+					_shot("battle.png", func() -> void: quit())
+					return
+			ui._on_cast_pressed()
+
+
+func _shot(file: String, then: Callable) -> void:
+	for i in 12:
 		await process_frame
-	var img := root.get_texture().get_image()
-	img.save_png(out)
-	print("saved ", out)
-	quit()
+	root.get_texture().get_image().save_png(out.path_join(file))
+	print("saved ", out.path_join(file))
+	then.call()

@@ -11,12 +11,10 @@ func _initialize() -> void:
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
 			args[kv[0]] = kv[1]
-	var books := GameData.load_books()
-	var classes := GameData.load_classes()
 	var encounter := GameData.load_encounter(args.encounter)
 	var party := Array(args.party.split(","))
 	var n := int(args.n)
-	var stats := run(books, classes, encounter, party, n)
+	var stats := run(encounter, party, n)
 	print("Бой: %s · отряд: %s · боёв: %d" % [encounter.get("name", args.encounter), ", ".join(party), n])
 	print("  побед: %.1f %%" % stats.win_rate)
 	print("  раундов в бою (в среднем): %.1f" % stats.rounds)
@@ -26,18 +24,21 @@ func _initialize() -> void:
 	quit()
 
 
-static func run(books: Dictionary, classes: Dictionary, encounter: Dictionary,
-		party: Array, n: int) -> Dictionary:
+static func run(encounter: Dictionary, party: Array, n: int) -> Dictionary:
+	var adv := Adventure.new(party, 1)
 	var wins := 0
 	var rounds := 0.0
 	var dmg := 0.0
 	var hp_left := 0.0
 	var lost := 0
 	var party_hp := 0.0
-	for cid in party:
-		party_hp += float(classes[cid].hp)
+	for w in adv.wizards:
+		party_hp += w.max_hp()
 	for i in n:
-		var c := Combat.new(books, party, classes, encounter, i + 1)
+		var fresh: Array[Wizard] = []
+		for cid in party:
+			fresh.append(Wizard.new(cid, adv.classes[cid], adv.equipment))
+		var c := Combat.new(adv.books, fresh, encounter, i + 1, adv.items)
 		var result := AutoPlayer.play(c)
 		var r := float(c.turn_count) / c.units.size()
 		rounds += r

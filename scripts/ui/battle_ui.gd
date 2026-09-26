@@ -4,11 +4,12 @@ extends Control
 ## Ход волшебника: выбрать цель (клик по карточке) → выбрать книгу →
 ## трижды «Достать фишку» (или авто раз в 2 секунды) → «Я кастую!».
 ## Пиромант может кликнуть по вытянутой фишке, чтобы сжечь её (3 раза за бой).
+## Предмет можно применить в начале своего хода (ход не тратится).
 
-enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, OVER }
+signal finished(outcome: String)
 
-const PARTY := ["pyromancer", "priest", "water"]
-const ENCOUNTER := "rat_pack"
+enum State { ENEMY_TURN, CHOOSE_TARGET, CHOOSE_BOOK, DRAWING, READY, ITEM_TARGET, OVER }
+
 const AUTO_DRAW_DELAY := 2.0
 const AUTO_CAST_DELAY := 1.2
 const ENEMY_DELAY := 0.8
@@ -27,7 +28,10 @@ const ELEMENT_COLORS := {
 
 ## Для тестов: ускоряет все задержки.
 var fast := false
+## Сохраняется между боями.
+var auto_draw := false
 
+var adventure: Adventure
 var books: Dictionary
 var classes: Dictionary
 var combat: Combat
@@ -50,32 +54,48 @@ var _book_box: HBoxContainer
 var _draw_button: Button
 var _cast_button: Button
 var _auto_check: CheckBox
-var _restart_button: Button
+var _item_button: Button
+var _title_label: Label
 var _log: RichTextLabel
 var _auto_timer: Timer
 
 
+func setup(adv: Adventure) -> void:
+	adventure = adv
+	books = adv.books
+	classes = adv.classes
+
+
 func _ready() -> void:
-	books = GameData.load_books()
-	classes = GameData.load_classes()
 	_build_ui()
 	start_battle()
 
 
 func start_battle() -> void:
-	combat = Combat.new(books, PARTY, classes, GameData.load_encounter(ENCOUNTER))
+	combat = adventure.start_combat()
 	combat.logged.connect(_on_log)
+	combat.unit_added.connect(_add_card)
+	var enc := adventure.encounter()
+	_title_label.text = "Уровень %d из %d — %s" % [adventure.level, adventure.level_count(), enc.name]
 	_log.clear()
-	_on_log("[b]Бой начинается: Крысиная стая![/b]")
+	_on_log("[b]Бой начинается: %s![/b]" % enc.name)
+	for u in combat.units:
+		if u.fortify > 0.0:
+			_on_log("%s в Укреплении: +%s временного ЗД на 5 ходов." % [u.name, Unit._num(u.fortify)])
+		if u.passive != "":
+			_on_log("%s: %s" % [u.name, enc.members[0].get("passive_text", "")])
 	for c in _cards.values():
 		c.queue_free()
 	_cards.clear()
 	for u in combat.units:
-		var card := _make_card(u)
-		(_party_box if u.is_wizard() else _enemy_box).add_child(card)
-		_cards[u.id] = card
-	_restart_button.visible = false
+		_add_card(u)
 	_advance()
+
+
+func _add_card(u: Unit) -> void:
+	var card := _make_card(u)
+	(_party_box if u.is_wizard() else _enemy_box).add_child(card)
+	_cards[u.id] = card
 
 
 # --- Ход -----------------------------------------------------------------
@@ -111,6 +131,11 @@ func _advance() -> void:
 
 
 func _on_card_pressed(u: Unit) -> void:
+	if state == State.ITEM_TARGET:
+		if combat.item_targets(actor, actor.wizard.item).has(u):
+			combat.use_item(actor, u)
+			_after_item()
+		return
 	if state != State.CHOOSE_TARGET or not combat.can_target(actor, u):
 		return
 	target = combat.resolve_target(actor, u)
@@ -162,14 +187,46 @@ func _on_cast_pressed() -> void:
 	if state != State.READY:
 		return
 	_set_state(State.ENEMY_TURN)  # блокируем ввод на время анимации
-	var spell := combat.cast(actor, target, book_id, bag)
+	var again := actor.extra_casts > 0
+	if again:
+		actor.extra_casts -= 1
+	var spell := combat.cast(actor, target, book_id, bag, not again)
 	_update_chips()
 	_spell_label.text = "%s\n%s" % [spell.name, spell.effect]
 	_shout()
 	_refresh()
 	await _wait(0.6)
-	if state != State.OVER:
+	if state == State.OVER:
+		return
+	if combat.outcome != "":
+		_game_over()
+	elif again and actor.alive():
+		_on_log("%s кастует ещё раз!" % actor.name)
+		_clear_chips()
+		_set_state(State.CHOOSE_TARGET)
+		_prompt_label.text = "%s, второй каст: выбери цель." % actor.name
+	else:
 		_advance()
+
+
+func _on_item_pressed() -> void:
+	if state != State.CHOOSE_TARGET or not combat.can_use_item(actor):
+		return
+	var it: Dictionary = adventure.items[actor.wizard.item]
+	if it.target == "self":
+		combat.use_item(actor, actor)
+		_after_item()
+		return
+	_set_state(State.ITEM_TARGET)
+	_prompt_label.text = "%s: %s Выбери цель." % [it.name, it.text]
+
+
+func _after_item() -> void:
+	if combat.outcome != "":
+		_game_over()
+		return
+	_set_state(State.CHOOSE_TARGET)
+	_prompt_label.text = "%s, выбери цель: противника или союзника." % actor.name
 
 
 func _auto_step() -> void:
@@ -178,7 +235,7 @@ func _auto_step() -> void:
 
 
 func _on_auto_timer() -> void:
-	if not _auto_check.button_pressed:
+	if not _auto_check.button_pressed or state == State.OVER:
 		return
 	if state == State.DRAWING:
 		_on_draw_pressed()
@@ -187,17 +244,24 @@ func _on_auto_timer() -> void:
 
 
 func _game_over() -> void:
+	if state == State.OVER:
+		return
 	_set_state(State.OVER)
 	var win := combat.outcome == "victory"
-	_prompt_label.text = "ПОБЕДА! Крысы разбежались." if win else "Поражение… Крысы победили стариков."
+	_prompt_label.text = "ПОБЕДА!" if win else "Поражение… Отряд выбыл."
 	_on_log("[b]%s[/b]" % _prompt_label.text)
-	_restart_button.visible = true
+	await _wait(1.2)
+	finished.emit(combat.outcome)
 
 
 func _set_state(s: State) -> void:
 	state = s
 	_draw_button.disabled = s != State.DRAWING
 	_cast_button.disabled = s != State.READY
+	_item_button.visible = s in [State.CHOOSE_TARGET, State.ITEM_TARGET] and actor != null \
+		and actor.is_wizard() and combat.can_use_item(actor)
+	if _item_button.visible:
+		_item_button.text = "Предмет: %s" % adventure.items[actor.wizard.item].name
 	for c in _book_box.get_children():
 		c.queue_free()
 	if s == State.CHOOSE_BOOK:
@@ -222,13 +286,18 @@ func _refresh() -> void:
 		var card: Button = _cards[u.id]
 		card.text = _card_text(u)
 		var targetable := state == State.CHOOSE_TARGET and combat.can_target(actor, u)
-		card.disabled = state == State.CHOOSE_TARGET and not targetable
+		if state == State.ITEM_TARGET:
+			targetable = combat.item_targets(actor, actor.wizard.item).has(u)
+		card.disabled = state in [State.CHOOSE_TARGET, State.ITEM_TARGET] and not targetable
 		card.modulate = Color(1, 1, 1, 1) if u.alive() else Color(1, 1, 1, 0.35)
 		if u == actor:
 			card.modulate = Color(1.25, 1.2, 0.8)
 	_ability_label.text = ""
 	if actor and actor.is_wizard():
 		_ability_label.text = String(classes[actor.class_id].ability_text)
+		if actor.wizard.item != "":
+			_ability_label.text += "\nПредмет: %s — %s" % [adventure.items[actor.wizard.item].name,
+				adventure.items[actor.wizard.item].text]
 		if actor.ability == "burn":
 			_ability_label.text += "  Осталось: %d." % actor.ability_charges
 
@@ -238,6 +307,8 @@ func _card_text(u: Unit) -> String:
 	var hp_line := "ЗД %s" % u.hp_text() if u.alive() else "выбыл"
 	if u.shield > 0:
 		hp_line += "   Щит %s" % Unit._num(u.shield)
+	if u.fortify > 0:
+		hp_line += "   Укр. %s (%d)" % [Unit._num(u.fortify), u.fortify_turns]
 	lines.append(hp_line)
 	var st: Array[String] = []
 	for id in u.statuses:
@@ -248,6 +319,8 @@ func _card_text(u: Unit) -> String:
 		st.append(label)
 	if u.is_leader:
 		st.push_front("Предводитель")
+	if u.is_boss:
+		st.push_front("БОСС")
 	if not st.is_empty():
 		lines.append(", ".join(PackedStringArray(st)))
 	return "\n".join(PackedStringArray(lines))
@@ -309,14 +382,14 @@ func _wait(seconds: float) -> Signal:
 # --- Построение интерфейса -----------------------------------------------
 
 func _build_ui() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
 	bg.color = Color("1b1a24")
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 16)
 	add_child(margin)
@@ -327,11 +400,13 @@ func _build_ui() -> void:
 
 	var top := HBoxContainer.new()
 	root.add_child(top)
-	var title := _label("Я кастую — уровень 1", 22)
-	top.add_child(title)
+	_title_label = _label("", 22)
+	top.add_child(_title_label)
 	_queue_label = _label("", 16)
 	_queue_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_queue_label.clip_text = true
+	_queue_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	top.add_child(_queue_label)
 
 	var middle := HBoxContainer.new()
@@ -391,15 +466,17 @@ func _build_ui() -> void:
 	controls.add_child(_draw_button)
 	_cast_button = _button("Я кастую!", _on_cast_pressed)
 	controls.add_child(_cast_button)
+	_item_button = _button("Предмет", _on_item_pressed)
+	_item_button.visible = false
+	controls.add_child(_item_button)
 	_auto_check = CheckBox.new()
 	_auto_check.text = "Авто (фишка раз в 2 с)"
+	_auto_check.button_pressed = auto_draw
 	_auto_check.toggled.connect(func(on: bool) -> void:
+		auto_draw = on
 		if on and (state == State.DRAWING or state == State.READY):
 			_auto_step())
 	controls.add_child(_auto_check)
-	_restart_button = _button("Сыграть заново", start_battle)
-	_restart_button.visible = false
-	controls.add_child(_restart_button)
 
 	_ability_label = _label("", 14)
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

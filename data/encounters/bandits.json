@@ -1,0 +1,35 @@
+{
+  "id": "bandits",
+  "name": "Разбойники с большой дороги",
+  "members": [
+    {
+      "name": "Разбойник",
+      "hp": 3,
+      "damage": 1,
+      "speed": 11
+    },
+    {
+      "name": "Разбойник-арбалетчик",
+      "hp": 3,
+      "damage": 1,
+      "speed": 11
+    },
+    {
+      "name": "Атаман Кривой",
+      "hp": 8,
+      "damage": 2,
+      "speed": 11,
+      "leader": true,
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Грабёж",
+          "cooldown": 3,
+          "damage": 2,
+          "steal": true,
+          "text": "2 урона и крадёт предмет (вернётся после победы)"
+        }
+      ]
+    }
+  ]
+}

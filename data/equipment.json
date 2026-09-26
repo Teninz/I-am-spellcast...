@@ -1,0 +1,299 @@
+{
+  "items": [
+    {
+      "id": "night_cap",
+      "name": "Ночной колпак",
+      "slot": "hat",
+      "rarity": "common",
+      "stats": {
+        "resist": 1
+      }
+    },
+    {
+      "id": "straw_hat",
+      "name": "Соломенная шляпа",
+      "slot": "hat",
+      "rarity": "common",
+      "stats": {
+        "luck": 1
+      }
+    },
+    {
+      "id": "pointy_hat",
+      "name": "Остроконечный колпак",
+      "slot": "hat",
+      "rarity": "common",
+      "stats": {
+        "wisdom": 1
+      }
+    },
+    {
+      "id": "star_cap",
+      "name": "Колпак со звёздами",
+      "slot": "hat",
+      "rarity": "rare",
+      "stats": {
+        "wisdom": 1,
+        "luck": 1
+      }
+    },
+    {
+      "id": "ushanka",
+      "name": "Шапка-ушанка мага",
+      "slot": "hat",
+      "rarity": "rare",
+      "stats": {
+        "resist": 1,
+        "wisdom": 1
+      }
+    },
+    {
+      "id": "ash_hat",
+      "name": "Шляпа с пеплом на полях",
+      "slot": "hat",
+      "rarity": "epic",
+      "stats": {
+        "wisdom": 1,
+        "resist": 1
+      },
+      "props": {
+        "immune": [
+          "burn"
+        ]
+      },
+      "text": "Иммунитет к Горению."
+    },
+    {
+      "id": "absent_cap",
+      "name": "Колпак рассеянного",
+      "slot": "hat",
+      "rarity": "epic",
+      "stats": {
+        "luck": 2
+      },
+      "text": "Раз за бой — посмотреть первую фишку до выбора цели.",
+      "prototype_note": "Свойство пока не работает в прототипе."
+    },
+    {
+      "id": "seer_turban",
+      "name": "Тюрбан прорицателя",
+      "slot": "hat",
+      "rarity": "epic",
+      "stats": {
+        "wisdom": 1,
+        "luck": 1
+      },
+      "text": "Видит, какую способность босс использует следующей.",
+      "prototype_note": "Свойство пока не работает в прототипе."
+    },
+    {
+      "id": "merlin_hat",
+      "name": "Шляпа Старого Мерлина",
+      "slot": "hat",
+      "rarity": "legendary",
+      "stats": {
+        "wisdom": 2,
+        "luck": 1,
+        "resist": 1
+      },
+      "text": "Раз за бой — Сосредоточенность.",
+      "prototype_note": "Свойство пока не работает в прототипе."
+    },
+    {
+      "id": "bookworm_crown",
+      "name": "Корона книжного червя",
+      "slot": "hat",
+      "rarity": "legendary",
+      "stats": {
+        "wisdom": 1,
+        "resist": 2
+      },
+      "props": {
+        "no_wear": true
+      },
+      "text": "Книги владельца не рвутся."
+    },
+    {
+      "id": "talking_hat",
+      "name": "Шляпа, которая говорит",
+      "slot": "hat",
+      "rarity": "cursed",
+      "stats": {
+        "wisdom": 3
+      },
+      "props": {
+        "random_target": 0.1
+      },
+      "text": "Подсказывает цель вслух… и 10 % врёт: каст уходит в случайную цель."
+    },
+    {
+      "id": "fool_cap",
+      "name": "Колпак дурака",
+      "slot": "hat",
+      "rarity": "cursed",
+      "stats": {
+        "luck": 4,
+        "wisdom": -1
+      },
+      "props": {
+        "start_status": {
+          "id": "taunt",
+          "turns": 1
+        }
+      },
+      "text": "Над владельцем смеются враги: первый ход боя его бьют все."
+    },
+    {
+      "id": "pompom_slippers",
+      "name": "Тапочки с помпонами",
+      "slot": "boots",
+      "rarity": "common",
+      "stats": {
+        "hp": 2
+      }
+    },
+    {
+      "id": "sandals",
+      "name": "Сандалии странника",
+      "slot": "boots",
+      "rarity": "common",
+      "stats": {
+        "speed": 1
+      }
+    },
+    {
+      "id": "felt_boots",
+      "name": "Войлочные боты",
+      "slot": "boots",
+      "rarity": "common",
+      "stats": {
+        "defense": 1
+      }
+    },
+    {
+      "id": "valenki",
+      "name": "Валенки архимага",
+      "slot": "boots",
+      "rarity": "rare",
+      "stats": {
+        "hp": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "curly_shoes",
+      "name": "Туфли с загнутыми носами",
+      "slot": "boots",
+      "rarity": "rare",
+      "stats": {
+        "speed": 1,
+        "hp": 2
+      }
+    },
+    {
+      "id": "seven_league_walkers",
+      "name": "Сапоги-скороходы",
+      "slot": "boots",
+      "rarity": "epic",
+      "stats": {
+        "speed": 2
+      },
+      "props": {
+        "start_meter": 30
+      },
+      "text": "Начинает бой с шкалой хода 30 %."
+    },
+    {
+      "id": "galoshes",
+      "name": "Болотные калоши",
+      "slot": "boots",
+      "rarity": "epic",
+      "stats": {
+        "defense": 1,
+        "hp": 2
+      },
+      "props": {
+        "immune": [
+          "slow"
+        ]
+      },
+      "text": "Иммунитет к Замедлению."
+    },
+    {
+      "id": "velcro_boots",
+      "name": "Ботинки на липучках",
+      "slot": "boots",
+      "rarity": "epic",
+      "stats": {
+        "speed": 1,
+        "defense": 1
+      },
+      "props": {
+        "immune": [
+          "stun"
+        ]
+      },
+      "text": "Нельзя Оглушить."
+    },
+    {
+      "id": "seven_league_boots",
+      "name": "Сапоги Семи Лиг",
+      "slot": "boots",
+      "rarity": "legendary",
+      "stats": {
+        "speed": 2,
+        "hp": 2,
+        "defense": 1
+      },
+      "props": {
+        "start_meter": 100
+      },
+      "text": "Ходит первым в каждом бою."
+    },
+    {
+      "id": "hermit_boots",
+      "name": "Ботинки Отшельника",
+      "slot": "boots",
+      "rarity": "legendary",
+      "stats": {
+        "hp": 4,
+        "defense": 1
+      },
+      "props": {
+        "start_status": {
+          "id": "regen",
+          "turns": 3
+        }
+      },
+      "text": "Регенерация 1 первые 3 хода боя."
+    },
+    {
+      "id": "skeleton_shoes",
+      "name": "Туфли танцующего скелета",
+      "slot": "boots",
+      "rarity": "cursed",
+      "stats": {
+        "speed": 3,
+        "hp": -2
+      },
+      "props": {
+        "immune": [
+          "stun"
+        ]
+      },
+      "text": "Нельзя Оглушить, но −2 ЗД."
+    },
+    {
+      "id": "clogs",
+      "name": "Деревянные башмаки",
+      "slot": "boots",
+      "rarity": "cursed",
+      "stats": {
+        "defense": 2,
+        "hp": 4,
+        "speed": -2
+      },
+      "text": "Громко топают: −2 Скорости."
+    }
+  ]
+}

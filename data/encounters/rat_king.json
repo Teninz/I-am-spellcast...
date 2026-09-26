@@ -1,0 +1,47 @@
+{
+  "id": "rat_king",
+  "name": "Крысиный Король",
+  "members": [
+    {
+      "name": "Крысиный Король",
+      "hp": 22,
+      "damage": 2,
+      "speed": 11,
+      "boss": true,
+      "passive": "rat_guard",
+      "passive_text": "Пока жива хоть одна крыса, получает −1 урон от каждого удара.",
+      "specials": [
+        {
+          "id": "aoe",
+          "name": "Чума",
+          "cooldown": 5,
+          "first": 4,
+          "damage": 1,
+          "status": "disease",
+          "turns": 3,
+          "text": "1 урон и Болезнь всем волшебникам"
+        },
+        {
+          "id": "summon",
+          "name": "Зов стаи",
+          "cooldown": 4,
+          "first": 2,
+          "count": 1,
+          "unit": {
+            "name": "Крыса",
+            "hp": 2,
+            "damage": 1,
+            "speed": 12
+          },
+          "text": "призывает крысу"
+        }
+      ]
+    },
+    {
+      "name": "Крыса",
+      "hp": 2,
+      "damage": 1,
+      "speed": 12
+    }
+  ]
+}

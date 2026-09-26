@@ -13,6 +13,9 @@ func _initialize() -> void:
 	test_combo_odds(books)
 	test_parser_coverage(books)
 	test_rat_pack_simulation(books)
+	test_rest_and_fortify()
+	test_loot_rules()
+	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
 	quit(1 if failures else 0)
@@ -90,21 +93,81 @@ func test_parser_coverage(books: Dictionary) -> void:
 ## Уровень 1 должен проходиться почти всегда.
 func test_rat_pack_simulation(books: Dictionary) -> void:
 	print("Симуляция: стартовый отряд против Крысиной стаи (2000 боёв):")
-	var classes := GameData.load_classes()
-	var encounter := GameData.load_encounter("rat_pack")
-	var wins := 0
-	var turns := 0
-	var hp_left := 0.0
-	var n := 2000
-	for i in n:
-		var c := Combat.new(books, ["pyromancer", "priest", "water"], classes, encounter, i + 1)
-		var result := AutoPlayer.play(c)
-		turns += c.turn_count
-		if result == "victory":
-			wins += 1
-			for u in c.living(Unit.PARTY):
-				hp_left += u.hp
-	var rate := 100.0 * wins / n
-	print("       побед: %.1f %%, ходов в бою: %.1f, ЗД отряда после победы: %.1f из 28"
-		% [rate, float(turns) / n, hp_left / maxi(1, wins)])
-	check(rate >= 90.0, "уровень 1 проходится в ≥ 90 %% боёв (%.1f %%)" % rate)
+	var stats: Dictionary = load("res://tests/simulate.gd").run(
+		GameData.load_encounter("rat_pack"), ["pyromancer", "priest", "water"], 2000)
+	print("       побед: %.1f %%, раундов: %.1f, урон по отряду за раунд: %.2f"
+		% [stats.win_rate, stats.rounds, stats.damage_per_round])
+	check(stats.win_rate >= 90.0, "уровень 1 проходится в ≥ 90 %% боёв (%.1f %%)" % stats.win_rate)
+
+
+## Отдых: 75 % лечения, излишек × 10 % → Укрепление на 5 ходов, тает по 0.5.
+func test_rest_and_fortify() -> void:
+	print("Отдых и Укрепление:")
+	var adv := Adventure.new(["pyromancer", "priest", "water"], 3)
+	var pyro := adv.wizards[0]
+	var water := adv.wizards[2]
+	pyro.hp = 2.0      # 2 + 7.5 = 9.5 → без излишка
+	adv.wizards[1].hp = 10.0  # 10 + 7.5 → излишек 7.5 → Укрепление 0.75
+	water.hp = 0.0     # выбыл — не лечится
+	adv.rest()
+	check(is_equal_approx(pyro.hp, 9.5) and is_equal_approx(pyro.fortify, 0.0), "раненый: 2 → 9.5, без Укрепления")
+	check(is_equal_approx(adv.wizards[1].fortify, 0.75), "полный: Укрепление 0.75 (%.2f)" % adv.wizards[1].fortify)
+	check(water.hp == 0.0, "выбывший не лечится")
+	var c := adv.start_combat(5)
+	var priest_unit: Unit = c.units[1]
+	check(is_equal_approx(priest_unit.fortify, 0.75) and priest_unit.fortify_turns == 5, "Укрепление перешло в бой на 5 ходов")
+	check(adv.wizards[1].fortify == 0.0, "в волшебнике Укрепление обнулилось (только на один бой)")
+	priest_unit.shield = 1.0
+	c._hurt(priest_unit, 2.0, null)
+	check(is_equal_approx(priest_unit.fortify, 0.0) and is_equal_approx(priest_unit.shield, 0.0)
+		and is_equal_approx(priest_unit.hp, 9.75), "урон 2: сначала Укрепление 0.75, потом Щит 1, потом 0.25 ЗД (%.2f)" % priest_unit.hp)
+	var u := Unit.new()
+	u.fortify = 3.0
+	u.fortify_turns = 5
+	for i in 5:
+		u.tick_down()
+	check(u.fortify == 0.0 and u.fortify_turns == 0, "Укрепление тает по 0.5 за ход и исчезает через 5 ходов")
+
+
+## Лут: правила выпадения и инвентаря.
+func test_loot_rules() -> void:
+	print("Лут и инвентарь:")
+	var adv := Adventure.new(["pyromancer", "priest", "water"], 11)
+	var ok_books := true
+	for i in 200:
+		for o in adv.roll_loot():
+			if o.kind != "book":
+				ok_books = false
+	check(ok_books, "у кого одна книга — всегда выпадает книга")
+	var pool := adv.book_pool()
+	check(pool.has("fire") and pool.has("storm") and not pool.has("sheep") and not pool.has("bard"),
+		"в пуле: книги лута и открытых классов, без овцы и закрытых классов")
+	var pyro := adv.wizards[0]
+	var o := {"wizard": 0, "kind": "book", "id": "water", "resolved": false}
+	check(not adv.take_book(o), "Пиромант не может взять Книгу Воды")
+	var refusals := adv.refusals_left
+	check(adv.refuse_book(o) and adv.refusals_left == refusals, "выбросить запретную книгу можно без траты отказа")
+	pyro.books.assign(["fire", "storm", "ice"])
+	var o2 := {"wizard": 0, "kind": "book", "id": "cookbook", "resolved": false}
+	check(not adv.take_book(o2), "4-ю книгу без замены не взять")
+	check(adv.take_book(o2, "ice") and pyro.books.has("cookbook") and not pyro.books.has("ice"), "замена книги")
+	adv.refusals_left = 0
+	var o3 := {"wizard": 0, "kind": "book", "id": "wind", "resolved": false}
+	check(not adv.refuse_book(o3), "лимит отказов отряда исчерпан — отказаться нельзя")
+	var boots: Dictionary = adv.equipment["pompom_slippers"]
+	pyro.hp = 5.0
+	pyro.equip(boots)
+	check(is_equal_approx(pyro.max_hp(), 12.0) and is_equal_approx(pyro.hp, 7.0), "Тапочки: +2 к максимуму и к текущему ЗД")
+	pyro.books.assign(["fire", "storm"])
+	var torn := ""
+	for i in 10:
+		torn = pyro.record_books_used(["fire"])
+	check(torn == "fire" and not pyro.books.has("fire"), "10 боёв подряд одной книгой — книга рвётся")
+
+
+## Целый акт I с автоигроком: сколько приключений доходит до конца.
+func test_act_simulation() -> void:
+	print("Симуляция акта I (300 приключений):")
+	var stats: Dictionary = load("res://tests/simulate_act.gd").run(300)
+	print("       акт пройден: %.1f %%; поражения по уровням: %s" % [stats.win_rate, stats.defeats])
+	check(stats.win_rate >= 15.0, "автоигрок проходит акт хотя бы в 15 %% приключений (%.1f %%)" % stats.win_rate)

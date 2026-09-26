@@ -1,0 +1,41 @@
+{
+  "id": "goblin_gang",
+  "name": "Гоблинская шайка",
+  "members": [
+    {
+      "name": "Пьяный гоблин",
+      "hp": 3,
+      "damage": 1,
+      "speed": 10
+    },
+    {
+      "name": "Пьяный гоблин",
+      "hp": 3,
+      "damage": 1,
+      "speed": 10
+    },
+    {
+      "name": "Гоблин-метатель тарелок",
+      "hp": 3,
+      "damage": 1,
+      "speed": 10
+    },
+    {
+      "name": "Бригадир Гнырк",
+      "hp": 7,
+      "damage": 1,
+      "speed": 10,
+      "leader": true,
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Бросок бочки",
+          "cooldown": 3,
+          "damage": 2,
+          "meter": -30,
+          "text": "2 урона и Сбив шкалы на 30 %"
+        }
+      ]
+    }
+  ]
+}

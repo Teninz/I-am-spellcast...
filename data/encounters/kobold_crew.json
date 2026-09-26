@@ -1,0 +1,44 @@
+{
+  "id": "kobold_crew",
+  "name": "Кобольдова артель",
+  "members": [
+    {
+      "name": "Кобольд-копатель",
+      "hp": 2,
+      "damage": 1,
+      "speed": 11
+    },
+    {
+      "name": "Кобольд-копатель",
+      "hp": 2,
+      "damage": 1,
+      "speed": 11
+    },
+    {
+      "name": "Кобольд-шаман",
+      "hp": 3,
+      "damage": 1,
+      "speed": 10,
+      "behaviour": "healer",
+      "heal": 1
+    },
+    {
+      "name": "Прораб Кирка",
+      "hp": 7,
+      "damage": 1,
+      "speed": 10,
+      "leader": true,
+      "specials": [
+        {
+          "id": "aoe",
+          "name": "Обвал",
+          "cooldown": 3,
+          "damage": 1,
+          "status": "slow",
+          "turns": 2,
+          "text": "1 урон всем волшебникам и Замедление"
+        }
+      ]
+    }
+  ]
+}

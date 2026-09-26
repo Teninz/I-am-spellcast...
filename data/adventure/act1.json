@@ -1,0 +1,45 @@
+{
+  "act": 1,
+  "name": "Акт I. Окраины деревни",
+  "levels": [
+    [
+      "rat_pack"
+    ],
+    [
+      "goblin_gang"
+    ],
+    [
+      "bandits",
+      "kobold_crew"
+    ],
+    [
+      "geese_gang",
+      "bandits",
+      "kobold_crew"
+    ],
+    [
+      "rat_king"
+    ]
+  ],
+  "book_rarity": {
+    "common": 70,
+    "rare": 25,
+    "epic": 5
+  },
+  "equipment_rarity": {
+    "common": 70,
+    "rare": 25,
+    "epic": 5
+  },
+  "loot_kind": {
+    "book": 45,
+    "item": 40,
+    "equipment": 15
+  },
+  "rest_heal": 0.75,
+  "fortify_rate": 0.1,
+  "fortify_turns": 5,
+  "fortify_decay": 0.5,
+  "refusals": 5,
+  "resurrection_guarantee_level": 10
+}
