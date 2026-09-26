@@ -1,0 +1,216 @@
+{
+  "id": "water",
+  "name": "Книга Воды",
+  "class": "Волшебник Воды",
+  "flavor": "Разбухший от сырости том. Страницы никогда не высыхают до конца.",
+  "bag": {
+    "W": 10,
+    "F": 5,
+    "H": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 8,
+    "control": 12,
+    "support": 10
+  },
+  "spells": [
+    {
+      "combo": "FFF",
+      "name": "Кипящий вал",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFW",
+      "name": "Горячий источник",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода (1 ЗД в начале хода)."
+    },
+    {
+      "combo": "FFH",
+      "name": "Туман",
+      "category": "control",
+      "effect": "Ослепление на 1 ход."
+    },
+    {
+      "combo": "FWF",
+      "name": "Паровой удар",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "FWW",
+      "name": "Испарение",
+      "category": "damage",
+      "effect": "3 урона.",
+      "damage": 3
+    },
+    {
+      "combo": "FWH",
+      "name": "Тёплый дождь",
+      "category": "support",
+      "heal": 2,
+      "effect": "Лечение 2 всем на стороне цели."
+    },
+    {
+      "combo": "FHF",
+      "name": "Кипяток",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FHW",
+      "name": "Мокрый пар",
+      "category": "control",
+      "effect": "Слабость на 2 хода."
+    },
+    {
+      "combo": "FHH",
+      "name": "Солнечный пар",
+      "category": "control",
+      "effect": "Замедление на 2 хода."
+    },
+    {
+      "combo": "WFF",
+      "name": "Гейзер",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "WFW",
+      "name": "Радуга",
+      "category": "support",
+      "effect": "Лечение 2 и Благословение на 2 хода.",
+      "heal": 2
+    },
+    {
+      "combo": "WFH",
+      "name": "Целебная баня",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3, снимает Горение и Яд."
+    },
+    {
+      "combo": "WWF",
+      "name": "Водоворот",
+      "category": "damage",
+      "effect": "3 урона и Сбив шкалы на 30 %.",
+      "damage": 3
+    },
+    {
+      "combo": "WWW",
+      "name": "Ледяные оковы",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "WWH",
+      "name": "Родниковая вода",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "WHF",
+      "name": "Кислотный дождь",
+      "category": "damage",
+      "damage": 2,
+      "effect": "2 урона и Уязвимость на 2 хода."
+    },
+    {
+      "combo": "WHW",
+      "name": "Зеркало воды",
+      "category": "control",
+      "effect": "Отражение: следующее вредное заклинание по цели вернётся в автора."
+    },
+    {
+      "combo": "WHH",
+      "name": "Святой источник",
+      "category": "support",
+      "heal": 2,
+      "effect": "Очищение и лечение 2."
+    },
+    {
+      "combo": "HFF",
+      "name": "Кипящая кара",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "HFW",
+      "name": "Мираж",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "HFH",
+      "name": "Туманная завеса",
+      "category": "control",
+      "effect": "Невидимость на 1 ход."
+    },
+    {
+      "combo": "HWF",
+      "name": "Облако пара",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 % и Замедление на 1 ход."
+    },
+    {
+      "combo": "HWW",
+      "name": "Тёплый свет",
+      "category": "support",
+      "effect": "Регенерация на 3 хода.",
+      "heal": 3
+    },
+    {
+      "combo": "HWH",
+      "name": "Живая роса",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "HHF",
+      "name": "Отлив",
+      "category": "control",
+      "effect": "Сбив шкалы на 50 %."
+    },
+    {
+      "combo": "HHW",
+      "name": "Лунный прилив",
+      "category": "control",
+      "effect": "Ускорение на 2 хода (хоть врагу, хоть другу)."
+    },
+    {
+      "combo": "HHH",
+      "name": "Благословенный дождь",
+      "category": "support",
+      "heal": 1,
+      "effect": "Лечение 1 и Очищение всем на стороне цели."
+    },
+    {
+      "combo": "X1",
+      "name": "Внезапный ливень",
+      "category": "control",
+      "effect": "Замедление на 2 хода всем на арене."
+    },
+    {
+      "combo": "X2",
+      "name": "Водяной элементаль",
+      "category": "support",
+      "effect": "Цель на 2 хода становится водным элементалем: игнорирует урон всех стихий, кроме огня."
+    },
+    {
+      "combo": "X3",
+      "name": "Всемирный потоп",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона и Очищение ВСЕМ на арене."
+    }
+  ]
+}

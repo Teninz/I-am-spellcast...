@@ -8,3 +8,10 @@
 - Боссы: [docs/bosses.md](docs/bosses.md)
 - Баланс и эффекты: [docs/balance.md](docs/balance.md)
 - Обмундирование: [docs/equipment.md](docs/equipment.md)
+- Таблицы заклинаний: [Огонь](docs/spells/fire.md) · [Вода](docs/spells/water.md) · [Святость](docs/spells/holy.md)
+
+Таблицы книг хранятся в `data/books/*.json`. После правки пересоберите документы:
+
+```
+python3 tools/gen_spells.py
+```

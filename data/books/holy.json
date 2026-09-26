@@ -1,0 +1,215 @@
+{
+  "id": "holy",
+  "name": "Книга Святости",
+  "class": "Священник",
+  "flavor": "Тяжёлый том в золотом окладе. Между страниц засушены цветы с чьих-то похорон.",
+  "bag": {
+    "H": 10,
+    "W": 5,
+    "F": 4,
+    "X": 1
+  },
+  "target_split": {
+    "damage": 5,
+    "control": 10,
+    "support": 15
+  },
+  "spells": [
+    {
+      "combo": "FFF",
+      "name": "Священный огонь",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона."
+    },
+    {
+      "combo": "FFW",
+      "name": "Горячая молитва",
+      "category": "control",
+      "effect": "Ускорение на 2 хода (хоть врагу, хоть другу)."
+    },
+    {
+      "combo": "FFH",
+      "name": "Кара небесная",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона."
+    },
+    {
+      "combo": "FWF",
+      "name": "Очищающий пар",
+      "category": "support",
+      "effect": "Очищение."
+    },
+    {
+      "combo": "FWW",
+      "name": "Покаяние",
+      "category": "control",
+      "effect": "Оглушение на 1 ход."
+    },
+    {
+      "combo": "FWH",
+      "name": "Свеча надежды",
+      "category": "support",
+      "heal": 3,
+      "effect": "Регенерация на 3 хода."
+    },
+    {
+      "combo": "FHF",
+      "name": "Праведный гнев",
+      "category": "damage",
+      "damage": 3,
+      "effect": "3 урона и Страх на 2 хода."
+    },
+    {
+      "combo": "FHW",
+      "name": "Жертвенная свеча",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4 цели, кастующий теряет 1 ЗД."
+    },
+    {
+      "combo": "FHH",
+      "name": "Ореол",
+      "category": "support",
+      "shield": 3,
+      "effect": "Щит 3."
+    },
+    {
+      "combo": "WFF",
+      "name": "Святая вода с перцем",
+      "category": "control",
+      "effect": "Слабость на 2 хода."
+    },
+    {
+      "combo": "WFW",
+      "name": "Кадило",
+      "category": "control",
+      "effect": "Ослепление на 1 ход (дым)."
+    },
+    {
+      "combo": "WFH",
+      "name": "Омовение",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3."
+    },
+    {
+      "combo": "WWF",
+      "name": "Проповедь",
+      "category": "control",
+      "effect": "Замедление на 2 хода (очень длинная проповедь)."
+    },
+    {
+      "combo": "WWW",
+      "name": "Святая вода",
+      "category": "support",
+      "heal": 1,
+      "effect": "Очищение и лечение 1."
+    },
+    {
+      "combo": "WWH",
+      "name": "Благословение путника",
+      "category": "support",
+      "effect": "Благословение на 2 хода."
+    },
+    {
+      "combo": "WHF",
+      "name": "Утренняя молитва",
+      "category": "control",
+      "effect": "Разгон шкалы на 30 % (хоть врагу, хоть другу)."
+    },
+    {
+      "combo": "WHW",
+      "name": "Исповедь",
+      "category": "control",
+      "effect": "Цель теряет все баффы."
+    },
+    {
+      "combo": "WHH",
+      "name": "Целебный свет",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "HFF",
+      "name": "Солнечное копьё",
+      "category": "damage",
+      "damage": 4,
+      "effect": "4 урона, против нежити 6."
+    },
+    {
+      "combo": "HFW",
+      "name": "Благодать",
+      "category": "support",
+      "effect": "Вдохновение на 2 хода (+1 Мудрость)."
+    },
+    {
+      "combo": "HFH",
+      "name": "Божественная защита",
+      "category": "support",
+      "effect": "Каменная кожа на 2 хода (+2 Защита)."
+    },
+    {
+      "combo": "HWF",
+      "name": "Колокольный звон",
+      "category": "control",
+      "effect": "Сбив шкалы на 30 %."
+    },
+    {
+      "combo": "HWW",
+      "name": "Смирение",
+      "category": "control",
+      "effect": "Страх на 2 хода."
+    },
+    {
+      "combo": "HWH",
+      "name": "Живая роса",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 и Регенерация на 2 хода."
+    },
+    {
+      "combo": "HHF",
+      "name": "Воскрешение",
+      "category": "support",
+      "heal": 2,
+      "effect": "Если цель выбыла — поднимает её с 3 ЗД, иначе лечение 2."
+    },
+    {
+      "combo": "HHW",
+      "name": "Святой купол",
+      "category": "support",
+      "shield": 4,
+      "effect": "Щит 4."
+    },
+    {
+      "combo": "HHH",
+      "name": "Великая молитва",
+      "category": "support",
+      "heal": 4,
+      "effect": "Лечение 4."
+    },
+    {
+      "combo": "X1",
+      "name": "Не та молитва",
+      "category": "control",
+      "effect": "Цель превращается в Жабу на 1 ход."
+    },
+    {
+      "combo": "X2",
+      "name": "Двойное чудо",
+      "category": "support",
+      "heal": 3,
+      "effect": "Лечение 3 ВСЕМ на арене, включая врагов."
+    },
+    {
+      "combo": "X3",
+      "name": "Небесная кара",
+      "category": "damage",
+      "damage": 5,
+      "effect": "5 урона всем на арене, кроме кастующего."
+    }
+  ]
+}
