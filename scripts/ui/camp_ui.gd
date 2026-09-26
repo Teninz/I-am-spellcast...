@@ -172,12 +172,26 @@ func _wizard_column(i: int) -> Control:
 	col.add_theme_constant_override("separation", 6)
 	inner.add_child(col)
 
-	col.add_child(_label(w.name + ("  (зомби)" if w.zombie else ""), 19))
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	col.add_child(head)
+	var face_tex := Art.portrait_head(w.class_id, Art.portrait_state(w.hp, w.max_hp(), w.zombie))
+	if face_tex:
+		var face := Art.portrait_rect(face_tex, Vector2(60, 80))
+		if not w.alive():
+			face.modulate = Color(0.45, 0.45, 0.5)
+		head.add_child(face)
+	var head_text := VBoxContainer.new()
+	head_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(head_text)
+	var name_l := _label(w.name + ("  (зомби)" if w.zombie else ""), 19)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head_text.add_child(name_l)
 	var st := w.stats()
 	var hp_line := "ЗД %s/%s" % [Unit._num(w.hp), Unit._num(w.max_hp())] if w.alive() else "ВЫБЫЛ"
 	if w.fortify > 0.0:
 		hp_line += "   Укрепление %s" % Unit._num(w.fortify)
-	col.add_child(_label(hp_line, 16))
+	head_text.add_child(_label(hp_line, 16))
 	var icons := HFlowContainer.new()
 	if w.fortify > 0.0:
 		icons.add_child(StatusIcon.make("fortify", Unit._num(w.fortify), 0, 36))
@@ -412,20 +426,20 @@ func _equipment_text(e: Dictionary) -> String:
 
 ## Обложка-кнопка: открывает книгу (все заклинания и шансы) — чтобы решить, брать ли её.
 func _book_link(book_id: String, width: int) -> Control:
-	var b := Button.new()
-	b.flat = true
-	b.tooltip_text = "Открыть книгу: заклинания и шансы"
-	b.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var cover := Art.book_cover(adventure.books[book_id], width)
-	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.custom_minimum_size = cover.get_combined_minimum_size()
-	b.add_child(cover)
-	b.pressed.connect(func() -> void:
-		var book: Dictionary = adventure.books[book_id]
-		BookView.open(self, book, ChipBag.odds(book.bag), false, {}, "",
-			"Шкала удачи — в бою, при Благословении. Здесь книгу можно только прочитать."))
-	return b
+	cover.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	cover.tooltip_text = "%s — клик: открыть книгу (заклинания и шансы)" % adventure.books[book_id].name
+	cover.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			_open_book(book_id))
+	return cover
+
+
+func _open_book(book_id: String) -> void:
+	var book: Dictionary = adventure.books[book_id]
+	BookView.open(self, book, ChipBag.odds(book.bag), false, {}, "",
+		"Шкала удачи — в бою, при Благословении. Здесь книгу можно только прочитать.")
 
 
 func _say(text: String) -> void:

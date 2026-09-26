@@ -43,7 +43,7 @@ func _process(_delta: float) -> bool:
 		busy = true
 		_shot("camp.png", func() -> void:
 			var w: Wizard = game.adventure.wizards[0]
-			s._book_link(w.books[0], 30).pressed.emit()
+			s._open_book(w.books[0])
 			_shot("camp_book.png", func() -> void:
 				for c in s.get_children():
 					if c is BookView:

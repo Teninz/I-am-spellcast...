@@ -549,6 +549,10 @@ func _update_card(card: Button, u: Unit) -> void:
 	name_label.text = "%s%s" % ["▶ " if u == actor else "", u.name]
 	var hp_label: Label = card.get_meta("hp")
 	hp_label.text = "ЗД %s" % u.hp_text() if u.alive() else "выбыл"
+	if card.has_meta("face"):
+		var face: TextureRect = card.get_meta("face")
+		var zombie := u.wizard != null and u.wizard.zombie
+		face.texture = Art.portrait_head(u.class_id, Art.portrait_state(u.hp, u.max_hp, zombie))
 	var bar: ProgressBar = card.get_meta("bar")
 	bar.max_value = u.max_hp
 	bar.value = u.hp
@@ -1142,19 +1146,28 @@ func _make_card(u: Unit) -> Button:
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 14 if side in ["left", "right"] else 10)
 	b.add_child(margin)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 8)
+	margin.add_child(row)
+	if u.is_wizard() and Art.portrait_head(u.class_id) != null:
+		var face := Art.portrait_rect(Art.portrait_head(u.class_id), Vector2(56, 74))
+		row.add_child(face)
+		b.set_meta("face", face)
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_theme_constant_override("separation", 3)
-	margin.add_child(col)
+	row.add_child(col)
 	var top := HBoxContainer.new()
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(top)
-	var name_label := _label("", 15)
+	var name_label := _label("", 14 if u.is_wizard() else 15)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = true
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(name_label)
-	var hp_label := _label("", 14)
+	var hp_label := _label("", 13 if u.is_wizard() else 14)
 	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(hp_label)
 	var bar := ProgressBar.new()

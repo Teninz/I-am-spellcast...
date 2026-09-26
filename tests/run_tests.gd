@@ -82,12 +82,18 @@ func test_art_assets(books: Dictionary) -> void:
 			print("       %s: ждут картинку — %s" % [g, ", ".join(PackedStringArray(waiting.map(func(p): return p.get_file())))])
 		check(missing.is_empty(), "%s: %d из %d%s" % [g, groups[g].size() - missing.size() - waiting.size(), groups[g].size(),
 			"" if missing.is_empty() else " — нет: " + ", ".join(PackedStringArray(missing.map(func(p): return p.get_file()))) ])
-	var chars := 0
+	var lost := []
+	var total := 0
 	for cid in GameData.load_classes():
 		for st in ["healthy", "hurt", "critical", "zombie"]:
-			if ResourceLoader.exists("res://assets/characters/%s_%s.png" % [cid, st]):
-				chars += 1
-	print("       персонажи: %d из %d (пока необязательно)" % [chars, GameData.load_classes().size() * 4])
+			total += 1
+			if Art.portrait(cid, st) == null:
+				lost.append("%s_%s" % [cid, st])
+	check(lost.is_empty(), "персонажи: %d из %d%s" % [total - lost.size(), total,
+		"" if lost.is_empty() else " — нет: " + ", ".join(PackedStringArray(lost))])
+	check(Art.portrait_state(9.0, 10.0) == "healthy" and Art.portrait_state(4.0, 10.0) == "hurt"
+		and Art.portrait_state(3.0, 10.0) == "critical" and Art.portrait_state(9.0, 10.0, true) == "zombie",
+		"портрет по здоровью: >1/2 здоров, от 1/3 ранен, <1/3 при смерти, зомби отдельно")
 
 
 ## Шансы Хаоса за каст должны совпадать с документацией (18.0 / 1.30 / 0.03 %).

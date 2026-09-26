@@ -150,7 +150,13 @@ func _card(cid: String) -> Control:
 	row.add_theme_constant_override("separation", 10)
 	m.add_child(row)
 	var book: String = cfg.books[0]
-	var cover := Art.book_cover(GameData.load_books_cached().get(book, {"id": book, "name": book}), 60)
+	var cover: Control
+	if Art.portrait(cid) != null:
+		cover = Art.portrait_rect(Art.portrait_head(cid), Vector2(96, 128))
+		if not open:
+			cover.modulate = Color(0.35, 0.35, 0.4)  # закрытый класс — в тени
+	else:
+		cover = Art.book_cover(GameData.load_books_cached().get(book, {"id": book, "name": book}), 60)
 	row.add_child(cover)
 	var text := VBoxContainer.new()
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -161,7 +167,8 @@ func _card(cid: String) -> Control:
 	name_l.add_theme_font_size_override("font_size", 18)
 	text.add_child(name_l)
 	var info := Label.new()
-	info.text = "ЗД %s · %s" % [Unit._num(float(cfg.hp)), cfg.ability_text] if open else "Закрыт. " + String(cfg.get("unlock", {}).get("text", ""))
+	var book_name: String = GameData.load_books_cached().get(book, {}).get("name", book)
+	info.text = "ЗД %s · %s · %s" % [Unit._num(float(cfg.hp)), book_name, cfg.ability_text] if open else "Закрыт. " + String(cfg.get("unlock", {}).get("text", ""))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(280, 0)
 	info.add_theme_font_size_override("font_size", 12)

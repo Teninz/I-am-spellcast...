@@ -34,6 +34,56 @@ static func bag() -> Texture2D:
 	return texture("res://assets/chips/bag.png")
 
 
+## Портреты волшебников: assets/characters/<файл>_<состояние>.png. Имена файлов у двух классов короче id.
+const PORTRAIT_FILES := {"chronomancer": "chrono", "wild_mage": "wild"}
+
+
+## Состояние портрета по здоровью: больше половины — healthy, от трети — hurt, меньше — critical.
+static func portrait_state(hp: float, max_hp: float, zombie: bool = false) -> String:
+	if zombie:
+		return "zombie"
+	var r := hp / maxf(0.1, max_hp)
+	if r > 0.5:
+		return "healthy"
+	return "hurt" if r >= 1.0 / 3.0 else "critical"
+
+
+static func portrait(class_id: String, state: String = "healthy") -> Texture2D:
+	return texture("res://assets/characters/%s_%s.png" % [PORTRAIT_FILES.get(class_id, class_id), state])
+
+
+## Верхняя часть портрета (голова и плечи) — для маленьких карточек.
+static func portrait_head(class_id: String, state: String = "healthy") -> Texture2D:
+	var key := "head:%s:%s" % [class_id, state]
+	if _cache.has(key):
+		return _cache[key]
+	var full := portrait(class_id, state)
+	var out: Texture2D = null
+	if full:
+		var a := AtlasTexture.new()
+		a.atlas = full
+		var w := full.get_width()
+		var h := full.get_height()
+		a.region = Rect2(w * 0.17, h * 0.03, w * 0.66, w * 0.66 * 4.0 / 3.0)
+		out = a
+	_cache[key] = out
+	return out
+
+
+## Картинка портрета нужного размера (или пустое место, если файла нет).
+static func portrait_rect(tex: Texture2D, size: Vector2) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.custom_minimum_size = size
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	tr.clip_contents = true
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return tr
+
+
 static func book(id: String) -> Texture2D:
 	return texture("res://assets/books/%s.png" % id)
 
