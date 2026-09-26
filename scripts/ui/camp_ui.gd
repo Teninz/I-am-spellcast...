@@ -30,6 +30,8 @@ var _header: Label
 var _info: Label
 var _messages: RichTextLabel
 var _continue: Button
+## Строки, которые показать при открытии привала (например, полученные достижения).
+var notices: Array[String] = []
 
 
 func setup(adv: Adventure, rest: Array, torn_books: Array) -> void:
@@ -40,6 +42,8 @@ func setup(adv: Adventure, rest: Array, torn_books: Array) -> void:
 
 func _ready() -> void:
 	_build()
+	for n in notices:
+		_say("[color=#ffd35a]%s[/color]" % n)
 	for t in torn:
 		_say("[color=#ff8a8a]%s: книга «%s» порвалась от износа![/color]" % [t.wizard.name, adventure.books[t.book].name])
 	for r in rest_report:

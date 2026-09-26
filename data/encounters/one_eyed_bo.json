@@ -1,0 +1,52 @@
+{
+  "id": "one_eyed_bo",
+  "name": "Одноглазый Бо",
+  "members": [
+    {
+      "name": "Одноглазый Бо",
+      "hp": 18,
+      "damage": 2,
+      "speed": 12,
+      "boss": true,
+      "defense": 1,
+      "start_status": [
+        {
+          "id": "invisible",
+          "turns": 2
+        }
+      ],
+      "passive_text": "Первые 2 хода невидим: пока рядом есть подручные, по нему не попасть.",
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Карманная кража",
+          "cooldown": 3,
+          "first": 2,
+          "damage": 1,
+          "steal": true,
+          "text": "1 урон и крадёт предмет цели (вернётся после победы)"
+        },
+        {
+          "id": "summon",
+          "name": "Засада",
+          "cooldown": 5,
+          "first": 4,
+          "count": 1,
+          "unit": {
+            "name": "Разбойник-арбалетчик",
+            "hp": 3,
+            "damage": 1,
+            "speed": 11
+          },
+          "text": "призывает арбалетчика"
+        }
+      ]
+    },
+    {
+      "name": "Подручный Бо",
+      "hp": 3,
+      "damage": 1,
+      "speed": 11
+    }
+  ]
+}

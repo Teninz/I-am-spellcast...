@@ -29,6 +29,14 @@ static func load_json(path: String) -> Variant:
 
 static var _statuses: Dictionary = {}
 static var _books: Dictionary = {}
+static var _bosses: Dictionary = {}
+
+
+## Трофеи, проклятые трофеи и шрамы боссов — data/bosses.json.
+static func bosses() -> Dictionary:
+	if _bosses.is_empty():
+		_bosses = load_json("res://data/bosses.json")
+	return _bosses
 
 
 static func load_books_cached() -> Dictionary:

@@ -1,0 +1,43 @@
+{
+  "id": "goose_patriarch",
+  "name": "Гусь-Патриарх",
+  "birds": true,
+  "members": [
+    {
+      "name": "Гусь-Патриарх",
+      "hp": 16,
+      "damage": 2,
+      "speed": 13,
+      "boss": true,
+      "start_status": [
+        {
+          "id": "invulnerable",
+          "turns": 2,
+          "hold": true
+        }
+      ],
+      "passive_text": "Неуязвим первые 2 хода. Просто потому что гусь.",
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Шипение",
+          "cooldown": 3,
+          "first": 2,
+          "damage": 0,
+          "status": "fear",
+          "turns": 2,
+          "text": "Страх на цель на 2 хода"
+        },
+        {
+          "id": "aoe",
+          "name": "Га-га-га",
+          "cooldown": 5,
+          "first": 4,
+          "damage": 1,
+          "stun_one": true,
+          "text": "1 урон всем и Оглушение одному случайному волшебнику"
+        }
+      ]
+    }
+  ]
+}

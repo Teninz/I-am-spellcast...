@@ -42,6 +42,7 @@ var ability: String = ""
 var ability_charges: int = 0
 var ability_pool: float = 0.0  # запас лечения Паладина на бой
 var no_chaos := false
+var extra_chaos := 0  # лишние фишки Хаоса класса (Дикий маг)
 var extra_casts: int = 0
 
 # Противники
@@ -114,7 +115,7 @@ func luck() -> int:
 
 
 func extra_chaos_chips() -> int:
-	return 2 if has("chaos_curse") else 0
+	return extra_chaos + (2 if has("chaos_curse") else 0)
 
 
 func add_status(status_id: String, turns: int, stacks: int = 1, source: Unit = null) -> void:

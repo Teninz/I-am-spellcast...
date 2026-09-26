@@ -1,0 +1,48 @@
+{
+  "id": "goblin_chief",
+  "name": "Гоблинский Вождь на Свинье",
+  "members": [
+    {
+      "name": "Боевая свинья",
+      "hp": 7,
+      "damage": 1,
+      "speed": 12,
+      "passive": "mount",
+      "passive_text": "Вождь едет верхом. Когда свинья падает, вождь спешивается: медленнее, но злее.",
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Таран свиньёй",
+          "cooldown": 3,
+          "first": 2,
+          "damage": 2,
+          "meter": -30,
+          "text": "2 урона и Сбив шкалы на 30 %"
+        }
+      ]
+    },
+    {
+      "name": "Гоблинский Вождь",
+      "hp": 13,
+      "damage": 2,
+      "speed": 12,
+      "boss": true,
+      "passive": "mounted",
+      "dismount": {
+        "speed": 9,
+        "damage": 1
+      },
+      "specials": [
+        {
+          "id": "rally",
+          "name": "Боевой клич",
+          "cooldown": 5,
+          "first": 4,
+          "bonus": 2,
+          "turns": 2,
+          "text": "все враги получают Ускорение, вождь — +2 к урону на 2 хода"
+        }
+      ]
+    }
+  ]
+}

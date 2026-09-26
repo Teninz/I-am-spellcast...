@@ -3,6 +3,7 @@ extends Control
 ## Закрытые классы видны с условием открытия.
 
 signal start_pressed(party: Array)
+signal continue_pressed
 
 const MIN_PARTY := 3
 const MAX_PARTY := 4
@@ -70,6 +71,22 @@ func _ready() -> void:
 	var bottom := HBoxContainer.new()
 	bottom.alignment = BoxContainer.ALIGNMENT_END
 	col.add_child(bottom)
+	if SaveGame.exists():
+		var cont := Button.new()
+		cont.text = "Продолжить приключение"
+		cont.tooltip_text = "Сохранено: %s.\nНовое приключение заменит сохранённое." % SaveGame.summary()
+		cont.custom_minimum_size = Vector2(300, 52)
+		cont.add_theme_font_size_override("font_size", 18)
+		cont.pressed.connect(func() -> void: continue_pressed.emit())
+		bottom.add_child(cont)
+		var saved := Label.new()
+		saved.text = SaveGame.summary()
+		saved.modulate = Color(1, 1, 1, 0.7)
+		saved.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		saved.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		saved.clip_text = true
+		saved.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		bottom.add_child(saved)
 	_start = Button.new()
 	_start.custom_minimum_size = Vector2(260, 52)
 	_start.add_theme_font_size_override("font_size", 19)

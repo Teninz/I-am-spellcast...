@@ -6,6 +6,7 @@ const BattleUI := preload("res://scripts/ui/battle_ui.gd")
 const CampUI := preload("res://scripts/ui/camp_ui.gd")
 const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
 const MapUI := preload("res://scripts/ui/map_ui.gd")
+const TrophyUI := preload("res://scripts/ui/trophy_ui.gd")
 
 var game: Node
 var frames := 0
@@ -15,6 +16,8 @@ var camps := 0
 var items_used := 0
 var forks := 0
 var books_opened := 0
+var trophies := 0
+var resumed := 0
 var last_screen: Node = null
 
 
@@ -23,6 +26,8 @@ func _initialize() -> void:
 	Engine.max_fps = 0
 	Profile.path = "user://test_profile.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	SaveGame.path = "user://test_smoke_adventure.json"
+	SaveGame.clear()
 	game = load("res://scenes/main.tscn").instantiate()
 	game.fast = true
 	root.add_child(game)
@@ -53,6 +58,23 @@ func _process(_delta: float) -> bool:
 		if s != last_screen:
 			last_screen = s
 			camps += 1
+			# Раз в несколько привалов «выходим из игры» и продолжаем с сохранения.
+			if camps % 3 == 0 and s.get_meta("resumed", false) == false:
+				var lvl: int = game.adventure.level
+				game.new_adventure()
+				if not SaveGame.exists():
+					print("FAIL: нет сохранения на привале")
+					quit(1)
+					return true
+				game.continue_adventure()
+				if game.screen.get_script() != CampUI or game.adventure.level != lvl:
+					print("FAIL: продолжение открыло не тот экран")
+					quit(1)
+					return true
+				game.screen.set_meta("resumed", true)
+				last_screen = game.screen
+				resumed += 1
+				s = game.screen
 			AutoPlayer.camp(game.adventure)
 			s._rebuild()
 			if not game.adventure.all_resolved():
@@ -60,6 +82,12 @@ func _process(_delta: float) -> bool:
 				quit(1)
 				return true
 			s._continue.pressed.emit()
+	elif s.get_script() == TrophyUI:
+		if s != last_screen:
+			last_screen = s
+			trophies += 1
+			s._kind = "cursed" if trophies % 2 == 0 else "trophy"
+			s._take.pressed.emit()
 	elif s.get_script() == MapUI:
 		if s != last_screen:
 			last_screen = s
@@ -72,8 +100,8 @@ func _process(_delta: float) -> bool:
 		if s.get_meta("victory", false):
 			wins += 1
 		if runs >= 6:
-			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, книг открыто: %d, предметов в бою: %d)"
-				% [runs, wins, camps, forks, books_opened, items_used])
+			print("ok: интерфейс доиграл %d приключений (актов пройдено: %d, привалов: %d, развилок: %d, книг открыто: %d, трофеев: %d, продолжений с сохранения: %d, предметов в бою: %d)"
+				% [runs, wins, camps, forks, books_opened, trophies, resumed, items_used])
 			quit(0)
 			return true
 		game.new_adventure()

@@ -1,6 +1,7 @@
 {
   "id": "geese_gang",
   "name": "Гусиная банда",
+  "birds": true,
   "members": [
     {
       "name": "Бешеный гусь",

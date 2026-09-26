@@ -23,6 +23,8 @@ func _initialize() -> void:
 			out = a.substr(4)
 	Profile.path = "user://test_profile.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	SaveGame.path = "user://test_shot_adventure.json"
+	SaveGame.clear()
 	game = load("res://scenes/main.tscn").instantiate()
 	game.fast = true
 	root.add_child(game)
@@ -114,7 +116,14 @@ func _play(ui: Node) -> void:
 										var plan := {Luck.spell_key("FFF"): 6, Luck.cat_key("control"): 4}
 										BookView.open(ui, ui.books["fire"], ChipBag.odds(ui.books["fire"].bag), true, plan,
 											"Кастовать из этой книги")
-										_shot("book.png", func() -> void: quit()))), 0.25)))
+										_shot("book.png", func() -> void:
+											# Экран трофея: как после победы над Гусём-Патриархом, Водник выбывал.
+											game.adventure.trophy_boss = "goose_patriarch"
+											game.adventure.last_scars = [{"wizard": game.adventure.wizards[2], "boss": "goose_patriarch"}]
+											game._show_trophy(false, [])
+											_shot("trophy.png", func() -> void:
+												game.new_adventure()
+												_shot("select_continue.png", func() -> void: quit()))))), 0.25)))
 					return
 			ui._on_cast_pressed()
 

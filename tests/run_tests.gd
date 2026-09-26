@@ -23,6 +23,10 @@ func _initialize() -> void:
 	test_profile_unlocks()
 	test_bard_and_paladin()
 	test_dead_tongue_cost()
+	test_bosses()
+	test_trophies_and_scars()
+	test_achievements()
+	test_save_and_load()
 	test_act_simulation()
 	print("")
 	print("ИТОГО: %s" % ("все тесты прошли" if failures == 0 else "ошибок: %d" % failures))
@@ -396,6 +400,160 @@ func test_dead_tongue_cost() -> void:
 	check(is_equal_approx(u.hp, 9.0), "в начале хода 0.5 урона за стак (10 → %s)" % Unit._num(u.hp))
 	u.remove_debuffs()
 	check(not u.has("dead_poison"), "снимается Очищением")
+
+
+func _fight(encounter_id: String, party: Array = ["pyromancer", "priest", "water"]) -> Combat:
+	var books := GameData.load_books_cached()
+	var ws: Array[Wizard] = []
+	for cid in party:
+		ws.append(Wizard.new(cid, GameData.load_classes()[cid], {}))
+	return Combat.new(books, ws, GameData.load_encounter(encounter_id), 7, {})
+
+
+func test_bosses() -> void:
+	print("Боссы акта I:")
+	var act: Dictionary = GameData.load_json("res://data/adventure/act1.json")
+	var seen := {}
+	for i in 60:
+		var adv := Adventure.new(["pyromancer", "priest", "water"], i + 1)
+		seen[adv.map_nodes.back().encounter] = true
+	check(seen.size() == 5 and act.levels[4].size() == 5, "на 5-м уровне — случайный из 5 боссов (встретились: %d)" % seen.size())
+	var c := _fight("goblin_chief")
+	var pig: Unit = c.living(Unit.ENEMIES)[0]
+	var chief: Unit = c.living(Unit.ENEMIES)[1]
+	c._hurt(pig, 99.0, c.living(Unit.PARTY)[0])
+	check(chief.speed == 9.0 and chief.attack == 3, "свинья пала — вождь спешился: скорость 9, урон 3")
+	c = _fight("mother_slime")
+	var slime: Unit = c.living(Unit.ENEMIES)[0]
+	c._hurt(slime, 9.0, null)
+	check(c.living(Unit.ENEMIES).size() == 3, "Матушка-Слизь: 9 урона → отделились 2 слизня")
+	var hp_before := slime.hp
+	c._use_special(slime, {"id": "absorb", "name": "Поглощение", "text": ""})
+	check(c.living(Unit.ENEMIES).size() == 1 and slime.hp > hp_before, "Поглощение: слизни исчезли, Матушка вылечилась")
+	c = _fight("goose_patriarch")
+	var goose: Unit = c.living(Unit.ENEMIES)[0]
+	c._hit(goose, 5.0, c.living(Unit.PARTY)[0], "?")
+	c._hit(goose, 5.0, c.living(Unit.PARTY)[0], "?")
+	check(goose.hp == goose.max_hp and goose.has("invulnerable"), "Гусь неуязвим первые ходы — и не после первого удара")
+	c = _fight("one_eyed_bo")
+	var bo: Unit = c.living(Unit.ENEMIES)[0]
+	check(bo.has("invisible") and not c.can_target(c.living(Unit.PARTY)[0], bo), "Бо невидим, пока рядом подручный")
+	c = _fight("goblin_chief")
+	chief = c.living(Unit.ENEMIES)[1]
+	c._use_special(chief, chief.specials[0])
+	check(chief.attack == 4 and c.living(Unit.ENEMIES).all(func(u: Unit) -> bool: return u.has("haste")),
+		"Боевой клич: все враги ускорены, вождь +2 к урону")
+	for i in 3:
+		c.end_turn(chief)
+	check(chief.attack == 2, "через 2 хода бонус к урону проходит")
+
+
+func test_trophies_and_scars() -> void:
+	print("Трофеи и шрамы боссов:")
+	var adv := Adventure.new(["pyromancer", "priest", "water"], 3)
+	adv.map_nodes.back().encounter = "rat_king"
+	adv.level = adv.level_count()
+	adv.node_id = adv.map_nodes.back().id
+	var c := adv.start_combat(5)
+	var water: Unit = c.living(Unit.PARTY)[2]
+	c._hurt(water, 99.0, null)
+	for e in c.living(Unit.ENEMIES):
+		e.hp = 0.0
+	c._check_outcome()
+	adv.finish_combat(c)
+	var w := adv.wizards[2]
+	check(adv.trophy_boss == "rat_king" and w.scars == ["rat_king"], "выбывший в бою с боссом получил шрам «Укушенный»")
+	check(w.max_hp() == 7.0, "шрам: −1 макс. ЗД (8 → %s)" % Unit._num(w.max_hp()))
+	var pyro := adv.wizards[0]
+	check(adv.award_trophy("cursed", pyro) and pyro.max_hp() == 13.0 and adv.trophy_boss == "",
+		"Корона Крысиного Короля: +3 ЗД Пироманту")
+	var c2 := adv.start_combat(9)
+	check(c2.living(Unit.ENEMIES).any(func(u: Unit) -> bool: return u.name == "Крыса из свиты"),
+		"проклятый трофей: в начале боя у врага появляется крыса")
+	var p := Wizard.new("priest", GameData.load_classes().priest, {})
+	p.scars.append("mother_slime")
+	var c3 := Combat.new(GameData.load_books_cached(), [p], GameData.load_encounter("rat_pack"), 1, {})
+	var pu: Unit = c3.living(Unit.PARTY)[0]
+	pu.hp = 2.0
+	c3._restore(pu, 3.0)
+	check(pu.hp == 4.0, "шрам «Разъеденный»: лечение на 1 меньше")
+	var g := Wizard.new("priest", GameData.load_classes().priest, {})
+	g.scars.append("goose_patriarch")
+	var c4 := Combat.new(GameData.load_books_cached(), [g], GameData.load_encounter("geese_gang"), 1, {})
+	check(c4.living(Unit.PARTY)[0].has("fear"), "шрам «Гусебоязнь»: в бою с гусями — Страх")
+
+
+func test_achievements() -> void:
+	print("Достижения:")
+	var adv := Adventure.new(["priest", "water", "magus"], 4)
+	for i in 3:
+		var c := adv.start_combat(i + 1)
+		for e in c.living(Unit.ENEMIES):
+			e.hp = 0.0
+		c._check_outcome()
+		adv.finish_combat(c)
+		if adv.needs_choice():
+			adv.choose(adv.choices()[0].id)
+	check(adv.earned.has("forester"), "«Лесник»: 3 победы подряд без выбывших без Пироманта")
+	var adv2 := Adventure.new(["pyromancer", "priest", "water"], 4)
+	var c2 := adv2.start_combat(1)
+	c2.tally.chaos_big = 3
+	c2.tally.items = 12
+	for e in c2.living(Unit.ENEMIES):
+		e.hp = 0.0
+	c2._check_outcome()
+	adv2.finish_combat(c2)
+	check(adv2.earned.has("chaos_ally") and adv2.earned.has("hoarder"), "«Хаос — мой союзник» и «Запасливый» по счётчикам")
+	check(not adv2.earned.has("forester"), "с Пиромантом «Лесника» не дают")
+	var fresh := adv2.take_fresh_achievements()
+	check(fresh.size() == 2 and adv2.take_fresh_achievements().is_empty(), "новые достижения выдаются один раз")
+	Profile.path = "user://test_profile_ach.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	var classes := GameData.load_classes()
+	var prof := Profile.load_or_new(classes)
+	prof.achievements["chaos_ally"] = true
+	var opened := prof.record_run(false, classes)
+	check(opened.has("wild_mage") and opened.has("bard"), "после приключения открыт Дикий маг (и Бард за первый забег)")
+	var ach: Dictionary = GameData.load_json("res://data/achievements.json")
+	var ok := true
+	for id in ach:
+		if classes.get(ach[id].class, {}).get("unlock", {}).get("id", "") != id:
+			ok = false
+	check(ok and ach.size() == 10, "10 достижений, каждое открывает свой класс")
+
+
+func test_save_and_load() -> void:
+	print("Сохранение приключения:")
+	SaveGame.path = "user://test_adventure.json"
+	SaveGame.clear()
+	var adv := Adventure.new(["pyromancer", "priest", "water", "magus"], 21)
+	var c := adv.start_combat(3)
+	AutoPlayer.play(c)
+	for e in c.living(Unit.ENEMIES):
+		e.hp = 0.0
+	c._check_outcome()
+	adv.finish_combat(c)
+	adv.rest()
+	adv.roll_loot()
+	adv.wizards[1].trophies.append("goose_patriarch:trophy")
+	adv.wizards[2].scars.append("rat_king")
+	adv.choose(adv.choices()[1].id)
+	SaveGame.write(adv, "map", {"note": 1})
+	check(SaveGame.exists() and SaveGame.summary().begins_with("уровень 2"), "сохранено: %s" % SaveGame.summary())
+	var data := SaveGame.read()
+	var b: Adventure = data.adventure
+	var same := b.level == adv.level and b.node_id == adv.node_id and b.path == adv.path \
+		and b.map_nodes.size() == adv.map_nodes.size() and b.offers.size() == adv.offers.size()
+	for i in adv.wizards.size():
+		var x := adv.wizards[i]
+		var y := b.wizards[i]
+		same = same and x.hp == y.hp and x.books == y.books and x.item == y.item and x.hat == y.hat \
+			and x.boots == y.boots and x.trophies == y.trophies and x.scars == y.scars
+	check(same and data.screen == "map", "загружено то же самое: уровень, карта, отряд, книги, вещи, трофеи, шрамы, добыча")
+	check(b.rng.randi() == adv.rng.randi(), "генератор случайности продолжается с того же места")
+	check(b.encounter().id == adv.encounter().id, "следующий бой — та же банда")
+	SaveGame.clear()
+	check(not SaveGame.exists(), "после конца приключения сохранение удаляется")
 
 
 func test_loot_rules() -> void:

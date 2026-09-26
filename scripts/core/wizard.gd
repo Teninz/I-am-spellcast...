@@ -15,6 +15,7 @@ var ability_charges: int
 var forbidden_books: Array[String] = []
 var max_books := MAX_BOOKS
 var destroys_forbidden := false
+var extra_chaos := 0
 
 var hp: float
 var fortify := 0.0  # Укрепление на следующий бой
@@ -29,6 +30,11 @@ var boots := ""
 ## Износ: книга, которой пользовались в одиночку, и сколько боёв подряд.
 var wear_book := ""
 var wear_streak := 0
+## Трофеи боссов ("rat_king:trophy", "rat_king:cursed") и шрамы (id босса).
+var trophies: Array[String] = []
+var scars: Array[String] = []
+## Шрам «Обобранный»: в этом бою предметом пользоваться нельзя.
+var no_item_battle := false
 
 var _equipment_db: Dictionary  # id -> данные вещи
 
@@ -44,6 +50,7 @@ func _init(id: String, cfg: Dictionary, equipment_db: Dictionary) -> void:
 		forbidden_books.append(String(b))
 	destroys_forbidden = bool(cfg.get("destroys_forbidden", false))
 	max_books = int(cfg.get("max_books", MAX_BOOKS))
+	extra_chaos = int(cfg.get("extra_chaos", 0))
 	for b in cfg.books:
 		books.append(String(b))
 	_equipment_db = equipment_db
@@ -71,6 +78,9 @@ func equipment(slot: String) -> Dictionary:
 func stats() -> Dictionary:
 	var s := {"hp": base_hp, "speed": base_speed, "wisdom": 0, "defense": 0, "luck": 0, "resist": 0,
 		"immune": [], "start_meter": 0.0, "start_status": [], "no_wear": false, "random_target": 0.0}
+	for m in marks():
+		for k in m.get("stats", {}):
+			s[k] += m.stats[k]
 	for slot in ["hat", "boots"]:
 		var e := equipment(slot)
 		if e.is_empty():
@@ -86,6 +96,39 @@ func stats() -> Dictionary:
 		s.random_target = maxf(s.random_target, float(p.get("random_target", 0.0)))
 	s.hp = maxf(1.0, s.hp)
 	return s
+
+
+## Трофеи и шрамы волшебника (данные из data/bosses.json).
+func marks() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var db := GameData.bosses()
+	for t in trophies:
+		var parts := t.split(":")
+		if db.has(parts[0]):
+			out.append(db[parts[0]][parts[1]])
+	for b in scars:
+		if db.has(b):
+			out.append(db[b].scar)
+	return out
+
+
+func has_effect(effect: String) -> bool:
+	return marks().any(func(m: Dictionary) -> bool: return m.get("effect", "") == effect)
+
+
+## Проклятое у волшебника: проклятая книга, вещь или проклятый трофей.
+func cursed_things(book_db: Dictionary) -> int:
+	var n := 0
+	for b in books:
+		if book_db.get(b, {}).get("rarity", "") == "cursed":
+			n += 1
+	for slot in ["hat", "boots"]:
+		if equipment(slot).get("rarity", "") == "cursed":
+			n += 1
+	for t in trophies:
+		if t.ends_with(":cursed"):
+			n += 1
+	return n
 
 
 func max_hp() -> float:

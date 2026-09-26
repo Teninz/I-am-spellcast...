@@ -27,9 +27,20 @@ var unlocked_classes: Array = []
 var map_nodes: Array[Dictionary] = []
 var node_id := 0  # узел текущего (или только что пройденного) боя
 var path: Array[int] = [0]
+## Трофей побеждённого босса ждёт, кому его отдать (id босса или "").
+var trophy_boss := ""
+## Шрамы, полученные в последнем бою: [{wizard, boss}].
+var last_scars: Array = []
+## Счётчики забега для достижений.
+var run := {"downs": 0, "items": 0, "chaos_big": 0, "books_cast": {}, "flawless_streak": 0}
+## Достижения, полученные в этом приключении, и ещё не показанные игроку.
+var earned: Array[String] = []
+var fresh_achievements: Array[String] = []
+var act_id := "act1"
+var finished := false  # приключение закончено (победа в акте или поражение)
 
 
-func _init(party: Array, seed_value: int = 0, act_id: String = "act1", unlocked: Array = []) -> void:
+func _init(party: Array, seed_value: int = 0, act: String = "act1", unlocked: Array = []) -> void:
 	if seed_value != 0:
 		rng.seed = seed_value
 	else:
@@ -39,7 +50,8 @@ func _init(party: Array, seed_value: int = 0, act_id: String = "act1", unlocked:
 	items = GameData.load_json("res://data/items.json")
 	for e in GameData.load_json("res://data/equipment.json").items:
 		equipment[e.id] = e
-	config = GameData.load_json("res://data/adventure/%s.json" % act_id)
+	act_id = act
+	config = GameData.load_json("res://data/adventure/%s.json" % act)
 	refusals_left = int(config.refusals)
 	unlocked_classes = unlocked.duplicate()
 	if unlocked_classes.is_empty():
@@ -51,6 +63,13 @@ func _init(party: Array, seed_value: int = 0, act_id: String = "act1", unlocked:
 		if not unlocked_classes.has(cid):
 			unlocked_classes.append(cid)
 	_build_map()
+	# Учёный: «книга скептика» — случайная книга в свободный слот.
+	for w in wizards:
+		if classes[w.class_id].get("random_book", false) and w.free_book_slots() > 0:
+			var pool: Array = book_pool().filter(func(b: String) -> bool:
+				return w.can_use_book(b) and books[b].rarity != "cursed" and not w.books.has(b))
+			if not pool.is_empty():
+				w.books.append(pool[rng.randi_range(0, pool.size() - 1)])
 
 
 # --- Карта ----------------------------------------------------------------
@@ -66,8 +85,9 @@ func _build_map() -> void:
 	for li in range(1, levels.size()):
 		var pool: Array = levels[li]
 		var next: Array[int] = []
-		if pool.size() == 1:
-			var shared := _new_node(li + 1, pool[0], frontier)
+		if pool.size() == 1 or li == levels.size() - 1:
+			# Последний уровень — босс акта: все дороги сходятся к одному (случайному из пула).
+			var shared := _new_node(li + 1, _pick_encounter(pool, []), frontier)
 			for p in frontier:
 				map_nodes[p].children.append(shared)
 			next.append(shared)
@@ -121,6 +141,11 @@ func _path_encounters(id: int) -> Array:
 	return out
 
 
+## Босс акта (последний узел карты).
+func boss_name() -> String:
+	return GameData.load_encounter(map_nodes.back().encounter).get("name", "")
+
+
 func node() -> Dictionary:
 	return map_nodes[node_id]
 
@@ -168,7 +193,7 @@ func _reachable_from(id: int) -> Dictionary:
 
 ## Видно ли, какая банда ждёт в узле: пройденный путь и два уровня вперёд.
 func is_revealed(id: int) -> bool:
-	return path.has(id) or map_nodes[id].level <= level + 1 or map_nodes[id].parents.size() > 1
+	return path.has(id) or map_nodes[id].level <= level + 1
 
 
 ## Без выбора игрока (симуляторы, автоигрок) — случайная ветка.
@@ -233,9 +258,16 @@ func start_combat(seed_value: int = 0) -> Combat:
 func finish_combat(c: Combat) -> Array:
 	var torn := []
 	last_was_boss = false
+	last_scars.clear()
+	var boss_fight := false
 	for u in c.units:
 		if u.is_boss:
 			last_was_boss = true
+			boss_fight = true
+	_track(c, boss_fight)
+	for w in wizards:
+		w.no_item_battle = false  # «Обобранный» действует один бой
+	for u in c.units:
 		if u.wizard == null:
 			continue
 		var w := u.wizard
@@ -251,9 +283,98 @@ func finish_combat(c: Combat) -> Array:
 			w.hp = Unit.q(w.max_hp() * REVIVE_HP)
 			w.carry_statuses["aching"] = ACHING_TURNS
 			w.just_revived = true
+	if c.outcome == "victory" and boss_fight:
+		trophy_boss = node().encounter if GameData.bosses().has(node().encounter) else ""
+		for u in c.downed:
+			if u.wizard and trophy_boss != "":
+				u.wizard.scars.append(trophy_boss)
+				last_scars.append({"wizard": u.wizard, "boss": trophy_boss})
+		for w in wizards:
+			w.no_item_battle = w.has_effect("robbed")
+	var act_done := c.outcome == "victory" and is_last_level()
 	if c.outcome == "victory":
 		level += 1
+	if c.outcome != "victory" or act_done:
+		finished = true
+		_check_run_end(act_done)
 	return torn
+
+
+# --- Трофеи и шрамы боссов ------------------------------------------------
+
+## Что можно забрать у побеждённого босса: {"trophy": {...}, "cursed": {...}} или {}.
+func trophy_offer() -> Dictionary:
+	return GameData.bosses().get(trophy_boss, {})
+
+
+## kind — "trophy" или "cursed"; отдаётся одному волшебнику.
+func award_trophy(kind: String, w: Wizard) -> bool:
+	if trophy_boss == "" or not (kind in ["trophy", "cursed"]) or not wizards.has(w):
+		return false
+	var old_max := w.max_hp()
+	w.trophies.append("%s:%s" % [trophy_boss, kind])
+	if w.alive():
+		w.hp = clampf(w.hp + (w.max_hp() - old_max), 1.0, w.max_hp())
+	trophy_boss = ""
+	return true
+
+
+# --- Достижения ------------------------------------------------------------
+
+func _earn(id: String) -> void:
+	if not earned.has(id):
+		earned.append(id)
+		fresh_achievements.append(id)
+
+
+## Достижения, полученные с прошлого вызова (для показа и записи в профиль).
+func take_fresh_achievements() -> Array[String]:
+	var out := fresh_achievements.duplicate()
+	fresh_achievements.clear()
+	return out
+
+
+func _track(c: Combat, boss_fight: bool) -> void:
+	run.downs += int(c.tally.downs)
+	run.items += int(c.tally.items)
+	run.chaos_big += int(c.tally.chaos_big)
+	for u in c.units:
+		if u.is_wizard():
+			for b in u.books_used:
+				run.books_cast[b] = true
+	var won := c.outcome == "victory"
+	var flawless := won and c.downed.is_empty()
+	# «Лесник»: 3 победы подряд без выбывших, в отряде нет Пироманта.
+	if not wizards.any(func(w: Wizard) -> bool: return w.class_id == "pyromancer"):
+		run.flawless_streak = run.flawless_streak + 1 if flawless else 0
+		if run.flawless_streak >= 3:
+			_earn("forester")
+	# «Ловкость рук»: победа без выбывших и 3+ «промаха» отряда.
+	if flawless and int(c.tally.mishaps) >= 3:
+		_earn("sleight")
+	if won and boss_fight:
+		# «Я так и знал»: у каждого живого волшебника меньше трети здоровья.
+		var party := c.living(Unit.PARTY)
+		if not party.is_empty() and party.all(func(u: Unit) -> bool: return u.hp < u.max_hp / 3.0):
+			_earn("foresaw")
+		# «Мелкий шрифт»: у двух волшебников сразу есть проклятое.
+		if wizards.filter(func(w: Wizard) -> bool: return w.cursed_things(books) > 0).size() >= 2:
+			_earn("fine_print")
+	if run.books_cast.size() >= 8:
+		_earn("experimenter")
+	if run.chaos_big >= 3:
+		_earn("chaos_ally")
+	if run.items >= 12:
+		_earn("hoarder")
+
+
+func _check_run_end(act_done: bool) -> void:
+	if act_done and run.downs >= 5:
+		_earn("not_a_reason")
+	if act_done and int(config.get("act", 1)) >= 2:
+		_earn("no_rush")
+	if wizards.any(func(w: Wizard) -> bool: return w.scars.size() >= 3):
+		_earn("cursed_alive")
 
 
 # --- Отдых ---------------------------------------------------------------
@@ -299,6 +420,11 @@ func roll_loot(boss: Variant = null) -> Array[Dictionary]:
 				offers.append(_make_offer(i, "item"))
 		else:
 			var kind := "book" if w.books.size() <= 1 else _weighted(loot_kind())
+			offers.append(_make_offer(i, kind))
+	# Кошель Бо (проклятый трофей): владельцу ещё одна добыча.
+	for i in wizards.size():
+		if wizards[i].has_effect("extra_loot"):
+			var kind := "book" if wizards[i].books.size() <= 1 else _weighted(loot_kind())
 			offers.append(_make_offer(i, kind))
 	# Гарантия: свиток или зелье воскрешения до уровня N.
 	if not resurrection_dropped and level >= int(config.resurrection_guarantee_level) - 1:
@@ -549,6 +675,9 @@ func use_item_camp(owner: Wizard, target: Wizard) -> String:
 	var it: Dictionary = items[owner.item]
 	var e: Dictionary = it.effect
 	owner.item = ""
+	run.items += 1
+	if run.items >= 12:
+		_earn("hoarder")
 	if e.has("revive") and not target.alive():
 		target.hp = Unit.q(minf(target.max_hp(), float(e.revive)))
 	if e.has("heal") and target.alive():

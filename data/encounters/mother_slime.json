@@ -1,0 +1,47 @@
+{
+  "id": "mother_slime",
+  "name": "Матушка-Слизь",
+  "members": [
+    {
+      "name": "Матушка-Слизь",
+      "hp": 24,
+      "damage": 2,
+      "speed": 8,
+      "boss": true,
+      "passive": "split",
+      "passive_text": "Каждые 4 полученного урона отделяет слизня.",
+      "split": {
+        "every": 4,
+        "unit": {
+          "name": "Слизень",
+          "hp": 3,
+          "damage": 1,
+          "speed": 9
+        }
+      },
+      "specials": [
+        {
+          "id": "strike",
+          "name": "Кислотный плевок",
+          "cooldown": 3,
+          "first": 2,
+          "damage": 2,
+          "status": "vulnerable",
+          "turns": 2,
+          "text": "2 урона и Уязвимость"
+        },
+        {
+          "id": "absorb",
+          "name": "Поглощение",
+          "cooldown": 5,
+          "first": 5,
+          "text": "поглощает всех слизней и лечится на их здоровье"
+        }
+      ],
+      "on_hit_status": {
+        "id": "slow",
+        "turns": 1
+      }
+    }
+  ]
+}
