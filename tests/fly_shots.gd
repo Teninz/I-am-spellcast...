@@ -95,18 +95,26 @@ func _run(ui) -> void:
 	await create_timer(1.2).timeout
 	# 5. Стихии, лечение и щит (листы из Blender).
 	var dmg := {"damage": 3, "effect": "3 урона."}
-	for el in ["W", "D", "T", "H", "L"]:
+	for el in ["W", "D", "T", "H", "L", "E", "K", "I", "A", "C", "S", "M"]:
 		var t_el: float = ui._fly_spell([{"kind": "hit", "caster": me.id, "to": a.id, "aimed": a.id, "turn": ""}], [el, el, el], el + el + el, "", dmg)
 		await create_timer(t_el + Fx.t(0.12 if el == "L" else 0.25)).timeout
 		await _shot("13_%s" % el)
 		await create_timer(1.3).timeout
 	var heal_spell := _find_spell(func(sp: Dictionary) -> bool: return sp.heal > 0 and sp.damage == 0)
 	var shield_spell := _find_spell(func(sp: Dictionary) -> bool: return sp.shield > 0 and sp.damage == 0 and sp.heal == 0)
-	for pair in [["heal", heal_spell], ["shield", shield_spell]]:
+	var buff_spell := _find_spell(func(sp: Dictionary) -> bool: return sp.damage == 0 and sp.heal == 0 and sp.shield == 0 \
+		and sp.statuses.any(func(st: Dictionary) -> bool: return Unit.BUFFS.has(st.id)))
+	var debuff_spell := _find_spell(func(sp: Dictionary) -> bool: return sp.damage == 0 \
+		and sp.statuses.any(func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id)))
+	for pair in [["heal", heal_spell], ["shield", shield_spell], ["buff", buff_spell]]:
 		var t_s: float = ui._fly_spell([{"kind": "hit", "caster": me.id, "to": ally.id, "aimed": ally.id, "turn": ""}], ["H", "W", "H"], "HWH", "", pair[1])
 		await create_timer(t_s + Fx.t(0.3)).timeout
 		await _shot("14_%s" % pair[0])
 		await create_timer(1.3).timeout
+	var t_d: float = ui._fly_spell([{"kind": "hit", "caster": me.id, "to": a.id, "aimed": a.id, "turn": ""}], ["D", "D", "T"], "DDT", "", debuff_spell)
+	await create_timer(t_d + Fx.t(0.3)).timeout
+	await _shot("15_debuff")
+	await create_timer(1.3).timeout
 	# 6. Отражение.
 	ui._fly_spell([{"kind": "hit", "caster": me.id, "to": me.id, "aimed": b.id, "turn": "bounce"}], ["F", "F", "W"], "FFW")
 	await create_timer(Fx.t(0.5)).timeout

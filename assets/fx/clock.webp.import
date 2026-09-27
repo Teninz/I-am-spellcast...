@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d4nvggt667enc"
-path="res://.godot/imported/zap_hit.webp-abfebab8aee4cd580c704d107af303c7.ctex"
+uid="uid://dpomqac6lk7mo"
+path="res://.godot/imported/clock.webp-14f9f4e06b30d0d4264b937c44939a9c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/fx/zap_hit.webp"
-dest_files=["res://.godot/imported/zap_hit.webp-abfebab8aee4cd580c704d107af303c7.ctex"]
+source_file="res://assets/fx/clock.webp"
+dest_files=["res://.godot/imported/clock.webp-14f9f4e06b30d0d4264b937c44939a9c.ctex"]
 
 [params]
 

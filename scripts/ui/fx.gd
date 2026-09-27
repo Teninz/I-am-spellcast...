@@ -203,12 +203,24 @@ const SHEETS := {
 	"water_orb": [12, 4], "splash": [18, 6], "dark_orb": [12, 4], "shadow_burst": [20, 5],
 	"arcane_orb": [12, 4], "arcane_burst": [18, 6], "holy_pillar": [20, 5], "zap_hit": [12, 4],
 	"heal": [20, 5], "shield": [18, 6],
+	"rock": [12, 4], "rubble": [20, 5], "ice_shard": [12, 4], "shatter": [16, 4], "gust": [20, 5],
+	"illusion_orb": [12, 4], "prism": [18, 6], "clock": [20, 5], "sound_rings": [18, 6],
+	"gears": [20, 5], "buff": [20, 5], "debuff": [20, 5],
 }
 ## Размер попадания (px кадра при size = 1) и сдвиг вверх (доля кадра), чтобы «центр» эффекта
 ## пришёлся на центр карточки: у столпа — кольцо у подножия, у лечения — сияние внизу.
+## Светящиеся эффекты складываются со сценой (светят поверх фона, а не заслоняют его);
+## вода, тьма, пар и щит — обычные, с лёгкой прозрачностью.
+const GLOW_SHEETS := ["fireball", "explosion", "arcane_orb", "arcane_burst", "holy_pillar", "zap_hit",
+	"prism", "illusion_orb", "clock", "sound_rings", "buff"]
+const SHEET_ALPHA := 0.88
+const SHEET_SCALE := 0.85  # общий масштаб — эффекты не должны перекрывать карточки целиком
+
 ## Своя скорость кадров (остальные — 30 в секунду).
-const IMPACT_FPS := {"zap_hit": 20.0, "arcane_burst": 24.0, "shield": 24.0}
-const IMPACT_PX := {"holy_pillar": 270.0, "heal": 210.0, "shield": 175.0, "zap_hit": 200.0}
+const IMPACT_FPS := {"zap_hit": 20.0, "arcane_burst": 24.0, "shield": 24.0, "shatter": 22.0, "prism": 24.0,
+	"clock": 24.0, "buff": 26.0, "debuff": 26.0}
+const IMPACT_PX := {"holy_pillar": 270.0, "heal": 210.0, "shield": 175.0, "zap_hit": 200.0, "clock": 190.0,
+	"sound_rings": 220.0, "buff": 200.0, "debuff": 200.0, "gust": 230.0}
 const IMPACT_ANCHOR := {"holy_pillar": 0.31, "heal": 0.12, "splash": 0.12}
 
 
@@ -245,9 +257,14 @@ static func flipbook(host: Node, id: String, pos: Vector2, px: float, fps: float
 	sp.top_level = true
 	sp.z_index = 21
 	sp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	if GLOW_SHEETS.has(id):
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		sp.material = add
+	sp.modulate.a = SHEET_ALPHA
 	host.add_child(sp)
 	sp.global_position = pos
-	sp.scale = Vector2.ONE * (px / (tex.get_width() / float(cols)))
+	sp.scale = Vector2.ONE * (px * SHEET_SCALE / (tex.get_width() / float(cols)))
 	var dur := t(frames / fps)
 	var tw := sp.create_tween()
 	if loop:

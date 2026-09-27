@@ -716,22 +716,34 @@ const ELEMENT_FX := {
 	"T": {"fly": "arcane_orb", "hit": "arcane_burst", "size": 0.8},
 	"H": {"strike": "holy_pillar", "size": 1.0},
 	"L": {"hit": "zap_hit", "size": 0.8},
+	"E": {"fly": "rock", "hit": "rubble", "size": 0.8},
+	"K": {"fly": "ice_shard", "hit": "shatter", "size": 0.8},
+	"I": {"fly": "illusion_orb", "hit": "prism", "size": 0.8},
+	"A": {"hit": "gust"},
+	"C": {"hit": "clock"},
+	"S": {"hit": "sound_rings"},
+	"M": {"hit": "gears", "size": 0.85},
 }
 
 
-## Чем рисовать заклинание: вредное — по стихии, лечение — зелёные искры и крестики,
-## щит — пузырь. Хаос остаётся радужным шаром.
+## Чем рисовать заклинание: урон — по стихии, лечение — зелёные искры и крестики,
+## щит — пузырь, дебафф без урона — мутные кольца вниз, бафф — золотые кольца вверх.
+## Хаос остаётся радужным шаром.
 func _look_for(spec: Dictionary, chips: Array, chaos: bool) -> Dictionary:
 	if chaos or spec.is_empty():
 		return {}
-	var harmful: bool = spec.damage > 0 or spec.meter < 0 or spec.statuses.any(
-		func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id))
-	if harmful:
+	if spec.damage > 0:
 		return ELEMENT_FX.get(_main_element(chips), {})
+	if spec.meter < 0 or spec.strip_buffs or spec.statuses.any(
+			func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id)):
+		return {"hit": "debuff"}
 	if spec.heal > 0 or spec.revive_hp > 0:
 		return {"hit": "heal"}
 	if spec.shield > 0:
 		return {"hit": "shield"}
+	if spec.meter > 0 or spec.cleanse or spec.statuses.any(
+			func(st: Dictionary) -> bool: return Unit.BUFFS.has(st.id)):
+		return {"hit": "buff"}
 	return {}
 
 
