@@ -112,6 +112,7 @@ func start_battle() -> void:
 	_cards.clear()
 	for u in combat.units:
 		_add_card(u)
+	_cards_ready = true
 	_advance()
 
 
@@ -124,6 +125,11 @@ func _add_card(u: Unit) -> void:
 	var card := _make_card(u)
 	(_party_box if u.side == Unit.PARTY else _enemy_box).add_child(card)
 	_cards[u.id] = card
+	if _cards_ready and _anim():
+		Fx.pop_in(card)
+		await get_tree().process_frame
+		if is_instance_valid(card):
+			Fx.puff(self, Fx.center(card))
 
 
 # --- Ход -----------------------------------------------------------------
@@ -148,6 +154,11 @@ func _advance() -> void:
 		await _wait(ENEMY_DELAY)
 		if combat.outcome != "" or state == State.OVER:
 			return
+		if _anim() and _cards.has(u.id):
+			Fx.lunge(_cards[u.id], u.side == Unit.ENEMIES)
+			await _wait(0.12)
+			if combat.outcome != "" or state == State.OVER:
+				return
 		combat.enemy_act(u)
 		_refresh()
 		_advance()
@@ -373,10 +384,41 @@ func _do_reroll(slot: int) -> void:
 		_show_preview()
 
 
+## Анимации включены: не в тестах и не выключены в настройках.
+func _anim() -> bool:
+	return not fast and bool(Settings.value("animations"))
+
+
+func _card_of(u: Unit) -> Control:
+	return _cards.get(u.id, null) if u != null else null
+
+
 func _do_cast() -> void:
 	if state != State.READY:
 		return
+	var pre_spell := combat.spell_for(book_id, bag.combo_key())
 	_set_state(State.ENEMY_TURN)  # блокируем ввод на время анимации
+	# Снаряд заклинания цветом стихии летит к тем, кого заденет; хаос — радужный и трясёт экран.
+	if _anim() and _cards.has(actor.id):
+		var chaos := bag.chips.has(ChipBag.CHAOS)
+		var color := _spell_color(bag.chips)
+		var sets := _aim_sets(EffectParser.parse(pre_spell))
+		var hits: Array[Unit] = sets[0]
+		if hits.is_empty() and target:
+			hits = [target]
+		var from := Fx.center(_cards[actor.id])
+		var fly := 0.0
+		for u in hits.slice(0, 6):
+			if _cards.has(u.id) and u != actor:
+				fly = Fx.bolt(self, from, Fx.center(_cards[u.id]), color, chaos)
+			elif u == actor:
+				Fx.sparkle_up(self, _cards[u.id].get_global_rect(), color)
+		if bag.combo_key() in ["X2", "X3"]:
+			Fx.screen_shake(self, 9.0 if bag.combo_key() == "X3" else 6.0)
+		if fly > 0.0:
+			await get_tree().create_timer(fly, false).timeout
+			if state == State.OVER or not is_inside_tree():
+				return
 	var again := actor.extra_casts > 0
 	if again:
 		actor.extra_casts -= 1
@@ -646,6 +688,8 @@ func _game_over() -> void:
 		_tutorial.queue_free()
 		_tutorial = null
 	_on_log(_prompt_label.text, "outcome")
+	if win and _anim():
+		Fx.confetti(self)
 	await _wait(1.2)
 	finished.emit(combat.outcome)
 
@@ -876,6 +920,18 @@ func _update_card(card: Button, u: Unit) -> void:
 			var t := Art.ring(_ring_kind(u))
 			if t:
 				r.texture = t
+			# Кольцо того, кто ходит, мягко «дышит».
+			if u == actor and _anim() and r.get_meta("breathing", false) == false:
+				if _breath:
+					_breath.kill()
+				for other in _cards.values():
+					var oav: Control = other.get_meta("avatar", null)
+					if oav and oav.has_meta("ring"):
+						var orr: TextureRect = oav.get_meta("ring")
+						orr.set_meta("breathing", false)
+						orr.self_modulate = Color.WHITE
+				r.set_meta("breathing", true)
+				_breath = Fx.breathe(r)
 	var bar: ProgressBar = card.get_meta("bar")
 	bar.max_value = u.max_hp
 	bar.value = u.hp
@@ -924,6 +980,12 @@ func _style_chip(b: Button, chip: String, active: bool) -> void:
 			art.texture = Art.chip("")
 			art.scale = Vector2(1.0, 1.0)
 			var tw := create_tween()
+			if _anim() and _bag_button and b.get_meta("chip") == "":
+				# Фишка вылетает из мешочка рубашкой вверх и ложится в ячейку.
+				art.modulate.a = 0.0
+				var fly := Fx.chip_fly(self, Art.chip(""), Fx.center(_bag_button), Fx.center(b), b.size.x * 0.8)
+				tw.tween_interval(fly)
+				tw.tween_callback(func() -> void: art.modulate.a = 1.0)
 			tw.tween_property(art, "scale", Vector2(0.0, 1.0), 0.1).set_trans(Tween.TRANS_SINE)
 			tw.tween_callback(func() -> void: art.texture = tex)
 			tw.tween_property(art, "scale", Vector2(1.0, 1.0), 0.12).set_trans(Tween.TRANS_SINE)
@@ -959,6 +1021,8 @@ func _show_book_cover(id: String) -> void:
 		btn.add_child(cover)
 		btn.pressed.connect(_open_book.bind(id, false))
 		_book_cover_holder.add_child(btn)
+		if _anim():
+			Fx.pop_in(btn)
 
 
 ## Просмотр книги. Вкладывать удачу можно, пока у волшебника Благословение и фишки ещё не тянули.
@@ -1010,6 +1074,34 @@ func _mark_aim(spell: Dictionary) -> void:
 	var spec := EffectParser.parse(spell)
 	var harm: bool = EffectParser.deals_damage(spec) or spec.meter < 0 or spec.strip_buffs \
 		or spec.statuses.any(func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id))
+	var sets := _aim_sets(spec)
+	var sure: Array[Unit] = sets[0]
+	var maybe: Array[Unit] = sets[1]
+	for u in sure:
+		var foe := u.side != actor.side
+		var text := ("ранит своего!" if harm and not foe else "поможет врагу!" if not harm and foe else "удар" if harm else "поможет")
+		var warn := (harm and not foe) or (not harm and foe)
+		_aim(u, Color("ff9a4a") if warn else (Color("ff5a4a") if harm else Color("6cf07a")), text, false)
+	for u in maybe:
+		_aim(u, Color("ffd35a"), "может задеть", true)
+	if spec.self_damage > 0 or not spec.caster_statuses.is_empty():
+		if not sure.has(actor):
+			_aim(actor, Color("ff9a4a") if spec.self_damage > 0 else Color("8fc0ff"), "отдача" if spec.self_damage > 0 else "на себя", false)
+
+
+## Цвет заклинания — самой частой стихии тройки (хаос — фиолетовый).
+func _spell_color(chips: Array) -> Color:
+	var best := ""
+	var n := 0
+	for c in chips:
+		if c != ChipBag.CHAOS and chips.count(c) > n:
+			best = c
+			n = chips.count(c)
+	return Color("b070ff") if best == "" else ELEMENT_COLORS.get(best, Color("ffd35a"))
+
+
+## Кого заклинание заденет точно и кого может задеть случайно: [sure, maybe].
+func _aim_sets(spec: Dictionary) -> Array:
 	var sure: Array[Unit] = []
 	var maybe: Array[Unit] = []
 	match String(spec.area):
@@ -1043,16 +1135,7 @@ func _mark_aim(spell: Dictionary) -> void:
 		for u in combat.living():
 			if not sure.has(u) and not maybe.has(u):
 				maybe.append(u)
-	for u in sure:
-		var foe := u.side != actor.side
-		var text := ("ранит своего!" if harm and not foe else "поможет врагу!" if not harm and foe else "удар" if harm else "поможет")
-		var warn := (harm and not foe) or (not harm and foe)
-		_aim(u, Color("ff9a4a") if warn else (Color("ff5a4a") if harm else Color("6cf07a")), text, false)
-	for u in maybe:
-		_aim(u, Color("ffd35a"), "может задеть", true)
-	if spec.self_damage > 0 or not spec.caster_statuses.is_empty():
-		if not sure.has(actor):
-			_aim(actor, Color("ff9a4a") if spec.self_damage > 0 else Color("8fc0ff"), "отдача" if spec.self_damage > 0 else "на себя", false)
+	return [sure, maybe]
 
 
 func _aim(u: Unit, color: Color, text: String, uncertain: bool) -> void:
@@ -1164,6 +1247,8 @@ func _close_picker() -> void:
 
 # --- Итог каста над карточками ---------------------------------------------------
 
+var _cards_ready := false  # начальные карточки построены — новые появляются с анимацией
+var _breath: Tween = null
 var _summary: Dictionary = {}  # id участника -> {dmg, heal, block, st: [имена]}
 var _collecting := false
 
@@ -1347,6 +1432,23 @@ func _on_log(text: String, kind: String = "info", icon: String = "") -> void:
 func _float_number(u: Unit, amount: float, kind: String) -> void:
 	if amount > 0.0:
 		_note(u, {"damage": "dmg", "heal": "heal", "block": "block"}.get(kind, "dmg"), amount)
+	if _anim() and _cards.has(u.id) and amount > 0.0:
+		var card: Control = _cards[u.id]
+		match kind:
+			"damage":
+				Fx.shake(card, 1.7 if amount >= Combat.BIG_HIT else 1.0)
+				Fx.flash(card, Color(1.6, 0.55, 0.5))
+				if amount >= Combat.BIG_HIT:
+					Fx.screen_shake(self, 4.0)
+				if not u.alive():
+					Fx.fall(card)
+					Fx.burst(self, Fx.center(card), Color(0.55, 0.5, 0.5), 18)
+			"heal":
+				Fx.flash(card, Color(0.7, 1.5, 0.75))
+				Fx.sparkle_up(self, card.get_global_rect(), Color("8cff9a"))
+				Fx.stand_up(card)
+			"block":
+				Fx.burst(self, Fx.center(card), Color("8fc0ff"), 12)
 	if fast or not _cards.has(u.id) or amount <= 0.0:
 		return
 	match kind:

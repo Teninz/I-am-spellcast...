@@ -98,6 +98,11 @@ func _ready() -> void:
 	keys.add_theme_font_size_override("font_size", 13)
 	keys.modulate = Color(1, 1, 1, 0.7)
 	col.add_child(keys)
+	var anim := _check()
+	anim.text = "Анимации (снаряды заклинаний, встряски, искры)"
+	anim.button_pressed = bool(Settings.value("animations"))
+	anim.toggled.connect(func(on: bool) -> void: Settings.set_value("animations", on))
+	col.add_child(anim)
 	var tip_reset := _check()
 	tip_reset.text = "Показывать одноразовые подсказки снова"
 	tip_reset.button_pressed = false
