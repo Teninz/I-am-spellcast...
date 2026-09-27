@@ -13,6 +13,7 @@ var _unread := 0
 
 func _ready() -> void:
 	layer = 20
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var net := NetSession.get_session()
 	net.chat_received.connect(_on_chat)
 	net.roster_changed.connect(_fill_targets)

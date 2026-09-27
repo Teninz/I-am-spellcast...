@@ -128,6 +128,8 @@ func _camp(camp: Node) -> void:
 	if frames % 3 != 0:
 		return
 	for key in camp._buttons:
+		if not String(key).begins_with("o"):
+			continue  # только действия с добычей
 		var e: Dictionary = camp._buttons[key]
 		if e.owner < 0 or not adv.controls(adv.wizards[e.owner], NetSession.my_id()):
 			continue

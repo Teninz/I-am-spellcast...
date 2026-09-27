@@ -30,6 +30,15 @@ static func load_json(path: String) -> Variant:
 static var _statuses: Dictionary = {}
 static var _books: Dictionary = {}
 static var _bosses: Dictionary = {}
+static var _creatures: Dictionary = {}
+
+
+## Призываемые существа (Некрономикон, Книга Друида, Бестиарий) — data/creatures.json.
+static func creatures() -> Dictionary:
+	if _creatures.is_empty():
+		_creatures = load_json("res://data/creatures.json")
+		_creatures.erase("_doc")
+	return _creatures
 
 
 ## Трофеи, проклятые трофеи и шрамы боссов — data/bosses.json.

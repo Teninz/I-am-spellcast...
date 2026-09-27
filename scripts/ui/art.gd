@@ -95,10 +95,20 @@ static var _enemy_ids: Dictionary = {}
 
 ## Портрет врага по имени (data/enemy_portraits.json): assets/enemies/<id>.png или null.
 static func enemy_portrait(enemy_name: String) -> Texture2D:
+	var id := enemy_portrait_id(enemy_name)
+	return texture("res://assets/enemies/%s.png" % id) if id != "" else null
+
+
+## Файл портрета врага или призванного существа (data/enemy_portraits.json, data/creatures.json).
+static func enemy_portrait_id(enemy_name: String) -> String:
 	if _enemy_ids.is_empty():
 		_enemy_ids = GameData.load_json("res://data/enemy_portraits.json")
 	var id: String = _enemy_ids.get(enemy_name, "")
-	return texture("res://assets/enemies/%s.png" % id) if id != "" else null
+	if id == "":
+		for c in GameData.creatures().values():
+			if c.name == enemy_name:
+				return String(c.get("portrait", ""))
+	return id
 
 
 static func enemy_head(enemy_name: String) -> Texture2D:
@@ -138,7 +148,7 @@ static func wizard_face(class_id: String, state: String = "healthy") -> Texture2
 static func enemy_face(enemy_name: String) -> Texture2D:
 	if _enemy_ids.is_empty():
 		_enemy_ids = GameData.load_json("res://data/enemy_portraits.json")
-	return face_crop(enemy_portrait(enemy_name), _enemy_ids.get(enemy_name, ""))
+	return face_crop(enemy_portrait(enemy_name), enemy_portrait_id(enemy_name))
 
 
 ## Кольцо аватарки: assets/ui/ring_<вид>.png (ring_wizard, ring_wizard_active, ring_enemy_boss…).
@@ -163,11 +173,11 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	f.material = circle_material()
-	f.self_modulate = Color(1.2, 1.18, 1.12)  # портреты тёмные — чуть светлее, чтобы лицо читалось
+	f.self_modulate = Color(1.08, 1.08, 1.08)  # портреты тёмные — чуть светлее, без сдвига цвета
 	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var inset := px * 0.16  # лицо — внутри кольца (внутренний диаметр ≈ 70 %)
+	var inset := px * 0.11  # край лица уходит под кольцо (отверстие колец — 12–15 % от края), без тёмного зазора
 	f.offset_left = inset
 	f.offset_top = inset
 	f.offset_right = -inset
@@ -206,6 +216,29 @@ void fragment() {
 		_circle = ShaderMaterial.new()
 		_circle.shader = sh
 	return _circle
+
+
+static var _backdrop: ShaderMaterial = null
+
+
+## Фон приглушён только сам (не интерфейс): меньше насыщенности и оранжевого зарева,
+## чтобы карточки и лица читались. Тени не поднимаются — без белёсой дымки.
+static func backdrop_material() -> ShaderMaterial:
+	if _backdrop == null:
+		var sh := Shader.new()
+		sh.code = """
+shader_type canvas_item;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+	vec3 g = mix(vec3(l), c.rgb, 0.6);
+	g *= vec3(0.94, 0.97, 1.04);
+	COLOR = vec4(g * 0.85, c.a) * COLOR;
+}
+"""
+		_backdrop = ShaderMaterial.new()
+		_backdrop.shader = sh
+	return _backdrop
 
 
 ## Обложка книги в рамке цвета редкости. Без картинки — цветная плашка с названием.
@@ -349,8 +382,10 @@ static func frame(name: String, margin: float, factor: float = 0.5, content: flo
 
 
 ## Фон экрана: картинка «на весь экран» с затемнением сверху.
-static func background(name: String, dim: float = 0.35) -> Control:
+static func background(name: String, dim: float = 0.35, fallback: String = "") -> Control:
 	var tex := Art.texture("res://assets/ui/%s.png" % name)
+	if tex == null and fallback != "":
+		tex = Art.texture("res://assets/ui/%s.png" % fallback)
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -366,6 +401,7 @@ static func background(name: String, dim: float = 0.35) -> Control:
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.material = backdrop_material()
 		holder.add_child(tr)
 		var shade := ColorRect.new()
 		shade.color = Color(0.06, 0.05, 0.09, dim)

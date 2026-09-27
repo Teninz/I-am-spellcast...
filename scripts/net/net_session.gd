@@ -37,6 +37,7 @@ static func get_session() -> NetSession:
 	if _inst == null or not is_instance_valid(_inst):
 		_inst = NetSession.new()
 		_inst.name = "NetSession"
+		_inst.process_mode = Node.PROCESS_MODE_ALWAYS
 		var tree := Engine.get_main_loop() as SceneTree
 		tree.root.add_child.call_deferred(_inst)
 	return _inst

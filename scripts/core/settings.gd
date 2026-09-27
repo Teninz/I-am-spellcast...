@@ -11,7 +11,6 @@ const DEFAULTS := {
 	"music": 0.6,        # музыка 0..1 (музыка появится позже)
 	"tutorial": true,    # подсказки обучения в бою
 	"player_name": "Волшебник",  # имя в сетевой игре
-	"soft_colors": true,  # мягкий цветокор всего экрана
 }
 
 static var path := "user://settings.json"

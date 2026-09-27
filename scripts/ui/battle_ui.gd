@@ -54,6 +54,7 @@ var _effects_box: HBoxContainer
 var _shout_label: Label
 var _shout_banner: TextureRect
 var _ability_label: Label
+var _skills_row: HBoxContainer
 var _party_box: VBoxContainer
 var _enemy_box: VBoxContainer
 var _book_box: HBoxContainer
@@ -116,7 +117,7 @@ func start_battle() -> void:
 
 func _add_card(u: Unit) -> void:
 	var card := _make_card(u)
-	(_party_box if u.is_wizard() else _enemy_box).add_child(card)
+	(_party_box if u.side == Unit.PARTY else _enemy_box).add_child(card)
 	_cards[u.id] = card
 
 
@@ -308,11 +309,14 @@ func _do_card(u: Unit) -> void:
 	if state != State.CHOOSE_TARGET or not combat.can_target(actor, u):
 		return
 	target = combat.resolve_target(actor, u)
-	if actor.books.size() == 1:
-		_do_select_book(actor.books[0])
-	else:
-		_set_state(State.CHOOSE_BOOK)
-		_prompt_label.text = "Цель: %s. Выбери книгу." % target.name
+	var borrowed := combat.take_borrowed_book(actor)
+	if borrowed != "":
+		_on_log("Копия приёма: %s кастует из чужой книги «%s»." % [actor.name, books[borrowed].name], "misfire")
+		_do_select_book(borrowed)
+		return
+	# Выбор книги — даже если она одна: можно открыть и прочитать заклинания и шансы.
+	_set_state(State.CHOOSE_BOOK)
+	_prompt_label.text = "Цель: %s. %s" % [target.name, "Выбери книгу." if actor.books.size() > 1 else "Открой книгу, чтобы прочитать заклинания, или сразу выбирай её."]
 
 
 func _do_select_book(id: String, plan: Variant = null) -> void:
@@ -596,7 +600,7 @@ func _on_auto_timer() -> void:
 func _process(_delta: float) -> void:
 	if _timer_label == null:
 		return
-	var left := _deadline - Time.get_ticks_msec() / 1000.0
+	var left := _auto_timer.time_left if not _auto_timer.is_stopped() else 0.0
 	if _deadline <= 0.0 or left <= 0.0:
 		_timer_label.text = ""
 		return
@@ -701,20 +705,60 @@ func _refresh() -> void:
 			targetable = _ability_targets().has(u)
 		card.disabled = state in [State.CHOOSE_TARGET, State.ITEM_TARGET, State.ABILITY_TARGET] and not targetable
 		card.modulate = Color(1, 1, 1, 1) if u.alive() else Color(1, 1, 1, 0.35)
-		if u == actor:
-			card.modulate = Color(1.25, 1.2, 0.8)
 	_ability_label.text = ""
-	if actor and actor.is_wizard():
-		var lines := []
-		if actor.wizard.item != "":
-			lines.append("Предмет: %s — %s" % [adventure.items[actor.wizard.item].name,
-				adventure.items[actor.wizard.item].text])
-		var ab := String(classes[actor.class_id].ability_text)
-		if actor.ability == "burn":
-			ab += "  Осталось: %d." % actor.ability_charges
-		lines.append(ab)
-		_ability_label.text = "\n".join(lines)
+	if actor and actor.is_wizard() and actor.wizard.item != "":
+		_ability_label.text = "Предмет: %s — %s" % [adventure.items[actor.wizard.item].name,
+			adventure.items[actor.wizard.item].text]
 	_ability_label.tooltip_text = _ability_label.text
+	_ability_label.visible = _ability_label.text != ""
+	_rebuild_skills()
+
+
+## Навыки того, кто ходит: активные — плитки-кнопки, пассивные — плитки с подсказкой.
+func _rebuild_skills() -> void:
+	if _skills_row == null:
+		return
+	# Пересобираем, только если что-то поменялось, — иначе подсказка при наведении пропадает.
+	var sig := "" if actor == null else "%d|%d|%s|%s|%s|%s|%s" % [actor.id, state, actor.ability_charges, actor.ability_pool, combat.visions.size(), bag.chips.size() if bag else -1, _pact_picking]
+	if _skills_row.get_meta("sig", "-") == sig:
+		return
+	_skills_row.set_meta("sig", sig)
+	for c in _skills_row.get_children():
+		_skills_row.remove_child(c)
+		c.queue_free()
+	if actor == null or not actor.is_wizard():
+		return
+	for s in SkillTile.skills_for(actor.class_id):
+		var t := SkillTile.make(s, 46)
+		if s.kind == "active":
+			t.charges = _skill_charges(actor, String(s.id))
+			t.usable = _ability_available() or _skill_usable_now(String(s.id))
+			if _ability_available():
+				t.pressed.connect(_on_ability_pressed)
+		_skills_row.add_child(t)
+
+
+func _skill_charges(u: Unit, id: String) -> String:
+	match id:
+		"lay_on_hands":
+			return Unit._num(u.ability_pool)
+		"visions":
+			return str(combat.visions.size())
+		"mix":
+			return ""
+	return str(u.ability_charges)
+
+
+## Навыки, которые применяются не плиткой, а по месту (фишка, «Перемотка!», видения).
+func _skill_usable_now(id: String) -> bool:
+	match id:
+		"burn":
+			return state == State.READY and actor.ability_charges > 0
+		"visions":
+			return state == State.READY and combat.can_use_vision(actor, bag)
+		"rewind":
+			return state == State.REWIND
+	return false
 
 
 ## Очередь ходов: сейчас ходит — крупно в золотом кольце, дальше — следующие 6 ходов.
@@ -751,7 +795,7 @@ func _queue_face(u: Unit, now: bool) -> Control:
 	# Наведение на лицо подсвечивает карточку этого участника.
 	holder.mouse_entered.connect(func() -> void:
 		if _cards.has(u.id):
-			_cards[u.id].modulate = Color(1.35, 1.3, 0.9))
+			_cards[u.id].modulate = Color(1.15, 1.15, 1.15))
 	holder.mouse_exited.connect(_refresh)
 	if face != null and Art.ring(kind) != null:
 		var av := Art.avatar(face, kind, size)
@@ -806,8 +850,9 @@ func _update_card(card: Button, u: Unit) -> void:
 		if u.is_wizard():
 			var zombie := u.wizard != null and u.wizard.zombie
 			var face: TextureRect = av.get_meta("face")
-			var st := Art.portrait_state(u.hp, u.max_hp, zombie)
-			face.texture = Art.wizard_face(u.class_id, st) if av.has_meta("ring") else Art.portrait_head(u.class_id, st)
+			# В кольце лицо всегда чистое (раны читаются по кольцу и полоске ЗД), иначе мелкое лицо не разобрать.
+			var st := "zombie" if zombie else "healthy"
+			face.texture = Art.wizard_face(u.class_id, st) if av.has_meta("ring") else Art.portrait_head(u.class_id, Art.portrait_state(u.hp, u.max_hp, zombie))
 		if av.has_meta("ring"):
 			var r: TextureRect = av.get_meta("ring")
 			var t := Art.ring(_ring_kind(u))
@@ -817,6 +862,12 @@ func _update_card(card: Button, u: Unit) -> void:
 	bar.max_value = u.max_hp
 	bar.value = u.hp
 	var icons: HFlowContainer = card.get_meta("icons")
+	# Значки пересобираются, только если статусы изменились: иначе подсказка при наведении
+	# пропадает на каждом обновлении экрана (в чужой ход — постоянно).
+	var sig := "%s|%s|%s|%s" % [u.alive(), JSON.stringify(u.statuses), u.shield, u.fortify]
+	if card.get_meta("icons_sig", "") == sig:
+		return
+	card.set_meta("icons_sig", sig)
 	for c in icons.get_children():
 		c.queue_free()
 	if u.alive():
@@ -1039,7 +1090,72 @@ func _float_number(u: Unit, amount: float, kind: String) -> void:
 
 
 func _wait(seconds: float) -> Signal:
-	return get_tree().create_timer(0.01 if fast else Settings.delay(seconds)).timeout
+	# process_always = false: на паузе ход врагов тоже стоит.
+	return get_tree().create_timer(0.01 if fast else Settings.delay(seconds), false).timeout
+
+
+# --- Пауза ----------------------------------------------------------------
+
+var _pause_overlay: Control = null
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo \
+			and (event.keycode == KEY_ESCAPE or event.keycode == KEY_P):
+		toggle_pause()
+		get_viewport().set_input_as_handled()
+
+
+## Останавливает бой: ход врагов, отсчёт автонажатия и выбора книги, анимации.
+## В сетевой игре пауза своя: чужие команды копятся и доиграются после паузы.
+func toggle_pause() -> void:
+	if _pause_overlay != null:
+		_pause_overlay.queue_free()
+		_pause_overlay = null
+		get_tree().paused = false
+		return
+	get_tree().paused = true
+	var o := Control.new()
+	o.process_mode = Node.PROCESS_MODE_ALWAYS
+	o.top_level = true
+	o.z_index = 9
+	o.mouse_filter = Control.MOUSE_FILTER_STOP
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(center)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_child(col)
+	var title := _label("Пауза", 40)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	if NetSession.online():
+		var note := _label("Сетевая игра: у остальных бой идёт дальше, их ходы доиграются после паузы.", 15)
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(note)
+	for pair in [["Продолжить", toggle_pause], ["Настройки", func() -> void:
+			var v := SettingsView.open(o)
+			v.process_mode = Node.PROCESS_MODE_ALWAYS]]:
+		var b := Button.new()
+		b.text = pair[0]
+		b.custom_minimum_size = Vector2(260, 52)
+		b.pressed.connect(pair[1])
+		col.add_child(b)
+	add_child(o)
+	_pause_overlay = o
+
+
+func _exit_tree() -> void:
+	if _pause_overlay != null:
+		get_tree().paused = false
+	if _ability_button and not _ability_button.is_inside_tree():
+		_ability_button.free()
 
 
 # --- Обучение первого боя -----------------------------------------------
@@ -1150,7 +1266,9 @@ func _stop_pulse() -> void:
 
 func _build_ui() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(Art.background("bg_battle_act1", 0.45))
+	# Свой фон у каждой локации: assets/ui/bg_battle_<id встречи>.png, иначе общий фон акта.
+	var enc_id: String = adventure.encounter().get("id", "") if adventure else ""
+	add_child(Art.background("bg_battle_" + enc_id, 0.35, "bg_battle_act1"))
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1175,6 +1293,11 @@ func _build_ui() -> void:
 	gear.text = "Настройки"
 	gear.pressed.connect(func() -> void: SettingsView.open(self))
 	top.add_child(gear)
+	var pause := Button.new()
+	pause.text = "Пауза"
+	pause.tooltip_text = "Пауза (Esc или P)"
+	pause.pressed.connect(toggle_pause)
+	top.add_child(pause)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
@@ -1343,9 +1466,9 @@ func _build_ui() -> void:
 	_item_button = _button("Предмет", _on_item_pressed)
 	_item_button.visible = false
 	controls.add_child(_item_button)
+	# Активный навык нажимается плиткой на панели навыков; кнопка остаётся как флаг доступности.
 	_ability_button = _button("Способность", _on_ability_pressed)
 	_ability_button.visible = false
-	controls.add_child(_ability_button)
 	_extra_box = HFlowContainer.new()
 	_extra_box.alignment = FlowContainer.ALIGNMENT_CENTER
 	_extra_box.add_theme_constant_override("h_separation", 8)
@@ -1353,13 +1476,18 @@ func _build_ui() -> void:
 	center.add_child(_extra_box)
 
 
+	_skills_row = HBoxContainer.new()
+	_skills_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_skills_row.add_theme_constant_override("separation", 10)
+	_skills_row.custom_minimum_size = Vector2(0, 48)
+	center.add_child(_skills_row)
 	_ability_label = _label("", 14)
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_ability_label.modulate = Color(1, 1, 1, 0.7)
-	# Не больше двух строк, полный текст — в подсказке (иначе журнал уезжает за край).
-	_ability_label.max_lines_visible = 2
-	_ability_label.custom_minimum_size = Vector2(0, 46)
+	# Одна строка, полный текст — в подсказке (иначе журнал уезжает за край).
+	_ability_label.max_lines_visible = 1
+	_ability_label.custom_minimum_size = Vector2(0, 22)
 	_ability_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_ability_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	center.add_child(_ability_label)

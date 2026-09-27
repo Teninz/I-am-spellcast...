@@ -92,7 +92,9 @@ static func play(combat: Combat) -> String:
 			for i in casts:
 				if combat.outcome != "" or u.books.is_empty():
 					break
-				var book := choose_book(u, combat)
+				var book := combat.take_borrowed_book(u)
+				if book == "":
+					book = choose_book(u, combat)
 				var target := combat.resolve_target(u, choose_target(combat, u, book))
 				var bag := combat.new_bag(u, book, luck_plan(combat, u, book))
 				# Чернокнижник: сделка на первую фишку, пока здоровья с запасом.
@@ -164,7 +166,7 @@ static func _fix_chips(combat: Combat, u: Unit, bag: ChipBag, book: String, targ
 
 static func _deals_damage(combat: Combat, book: String, combo: String) -> bool:
 	var spec := EffectParser.parse(combat.spell_for(book, combo))
-	return spec.damage > 0 or spec.splash > 0
+	return EffectParser.deals_damage(spec)
 
 
 static func _someone_hurt(combat: Combat, u: Unit) -> bool:
@@ -248,7 +250,7 @@ static func book_lean(books: Dictionary, book_id: String) -> float:
 		if not (spec.area == "target" or spec.area == "target_side"):
 			value[sp.combo] = 0.0
 			continue
-		var harm: float = float(spec.damage) + spec.splash + (1.0 if spec.meter < 0 or spec.strip_buffs else 0.0)
+		var harm: float = float(EffectParser.harm_total(spec)) + (1.0 if spec.meter < 0 or spec.strip_buffs else 0.0)
 		var good: float = float(spec.heal) + spec.shield + (1.0 if spec.cleanse or spec.meter > 0 else 0.0)
 		for st in spec.statuses:
 			if Unit.DEBUFFS.has(st.id):

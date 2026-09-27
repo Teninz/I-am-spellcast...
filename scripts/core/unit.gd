@@ -7,7 +7,8 @@ const ENEMIES := "enemies"
 
 ## Вредные статусы — их снимает Очищение, от них спасает Сопротивление.
 const DEBUFFS := ["burn", "poison", "stun", "slow", "vulnerable", "weak", "fear", "blind",
-	"disease", "confusion", "charm", "forget", "chaos_curse", "petrify", "toad", "aching", "dead_poison"]
+	"disease", "confusion", "charm", "forget", "chaos_curse", "petrify", "toad", "aching", "dead_poison",
+	"doom", "misdirect", "self_trap", "shared_pain", "miss"]
 ## «Разбитость» после воскрешения: скорость −25 %.
 const ACHING_SPEED := 0.75
 const BUFFS := ["regen", "haste", "invisible", "reflect", "invulnerable", "stoneskin",
@@ -18,6 +19,9 @@ var name: String
 var side: String
 var class_id: String = ""
 var wizard: Wizard = null  # для волшебников — их постоянное состояние
+## Призванное существо (ходит само; на стороне отряда — союзник, но не волшебник).
+var creature := false
+var traits: Array = []
 var max_hp: float
 var hp: float
 var speed: float
@@ -68,7 +72,7 @@ func alive() -> bool:
 
 
 func is_wizard() -> bool:
-	return side == PARTY
+	return side == PARTY and not creature
 
 
 func has(status: String) -> bool:

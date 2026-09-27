@@ -444,7 +444,7 @@ func _track(c: Combat, boss_fight: bool) -> void:
 		_earn("sleight")
 	if won and boss_fight:
 		# «Я так и знал»: у каждого живого волшебника меньше трети здоровья.
-		var party := c.living(Unit.PARTY)
+		var party := c.party_wizards()
 		if not party.is_empty() and party.all(func(u: Unit) -> bool: return u.hp < u.max_hp / 3.0):
 			_earn("foresaw")
 		# «Мелкий шрифт»: у двух волшебников сразу есть проклятое.

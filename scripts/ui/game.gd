@@ -24,7 +24,6 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = Art.ui_theme()
 	Settings.load_from_disk()
-	_add_color_grade()
 	var net := NetSession.get_session()
 	net.command.connect(_on_command)
 	net.started.connect(_on_net_started)
@@ -100,22 +99,6 @@ func _on_command(cmd: Dictionary) -> void:
 ## Решения за весь отряд (путь на карте, «Дальше» на привале, трофей) в сети принимает хозяин.
 func _leader() -> bool:
 	return not NetSession.online() or NetSession.get_session().is_host
-
-
-## Мягкий цветокор поверх всего (картинки игры контрастные и насыщенные — так глазам спокойнее).
-func _add_color_grade() -> void:
-	var layer := CanvasLayer.new()
-	layer.layer = 100
-	layer.name = "ColorGrade"
-	var rect := ColorRect.new()
-	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/soft_grade.gdshader")
-	rect.material = mat
-	layer.add_child(rect)
-	add_child(layer)
-	layer.visible = bool(Settings.value("soft_colors"))
 
 
 func _show_chat() -> void:

@@ -81,6 +81,16 @@ func _process(_delta: float) -> bool:
 				last_screen = game.screen
 				resumed += 1
 				s = game.screen
+			if camps % 2 == 0:
+				# Разбираем добычу кликами по инвентарю: мигающий слот, иначе первое действие добычи.
+				var guard := 0
+				while not game.adventure.all_resolved() and guard < 40:
+					guard += 1
+					var keys: Array = s._buttons.keys().filter(func(k: String) -> bool: return k.begins_with("o"))
+					if keys.is_empty():
+						break
+					var take: Array = keys.filter(func(k: String) -> bool: return k.ends_with(":take") or k.contains(":swap:") or k.contains(":equip:"))
+					s._press(take[0] if not take.is_empty() else keys[0])
 			AutoPlayer.camp(game.adventure)
 			s._rebuild()
 			if not game.adventure.all_resolved():

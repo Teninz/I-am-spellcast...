@@ -1,5 +1,7 @@
 extends Control
 ## Привал между уровнями: итог отдыха, инвентарь волшебников и лут.
+## У каждого волшебника — карточка-инвентарь без прокрутки: слоты книг, предметов, шляпы и ботинок.
+## Выпавшая добыча лежит сверху и светится, а слоты, куда её можно положить, мигают.
 ## Кнопка «В бой!» активна, когда весь лут разобран.
 
 signal continue_pressed
@@ -32,8 +34,13 @@ var _messages: RichTextLabel
 var _continue: Button
 ## Строки, которые показать при открытии привала (например, полученные достижения).
 var notices: Array[String] = []
-var _buttons := {}      # номер кнопки -> {text, cb, owner}
+## Все действия привала: ключ -> {text, cb, owner}. Строятся для всех волшебников одинаково
+## у всех игроков (не зависят от того, что кто выделил), поэтому в сети ключ однозначен.
+var _buttons := {}
 var _btn_owner := -1    # колонка какого волшебника сейчас строится
+var _sel := {}          # номер волшебника -> что выделено: {type: offer/book/item/item2/hat/boots, ...}
+var _pulse: Tween = null
+var _glowing: Array[Control] = []
 
 
 func setup(adv: Adventure, rest: Array, torn_books: Array) -> void:
@@ -65,86 +72,231 @@ func _ready() -> void:
 	_rebuild()
 
 
+const CARD_RATIO := 400.0 / 720.0  # пропорции рамки card_rest — масштабируется целиком
+const GLOW := Color("ffd35a")
+
+
 func _build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(Art.background("bg_camp", 0.5))
+	add_child(Art.background("bg_camp", 0.4))
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
 	add_child(margin)
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", 4)
 	margin.add_child(root)
 
+	# Одна строка сверху: заголовок, что дальше, кнопки — чтобы карточкам досталась вся высота.
 	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
 	root.add_child(head)
 	_header = _label("", 22)
-	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_header.autowrap_mode = TextServer.AUTOWRAP_OFF
 	head.add_child(_header)
+	_info = _label("", 14)
+	_info.modulate = Color(1, 1, 1, 0.75)
+	_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_info)
 	var info := Button.new()
 	info.text = "Инфо"
 	info.tooltip_text = "Что значат иконки эффектов"
 	info.pressed.connect(func() -> void: StatusInfo.open(self))
 	head.add_child(info)
-	_info = _label("", 15)
-	_info.modulate = Color(1, 1, 1, 0.75)
-	root.add_child(_info)
+	var gear := Button.new()
+	gear.text = "Настройки"
+	gear.pressed.connect(func() -> void: SettingsView.open(self))
+	head.add_child(gear)
+	_continue = Button.new()
+	_continue.custom_minimum_size = Vector2(220, 0)
+	_continue.add_theme_font_size_override("font_size", 17)
+	_continue.pressed.connect(func() -> void: continue_pressed.emit())
+	head.add_child(_continue)
 
 	_columns = HBoxContainer.new()
 	_columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_columns.alignment = BoxContainer.ALIGNMENT_CENTER
-	_columns.add_theme_constant_override("separation", 12)
+	_columns.add_theme_constant_override("separation", 2)
 	root.add_child(_columns)
 
 	_messages = RichTextLabel.new()
 	_messages.bbcode_enabled = true
 	_messages.scroll_following = true
-	_messages.custom_minimum_size = Vector2(0, 64)
-	_messages.add_theme_font_size_override("normal_font_size", 14)
+	_messages.custom_minimum_size = Vector2(0, 46)
+	_messages.add_theme_font_size_override("normal_font_size", 13)
 	root.add_child(_messages)
-
-	var bottom := HBoxContainer.new()
-	bottom.alignment = BoxContainer.ALIGNMENT_END
-	bottom.add_theme_constant_override("separation", 10)
-	root.add_child(bottom)
-	var gear := Button.new()
-	gear.text = "Настройки"
-	gear.custom_minimum_size = Vector2(0, 48)
-	gear.pressed.connect(func() -> void: SettingsView.open(self))
-	bottom.add_child(gear)
-	_continue = Button.new()
-	_continue.custom_minimum_size = Vector2(220, 48)
-	_continue.add_theme_font_size_override("font_size", 18)
-	_continue.pressed.connect(func() -> void: continue_pressed.emit())
-	bottom.add_child(_continue)
 
 
 func _rebuild() -> void:
 	var done := adventure.level - 1
 	_header.text = "Привал после уровня %d" % done
-	var next := "Дальше — развилка: выбор пути на карте" if adventure.needs_choice() \
-		else "Следующий бой: %s%s" % [adventure.encounter().name, " (БОСС)" if adventure.is_last_level() else ""]
-	_info.text = "Уровень %d из %d. %s.   Отказов от книг у отряда осталось: %d." % [
+	var next := "дальше — развилка на карте" if adventure.needs_choice() \
+		else "следующий бой: %s%s" % [adventure.encounter().name, " (БОСС)" if adventure.is_last_level() else ""]
+	_info.text = "Уровень %d из %d, %s. Отказов от книг: %d." % [
 		adventure.level, adventure.level_count(), next, adventure.refusals_left]
+	_stop_glow()
 	for c in _columns.get_children():
+		_columns.remove_child(c)
 		c.queue_free()
-	_buttons.clear()
+	_collect_actions()
 	for i in adventure.wizards.size():
-		_btn_owner = i
 		_columns.add_child(_wizard_column(i))
-	_btn_owner = -1
 	_continue.disabled = not adventure.all_resolved() or (NetSession.online() and not NetSession.get_session().is_host)
 	var go := "К карте" if adventure.needs_choice() else "В бой!"
 	_continue.text = go if adventure.all_resolved() else "Сначала разбери добычу"
+	_start_glow()
+
+
+# --- Действия (одинаковые у всех игроков) ------------------------------------
+
+func _reg(key: String, text: String, cb: Callable) -> void:
+	_buttons[key] = {"text": text, "cb": cb, "owner": _btn_owner}
+
+
+func _collect_actions() -> void:
+	_buttons.clear()
+	for k in adventure.offers.size():
+		var o: Dictionary = adventure.offers[k]
+		if o.resolved or not o.has("wizard"):
+			continue
+		_btn_owner = int(o.wizard)
+		_offer_actions(k, o, adventure.wizards[o.wizard])
+	for i in adventure.wizards.size():
+		_btn_owner = i
+		_owned_actions(i, adventure.wizards[i])
+	_btn_owner = -1
+
+
+func _offer_actions(k: int, o: Dictionary, w: Wizard) -> void:
+	var p := "o%d:" % k
+	match String(o.kind):
+		"book":
+			var book_name: String = adventure.books[o.id].name
+			if adventure.can_take_book(w, o.id):
+				_reg(p + "take", "Взять", func() -> void: _act(adventure.take_book(o), "%s берёт «%s»." % [w.name, book_name]))
+			elif w.can_use_book(o.id):
+				for b in w.books:
+					_reg(p + "swap:" + b, "Вместо «%s»" % adventure.books[b].name, func() -> void:
+						_act(adventure.take_book(o, b), "%s меняет «%s» на «%s»." % [w.name, adventure.books[b].name, book_name]))
+			for j in adventure.wizards.size():
+				var ally := adventure.wizards[j]
+				if ally != w and adventure.can_give_book(ally, o.id):
+					_reg(p + "give:%d" % j, "Отдать: %s" % ally.name, func() -> void:
+						_act(adventure.give_offer_book(o, ally), "«%s» → %s." % [book_name, ally.name]))
+			if adventure.can_refuse_book(o):
+				var label := "Выбросить" if not w.can_use_book(o.id) else "Отказаться (осталось %d)" % adventure.refusals_left
+				_reg(p + "refuse", label, func() -> void: _act(adventure.refuse_book(o), "От «%s» отказались." % book_name))
+		"item":
+			var item_name: String = adventure.items[o.id].name
+			_reg(p + "take", "Взять" if w.has_item_slot() else "Взять (вместо своего)", func() -> void:
+				adventure.take_item(o)
+				_act(true, "%s берёт «%s»." % [w.name, item_name]))
+			for j in adventure.wizards.size():
+				var ally := adventure.wizards[j]
+				if ally != w and ally.has_item_slot():
+					_reg(p + "give:%d" % j, "Отдать: %s" % ally.name, func() -> void:
+						_act(adventure.give_offer_item(o, ally), "«%s» → %s." % [item_name, ally.name]))
+			_reg(p + "drop", "Выбросить", func() -> void:
+				adventure.discard_offer(o)
+				_act(true, "«%s» выброшен." % item_name))
+		"equipment":
+			var e: Dictionary = adventure.equipment[o.id]
+			for j in adventure.wizards.size():
+				var who := adventure.wizards[j]
+				var cur := who.equipment(e.slot)
+				var label := "Надеть" if who == w else "Отдать: %s" % who.name
+				if not cur.is_empty():
+					label += " (вместо «%s»)" % cur.name
+				_reg(p + "equip:%d" % j, label, func() -> void:
+					adventure.equip_offer(o, who)
+					_act(true, "%s надевает «%s»." % [who.name, e.name]))
+			_reg(p + "drop", "Выбросить", func() -> void:
+				adventure.discard_offer(o)
+				_act(true, "«%s» выброшено." % e.name))
+
+
+func _owned_actions(i: int, w: Wizard) -> void:
+	var p := "w%d:" % i
+	for b in w.books:
+		for j in adventure.wizards.size():
+			var ally := adventure.wizards[j]
+			if ally != w and w.books.size() > 1 and adventure.can_give_book(ally, b):
+				_reg(p + "book:%s:give:%d" % [b, j], "Отдать: %s" % ally.name, func() -> void:
+					adventure.give_book(w, b, ally)
+					_act(true, "%s отдаёт «%s» → %s." % [w.name, adventure.books[b].name, ally.name]))
+		if w.books.size() > 1:
+			_reg(p + "book:%s:drop" % b, "Выбросить", func() -> void:
+				adventure.discard_book(w, b)
+				_act(true, "%s выбрасывает «%s»." % [w.name, adventure.books[b].name]))
+	if adventure.can_repair_sheep(w):
+		for a in w.books.size():
+			for c in range(a + 1, w.books.size()):
+				var ba: String = w.books[a]
+				var bb: String = w.books[c]
+				_reg(p + "repair:%s:%s" % [ba, bb], "Починить овцу: ✕ %s + %s" % [adventure.books[ba].name, adventure.books[bb].name], func() -> void:
+					_act(adventure.repair_sheep(w, ba, bb), "%s чинит механическую овцу!" % w.name))
+	if adventure.can_mix(w):
+		_reg(p + "mix", "Смешать два предмета", func() -> void:
+			var made := adventure.mix_items(w)
+			if made != "":
+				Sfx.play("luck")
+			_act(made != "", "%s смешивает зелья — получилось «%s»!" % [w.name, adventure.items.get(made, {}).get("name", "")]))
+	if w.item != "":
+		var targets := adventure.camp_item_targets(w)
+		for t in targets:
+			_reg(p + "use:%d" % adventure.wizards.find(t), "Применить → %s" % t.name, func() -> void:
+				_say(adventure.use_item_camp(w, t))
+				_rebuild())
+		for j in adventure.wizards.size():
+			var ally := adventure.wizards[j]
+			if ally != w and ally.has_item_slot():
+				_reg(p + "item:give:%d" % j, "Отдать: %s" % ally.name, func() -> void:
+					adventure.give_item(w, ally)
+					_act(true, "%s отдаёт предмет → %s." % [w.name, ally.name]))
+
+
+## Ключи действий с данным началом (в порядке добавления).
+func _keys(prefix: String) -> Array:
+	return _buttons.keys().filter(func(k: String) -> bool: return k.begins_with(prefix))
+
+
+# --- Карточка волшебника ----------------------------------------------------------
+
+func _pending_offers(i: int) -> Array:
+	var out := []
+	for k in adventure.offers.size():
+		var o: Dictionary = adventure.offers[k]
+		if int(o.get("wizard", -1)) == i and not o.resolved:
+			out.append(k)
+	return out
+
+
+func _selection(i: int) -> Dictionary:
+	var sel: Dictionary = _sel.get(i, {})
+	var pending := _pending_offers(i)
+	if sel.get("type", "") == "offer" and not pending.has(int(sel.k)):
+		sel = {}
+	if sel.is_empty() and not pending.is_empty():
+		sel = {"type": "offer", "k": pending[0]}
+	_sel[i] = sel
+	return sel
+
+
+func _select(i: int, sel: Dictionary) -> void:
+	_sel[i] = sel
+	_rebuild()
 
 
 func _wizard_column(i: int) -> Control:
 	var w := adventure.wizards[i]
-	# Колонка всегда в пропорциях рамки (400×720): рамка масштабируется целиком, не растягиваясь.
+	_btn_owner = i
 	var panel := AspectRatioContainer.new()
-	panel.ratio = 400.0 / 720.0
+	panel.ratio = CARD_RATIO
 	panel.stretch_mode = AspectRatioContainer.STRETCH_FIT
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -164,222 +316,354 @@ func _wizard_column(i: int) -> Control:
 		flat.color = Color("2b3a30")
 		flat.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		card.add_child(flat)
-	# Содержимое — внутри рамки (доли от размера, чтобы масштабировались вместе с ней).
-	var inner := ScrollContainer.new()
-	inner.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	inner.anchor_left = 0.07
-	inner.anchor_right = 0.93
-	inner.anchor_top = 0.15
-	inner.anchor_bottom = 0.965
-	card.add_child(inner)
+	# Содержимое — строго внутри рамки (доли от размера рамки), без прокрутки.
 	var col := VBoxContainer.new()
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_theme_constant_override("separation", 6)
-	inner.add_child(col)
+	col.anchor_left = 0.095
+	col.anchor_right = 0.905
+	col.anchor_top = 0.155
+	col.anchor_bottom = 0.935
+	col.add_theme_constant_override("separation", 5)
+	col.clip_contents = true
+	card.add_child(col)
+	var sel := _selection(i)
 
+	# Голова: лицо, имя, здоровье, характеристики, навыки.
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
+	head.add_theme_constant_override("separation", 6)
 	col.add_child(head)
 	var face_tex := Art.portrait_head(w.class_id, Art.portrait_state(w.hp, w.max_hp(), w.zombie))
 	if face_tex:
-		var face := Art.portrait_rect(face_tex, Vector2(60, 80))
+		var face := Art.portrait_rect(face_tex, Vector2(46, 60))
 		if not w.alive():
 			face.modulate = Color(0.45, 0.45, 0.5)
 		head.add_child(face)
 	var head_text := VBoxContainer.new()
 	head_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head_text.add_theme_constant_override("separation", 0)
 	head.add_child(head_text)
-	var name_l := _label(w.name + ("  (зомби)" if w.zombie else ""), 19)
-	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD
+	var name_l := _label(w.name + ("  (зомби)" if w.zombie else ""), 17)
 	head_text.add_child(name_l)
-	var st := w.stats()
 	var hp_line := "ЗД %s/%s" % [Unit._num(w.hp), Unit._num(w.max_hp())] if w.alive() else "ВЫБЫЛ"
 	if w.fortify > 0.0:
-		hp_line += "   Укрепление %s" % Unit._num(w.fortify)
-	head_text.add_child(_label(hp_line, 16))
-	var icons := HFlowContainer.new()
-	if w.fortify > 0.0:
-		icons.add_child(StatusIcon.make("fortify", Unit._num(w.fortify), 0, 36))
-	for id in w.carry_statuses:
-		icons.add_child(StatusIcon.make(id, str(w.carry_statuses[id]), 0, 36))
-	if icons.get_child_count() > 0:
-		col.add_child(icons)
+		hp_line += " · Укрепление %s" % Unit._num(w.fortify)
+	head_text.add_child(_label(hp_line, 14))
+	var st := w.stats()
 	var stats_row := HFlowContainer.new()
-	stats_row.add_theme_constant_override("h_separation", 10)
+	stats_row.add_theme_constant_override("h_separation", 6)
 	for sd in [["wisdom", str(st.wisdom), "Мудрость"], ["defense", str(st.defense), "Защита"],
 			["luck", str(st.luck), "Удача"], ["resist", str(st.resist), "Сопротивление"],
 			["speed", Unit._num(st.speed), "Скорость"]]:
 		stats_row.add_child(Art.stat(sd[0], sd[1], sd[2]))
+	for id in w.carry_statuses:
+		stats_row.add_child(StatusIcon.make(id, str(w.carry_statuses[id]), 0, 26))
 	col.add_child(stats_row)
+	# Навыки класса — справа от имени (наведение — что делают).
+	var skills := VBoxContainer.new()
+	skills.add_theme_constant_override("separation", 3)
+	for s in SkillTile.skills_for(w.class_id):
+		var t := SkillTile.make(s, 26)
+		t.usable = true
+		skills.add_child(t)
+	head.add_child(skills)
 
-	col.add_child(_section("Добыча"))
-	for o in adventure.offers:
-		if o.wizard == i:
-			_offer_card(col, o, w)
-	col.add_child(HSeparator.new())
-	col.add_child(_section("Книги (%d/%d)" % [w.books.size(), w.max_books]))
-	for b in w.books:
-		var row := _row()
-		var wear := w.wear_of(b)
-		row.add_child(_book_link(b, 30))
-		var book_label := _small("%s%s" % [adventure.books[b].name, "  (износ %d/%d)" % [wear, Wizard.WEAR_LIMIT] if wear > 0 else ""])
-		book_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		row.add_child(book_label)
-		for ally in adventure.wizards:
-			if ally != w and w.books.size() > 1 and adventure.can_give_book(ally, b):
-				row.add_child(_btn("→ %s" % ally.name, func() -> void:
-					adventure.give_book(w, b, ally)
-					_say("%s отдаёт «%s» → %s." % [w.name, adventure.books[b].name, ally.name])
-					_rebuild()))
-		if w.books.size() > 1:
-			row.add_child(_btn("✕", func() -> void:
-				adventure.discard_book(w, b)
-				_say("%s выбрасывает «%s»." % [w.name, adventure.books[b].name])
-				_rebuild()))
-		col.add_child(row)
+	# Выпавшая добыча — сверху, светится.
+	var pending := _pending_offers(i)
+	if not pending.is_empty():
+		var loot_row := HBoxContainer.new()
+		loot_row.add_theme_constant_override("separation", 6)
+		var cap := _label("Выпало:", 14)
+		cap.autowrap_mode = TextServer.AUTOWRAP_OFF
+		cap.add_theme_color_override("font_color", GLOW)
+		cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		loot_row.add_child(cap)
+		for k in pending:
+			var o: Dictionary = adventure.offers[k]
+			var tile := _tile(_offer_texture(o), 46, true, sel.get("type", "") == "offer" and int(sel.k) == k, _offer_rarity_of(o))
+			tile.tooltip_text = adventure.offer_name(o)
+			tile.pressed.connect(_select.bind(i, {"type": "offer", "k": k}))
+			_glowing.append(tile)
+			loot_row.add_child(tile)
+		col.add_child(loot_row)
 
-	# Учёный: починка овцы — выбросить две книги.
-	if adventure.can_repair_sheep(w):
-		col.add_child(_small("Овца сломана. Починить — выбросить 2 книги:"))
-		var pairs := _row()
-		for a in w.books.size():
-			for b in range(a + 1, w.books.size()):
-				var ba: String = w.books[a]
-				var bb: String = w.books[b]
-				pairs.add_child(_btn("✕ %s + %s" % [adventure.books[ba].name, adventure.books[bb].name], func() -> void:
-					if adventure.repair_sheep(w, ba, bb):
-						_say("%s чинит механическую овцу!" % w.name)
-					_rebuild()))
-		col.add_child(pairs)
+	# Инвентарь: книги, предметы, шляпа, ботинки. Подсвечены слоты, куда можно положить выбранную добычу.
+	var target := _loot_target(sel)
+	col.add_child(_section("Книги %d/%d" % [w.books.size(), w.max_books]))
+	var books_row := HBoxContainer.new()
+	books_row.add_theme_constant_override("separation", 6)
+	for n in maxi(w.max_books, w.books.size()):
+		var b: String = w.books[n] if n < w.books.size() else ""
+		var tile := _tile(Art.book(b) if b != "" else null, 52, false,
+			sel.get("type", "") == "book" and sel.get("id", "") == b and b != "",
+			adventure.books[b].rarity if b != "" else "", 1.3)
+		tile.tooltip_text = adventure.books[b].name if b != "" else "Пустой слот книги"
+		var glow: bool = target == "book" and (b == "" and _has_key(sel, "take") or b != "" and _has_key(sel, "swap:" + b))
+		if glow:
+			_glowing.append(tile)
+			var key := _offer_key(sel, "take" if b == "" else "swap:" + b)
+			tile.tooltip_text += "\nКлик — положить сюда: %s" % _buttons[key].text
+			tile.pressed.connect(_press.bind(key))
+		elif b != "":
+			tile.pressed.connect(_select.bind(i, {"type": "book", "id": b}))
+		if b != "" and w.wear_of(b) > 0:
+			var wear := _label("%d/%d" % [w.wear_of(b), Wizard.WEAR_LIMIT], 11)
+			wear.add_theme_color_override("font_outline_color", Color.BLACK)
+			wear.add_theme_constant_override("outline_size", 4)
+			wear.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+			wear.offset_left = -30
+			wear.offset_top = -18
+			wear.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile.add_child(wear)
+			tile.tooltip_text += " (износ %d/%d)" % [w.wear_of(b), Wizard.WEAR_LIMIT]
+		books_row.add_child(tile)
+	col.add_child(books_row)
 
-	col.add_child(_section("Предметы (%d)" % w.max_items if w.max_items > 1 else "Предмет"))
-	if w.item2 != "":
-		col.add_child(_small("Второй: %s — %s" % [adventure.items[w.item2].name, adventure.items[w.item2].text]))
-	if adventure.can_mix(w):
-		col.add_child(_btn("Смешать два предмета в один редкий", func() -> void:
-			var made := adventure.mix_items(w)
-			if made != "":
-				_say("%s смешивает зелья — получилось «%s»!" % [w.name, adventure.items[made].name])
-				Sfx.play("luck")
-			_rebuild()))
-	if w.item == "":
-		col.add_child(_small("—"))
-	else:
-		var it: Dictionary = adventure.items[w.item]
-		var item_row := HBoxContainer.new()
-		item_row.add_theme_constant_override("separation", 8)
-		item_row.add_child(Art.item_icon(w.item, 40, it.text))
-		var item_text := _small("%s — %s" % [it.name, it.text])
-		item_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		item_row.add_child(item_text)
-		col.add_child(item_row)
-		var row := _row()
-		for t in adventure.camp_item_targets(w):
-			row.add_child(_btn("Применить → %s" % t.name, func() -> void:
-				_say(adventure.use_item_camp(w, t))
-				_rebuild()))
-		for ally in adventure.wizards:
-			if ally != w and ally.has_item_slot():
-				row.add_child(_btn("→ %s" % ally.name, func() -> void:
-					adventure.give_item(w, ally)
-					_rebuild()))
-		col.add_child(row)
-
-	for slot in ["hat", "boots"]:
-		col.add_child(_section("Шляпа" if slot == "hat" else "Ботинки"))
-		var e := w.equipment(slot)
-		if e.is_empty():
-			col.add_child(_small("—"))
+	col.add_child(_section("Предмет%s · Шляпа · Ботинки" % ("ы" if w.max_items > 1 else "")))
+	var gear_row := HBoxContainer.new()
+	gear_row.add_theme_constant_override("separation", 6)
+	var slots: Array = ["item"]
+	if w.max_items > 1:
+		slots.append("item2")
+	slots.append_array(["hat", "boots"])
+	for slot in slots:
+		var tex: Texture2D = null
+		var tip := ""
+		var rarity := ""
+		if slot in ["item", "item2"]:
+			var id: String = w.item if slot == "item" else w.item2
+			if id != "":
+				tex = Art.texture("res://assets/items/%s.png" % id)
+				tip = adventure.items[id].name
+			else:
+				tip = "Пустой слот предмета"
 		else:
-			var eq_row := HBoxContainer.new()
-			eq_row.add_theme_constant_override("separation", 8)
-			eq_row.add_child(Art.equipment_icon(e.id, 40, e.name))
-			var eq_text := _small(_equipment_text(e))
-			eq_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			eq_row.add_child(eq_text)
-			col.add_child(eq_row)
+			var e := w.equipment(slot)
+			if not e.is_empty():
+				tex = Art.texture("res://assets/equipment/%s.png" % e.id)
+				tip = e.name
+				rarity = e.rarity
+			else:
+				tip = "Шляпы нет" if slot == "hat" else "Ботинок нет"
+		var tile := _tile(tex, 46, false, sel.get("type", "") == slot, rarity)
+		tile.tooltip_text = tip
+		var glow_key := ""
+		if target == "item" and slot == ("item" if w.item == "" or w.max_items < 2 else "item2") and _has_key(sel, "take"):
+			glow_key = _offer_key(sel, "take")
+		elif target == slot and _has_key(sel, "equip:%d" % i):
+			glow_key = _offer_key(sel, "equip:%d" % i)
+		if glow_key != "":
+			_glowing.append(tile)
+			tile.tooltip_text += "\nКлик — %s" % _buttons[glow_key].text.to_lower()
+			tile.pressed.connect(_press.bind(glow_key))
+		elif tex != null:
+			tile.pressed.connect(_select.bind(i, {"type": slot}))
+		gear_row.add_child(tile)
+	col.add_child(gear_row)
 
+	col.add_child(HSeparator.new())
+	col.add_child(_details(i, w, sel))
+	_btn_owner = -1
 	return panel
 
 
-func _offer_card(col: VBoxContainer, o: Dictionary, w: Wizard) -> void:
-	var outer := col  # кнопки действий — на всю ширину колонки, под картинкой
-	if o.kind in ["book", "item", "equipment"]:
-		var cover_row := HBoxContainer.new()
-		cover_row.add_theme_constant_override("separation", 10)
-		match String(o.kind):
-			"book":
-				cover_row.add_child(_book_link(o.id, 80))
-			"item":
-				cover_row.add_child(Art.item_icon(o.id, 72))
-			"equipment":
-				var frame := PanelContainer.new()
-				frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-				frame.add_theme_stylebox_override("panel", Art.rarity_box(adventure.equipment[o.id].rarity, 80))
-				frame.add_child(Art.equipment_icon(o.id, 64))
-				cover_row.add_child(frame)
-		var side := VBoxContainer.new()
-		side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		cover_row.add_child(side)
-		col.add_child(cover_row)
-		col = side
-	var title := _label(adventure.offer_name(o), 17)
-	var rarity := _offer_rarity(o)
-	if rarity != "":
-		title.add_theme_color_override("font_color", RARITY_COLORS[rarity])
-	col.add_child(title)
-	var lines := _offer_text(o).split("\n", false, 1)
-	col.add_child(_small(lines[0]))
-	if lines.size() > 1:
-		outer.add_child(_small(lines[1]))
-	if o.resolved:
-		col.add_child(_small("✔ Разобрано"))
-		return
-	var row := HFlowContainer.new()
-	outer.add_child(row)
+## Куда ляжет выбранная добыча: book / item / hat / boots или "".
+func _loot_target(sel: Dictionary) -> String:
+	if sel.get("type", "") != "offer":
+		return ""
+	var o: Dictionary = adventure.offers[int(sel.k)]
 	match String(o.kind):
 		"book":
-			var book_name: String = adventure.books[o.id].name
-			if adventure.can_take_book(w, o.id):
-				row.add_child(_btn("Взять", func() -> void: _act(adventure.take_book(o), "%s берёт «%s»." % [w.name, book_name])))
-			elif w.can_use_book(o.id):
-				for b in w.books:
-					row.add_child(_btn("Вместо «%s»" % adventure.books[b].name, func() -> void:
-						_act(adventure.take_book(o, b), "%s меняет «%s» на «%s»." % [w.name, adventure.books[b].name, book_name])))
-			else:
-				col.add_child(_small("%s не может пользоваться этой книгой." % w.name))
-			for ally in adventure.wizards:
-				if ally != w and adventure.can_give_book(ally, o.id):
-					row.add_child(_btn("Отдать: %s" % ally.name, func() -> void:
-						_act(adventure.give_offer_book(o, ally), "«%s» → %s." % [book_name, ally.name])))
-			if adventure.can_refuse_book(o):
-				var label := "Выбросить" if not w.can_use_book(o.id) else "Отказаться (осталось %d)" % adventure.refusals_left
-				row.add_child(_btn(label, func() -> void: _act(adventure.refuse_book(o), "От «%s» отказались." % book_name)))
+			return "book"
 		"item":
-			var item_name: String = adventure.items[o.id].name
-			row.add_child(_btn("Взять" if w.has_item_slot() else "Взять (вместо своего)", func() -> void:
-				adventure.take_item(o)
-				_act(true, "%s берёт «%s»." % [w.name, item_name])))
-			for ally in adventure.wizards:
-				if ally != w and ally.has_item_slot():
-					row.add_child(_btn("Отдать: %s" % ally.name, func() -> void:
-						_act(adventure.give_offer_item(o, ally), "«%s» → %s." % [item_name, ally.name])))
-			row.add_child(_btn("Выбросить", func() -> void:
-				adventure.discard_offer(o)
-				_act(true, "«%s» выброшен." % item_name)))
+			return "item"
 		"equipment":
-			var e: Dictionary = adventure.equipment[o.id]
-			for who in adventure.wizards:
-				var cur := who.equipment(e.slot)
-				var label := "Надеть" if who == w else "Отдать: %s" % who.name
-				if not cur.is_empty():
-					label += " (вместо «%s»)" % cur.name
-				row.add_child(_btn(label, func() -> void:
-					adventure.equip_offer(o, who)
-					_act(true, "%s надевает «%s»." % [who.name, e.name])))
-			row.add_child(_btn("Выбросить", func() -> void:
-				adventure.discard_offer(o)
-				_act(true, "«%s» выброшено." % e.name)))
+			return String(adventure.equipment[o.id].slot)
+	return ""
+
+
+func _offer_key(sel: Dictionary, action: String) -> String:
+	return "o%d:%s" % [int(sel.k), action]
+
+
+func _has_key(sel: Dictionary, action: String) -> bool:
+	return sel.get("type", "") == "offer" and _buttons.has(_offer_key(sel, action))
+
+
+## Подробности выделенного: название, описание, кнопки действий.
+func _details(i: int, w: Wizard, sel: Dictionary) -> Control:
+	var box := ScrollContainer.new()  # на случай длинного описания; добыча и слоты всегда видны выше
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 3)
+	box.add_child(col)
+	var prefix := ""
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 4)
+	row.add_theme_constant_override("v_separation", 4)
+	match String(sel.get("type", "")):
+		"offer":
+			var o: Dictionary = adventure.offers[int(sel.k)]
+			var title := _label(adventure.offer_name(o), 16)
+			var r := _offer_rarity_of(o)
+			if r != "":
+				title.add_theme_color_override("font_color", RARITY_COLORS[r])
+			col.add_child(title)
+			col.add_child(row)  # действия — сразу под названием, всегда на виду
+			for line in _offer_text(o).split("\n", false):
+				col.add_child(_small(line))
+			if o.kind == "book":
+				col.add_child(_local_btn("Открыть книгу", _open_book.bind(o.id)))
+				if not w.can_use_book(o.id):
+					col.add_child(_small("%s не может пользоваться этой книгой." % w.name))
+			var hint: String = {"book": "Клик по мигающему слоту книги — взять или заменить.",
+				"item": "Клик по мигающему слоту предмета — взять.",
+				"equipment": "Клик по мигающему слоту — надеть."}.get(String(o.kind), "")
+			var h := _small(hint)
+			h.add_theme_color_override("font_color", GLOW)
+			col.add_child(h)
+			prefix = "o%d:" % int(sel.k)
+		"book":
+			var b: String = sel.id
+			col.add_child(_label(adventure.books[b].name, 16))
+			var wear := w.wear_of(b)
+			if wear > 0:
+				col.add_child(_small("Износ %d/%d — на пределе книга порвётся." % [wear, Wizard.WEAR_LIMIT]))
+			col.add_child(_local_btn("Открыть книгу", _open_book.bind(b)))
+			prefix = "w%d:book:%s:" % [i, b]
+		"item", "item2":
+			var id: String = w.item if sel.type == "item" else w.item2
+			if id != "":
+				col.add_child(_label(adventure.items[id].name, 16))
+				col.add_child(_small(adventure.items[id].text))
+			if sel.type == "item":
+				prefix = "w%d:item" % i
+		"hat", "boots":
+			var e := w.equipment(sel.type)
+			if not e.is_empty():
+				var t := _label(e.name, 16)
+				t.add_theme_color_override("font_color", RARITY_COLORS.get(e.rarity, Color.WHITE))
+				col.add_child(t)
+				col.add_child(_small(_equipment_text(e)))
+		_:
+			col.add_child(_small("Кликни по вещи в инвентаре, чтобы прочитать о ней и отдать или выбросить."))
+	if row.get_parent() == null:
+		col.add_child(row)
+	if prefix != "":
+		for key in _keys(prefix):
+			if prefix == "w%d:item" % i and not (String(key).begins_with("w%d:item:" % i)):
+				continue
+			row.add_child(_action_btn(key))
+		if prefix == "w%d:item" % i:
+			for key in _keys("w%d:use:" % i) + _keys("w%d:mix" % i):
+				row.add_child(_action_btn(key))
+	# Починка овцы — всегда на виду, пока овца сломана.
+	for key in _keys("w%d:repair:" % i):
+		row.add_child(_action_btn(key))
+	return box
+
+
+func _offer_texture(o: Dictionary) -> Texture2D:
+	match String(o.kind):
+		"book":
+			return Art.book(o.id)
+		"item":
+			return Art.texture("res://assets/items/%s.png" % o.id)
+		"equipment":
+			return Art.texture("res://assets/equipment/%s.png" % o.id)
+	return null
+
+
+func _offer_rarity_of(o: Dictionary) -> String:
+	return _offer_rarity(o)
+
+
+## Слот инвентаря: картинка в рамке (цвет редкости), выделенный — золотая рамка.
+func _tile(tex: Texture2D, px: int, loot: bool, selected: bool, rarity: String, tall: float = 1.0) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(px, px * tall)
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.08, 0.08, 0.1, 0.85) if tex else Color(0.08, 0.08, 0.1, 0.35)
+	box.border_color = GLOW if selected else (RARITY_COLORS.get(rarity, Color(0.6, 0.6, 0.6, 0.6)) if tex else Color(0.6, 0.6, 0.6, 0.35))
+	box.set_border_width_all(3 if selected else 2)
+	box.set_corner_radius_all(5)
+	for st in ["normal", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, box)
+	var hover := box.duplicate()
+	hover.bg_color = box.bg_color.lightened(0.15)
+	b.add_theme_stylebox_override("hover", hover)
+	if tex:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tr.offset_left = 3
+		tr.offset_top = 3
+		tr.offset_right = -3
+		tr.offset_bottom = -3
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(tr)
+	b.set_meta("loot", loot)
+	return b
+
+
+## Мигание: добыча и слоты, куда её можно положить.
+func _start_glow() -> void:
+	if _glowing.is_empty():
+		return
+	_pulse = create_tween().set_loops()
+	for t in _glowing:
+		_pulse.parallel().tween_property(t, "modulate", Color(1.35, 1.25, 0.8), 0.5)
+	_pulse.chain()
+	for t in _glowing:
+		_pulse.parallel().tween_property(t, "modulate", Color.WHITE, 0.5)
+
+
+func _stop_glow() -> void:
+	if _pulse:
+		_pulse.kill()
+		_pulse = null
+	_glowing.clear()
+
+
+## Кнопка действия из таблицы: чужие волшебники в сети — неактивны.
+func _action_btn(key: String) -> Button:
+	var e: Dictionary = _buttons[key]
+	var b := Button.new()
+	b.text = e.text
+	b.add_theme_font_size_override("font_size", 13)
+	b.custom_minimum_size = Vector2(0, 30)
+	var owner: int = e.owner
+	b.disabled = NetSession.online() and owner >= 0 and not adventure.controls(adventure.wizards[owner], NetSession.my_id())
+	b.pressed.connect(_press.bind(key))
+	return b
+
+
+## Кнопка, которая ничего не меняет в игре (открыть книгу) — в сеть не уходит.
+func _local_btn(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.add_theme_font_size_override("font_size", 13)
+	b.custom_minimum_size = Vector2(0, 30)
+	b.pressed.connect(cb)
+	return b
+
+
+func _press(key: String) -> void:
+	if not _buttons.has(key):
+		return
+	var e: Dictionary = _buttons[key]
+	var owner: int = e.owner
+	if NetSession.online():
+		if owner >= 0 and not adventure.controls(adventure.wizards[owner], NetSession.my_id()):
+			return
+		NetSession.get_session().submit({"t": "camp_btn", "key": key, "text": e.text})
+	else:
+		e.cb.call()
 
 
 func _act(ok: bool, message: String) -> void:
@@ -471,24 +755,6 @@ func _label(text: String, size: int) -> Label:
 
 func _small(text: String) -> Label:
 	return _label(text, 13)
-
-
-## Кнопка действия. В сети кнопки строятся у всех одинаково, поэтому по сети уходит
-## «нажата кнопка №N с таким текстом», и каждый нажимает её у себя. Кнопки чужих волшебников неактивны.
-func _btn(text: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.add_theme_font_size_override("font_size", 13)
-	var key := "b%d" % _buttons.size()
-	_buttons[key] = {"text": text, "cb": cb, "owner": _btn_owner}
-	var mine := _btn_owner < 0 or adventure.controls(adventure.wizards[_btn_owner], NetSession.my_id())
-	b.disabled = NetSession.online() and not mine
-	b.pressed.connect(func() -> void:
-		if NetSession.online():
-			NetSession.get_session().submit({"t": "camp_btn", "key": key, "text": text})
-		else:
-			cb.call())
-	return b
 
 
 ## Команда из сети: нажать ту же кнопку (если нажимающий — хозяин этого волшебника).

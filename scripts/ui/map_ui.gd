@@ -22,7 +22,7 @@ func setup(adv: Adventure) -> void:
 
 
 func _ready() -> void:
-	add_child(Art.background("bg_camp", 0.6))
+	add_child(Art.background("bg_map", 0.5, "bg_camp"))
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:

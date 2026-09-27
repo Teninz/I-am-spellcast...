@@ -74,15 +74,6 @@ func _ready() -> void:
 	auto_note.add_theme_font_size_override("font_size", 13)
 	auto_note.modulate = Color(1, 1, 1, 0.7)
 	col.add_child(auto_note)
-	var soft := _check()
-	soft.text = "Мягкие цвета (меньше контраста и яркости)"
-	soft.button_pressed = bool(Settings.value("soft_colors"))
-	soft.toggled.connect(func(on: bool) -> void:
-		Settings.set_value("soft_colors", on)
-		var layer := get_tree().root.find_child("ColorGrade", true, false)
-		if layer:
-			layer.visible = on)
-	col.add_child(soft)
 	var tut := _check()
 	tut.text = "Подсказки обучения в бою"
 	tut.tooltip_text = "Показываются в первом бою. Включи снова, чтобы увидеть их ещё раз."

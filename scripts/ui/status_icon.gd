@@ -20,6 +20,7 @@ var stacks := 0    # число стаков в левом верхнем угл
 var info: Dictionary = {}
 var source_name := ""  # кто наложил (для карточки при наведении)
 var rich_tooltip := true
+var desc_override := ""  # своё описание вместо справочника (призванные существа)
 
 
 static func make(id: String, counter_text: String = "", stack_count: int = 0, icon_size: int = 30) -> StatusIcon:
@@ -48,11 +49,11 @@ static func texture_for(id: String) -> Texture2D:
 func _make_custom_tooltip(_for_text: String) -> Object:
 	if not rich_tooltip:
 		return null
-	return StatusIcon.big_card(status_id, counter, source_name)
+	return StatusIcon.big_card(status_id, counter, source_name, 112, desc_override)
 
 
 ## Карточка: крупная иконка, название, ходы, кто наложил, описание.
-static func big_card(id: String, counter_text: String = "", source: String = "", icon_size: int = 112) -> Control:
+static func big_card(id: String, counter_text: String = "", source: String = "", icon_size: int = 112, desc_text: String = "") -> Control:
 	var info_d: Dictionary = GameData.statuses().get(id, {"name": id, "kind": "special", "desc": ""})
 	var panel := PanelContainer.new()
 	var box := StyleBoxFlat.new()
@@ -86,7 +87,7 @@ static func big_card(id: String, counter_text: String = "", source: String = "",
 	kind.modulate = Color(1, 1, 1, 0.7)
 	col.add_child(kind)
 	var desc := Label.new()
-	desc.text = info_d.desc
+	desc.text = desc_text if desc_text != "" else info_d.desc
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD
 	desc.custom_minimum_size = Vector2(260, 0)
 	desc.add_theme_font_size_override("font_size", 14)
@@ -144,6 +145,12 @@ static func icons_for(u: Unit, icon_size: int = 30, names: Dictionary = {}) -> A
 		out.append(make("leader", "", 0, icon_size))
 	if u.passive != "":
 		out.append(make(u.passive, "", 0, icon_size))
+	if u.creature:
+		var ic := make("creature", "", 0, icon_size)
+		var cr: Dictionary = GameData.creatures().get(u.class_id, {})
+		ic.desc_override = "%s. Ходит само, исчезает в конце боя." % String(cr.get("text", "")).trim_suffix(".")
+		ic.tooltip_text = ic.desc_override
+		out.append(ic)
 	if u.fortify > 0.0:
 		out.append(make("fortify", Unit._num(u.fortify), 0, icon_size))
 	if u.shield > 0.0:

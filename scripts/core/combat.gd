@@ -47,6 +47,8 @@ var _snapshot: Dictionary = {}
 ## Каст, который можно отмотать: кто кастовал и был ли он «неудачным».
 var last_cast := {}
 var _next_id: int = 0
+var _splitting := false  # урон уже делится (Кровная связь, Преломление) — не делить снова
+var _spell_depth := 0    # вложенные случайные заклинания (Дикий всплеск)
 
 
 ## wizards — Array[Wizard]; fortify_turns/decay — параметры Укрепления.
@@ -114,8 +116,8 @@ func _apply_marks(encounter: Dictionary) -> void:
 				u.add_status("fear", 2, 1, foes[0])
 
 
-func add_enemy(cfg: Dictionary) -> Unit:
-	var u := _new_unit(cfg.name, Unit.ENEMIES, float(cfg.hp), float(cfg.speed))
+func add_enemy(cfg: Dictionary, side: String = Unit.ENEMIES) -> Unit:
+	var u := _new_unit(cfg.name, side, float(cfg.hp), float(cfg.speed))
 	u.attack = int(cfg.damage)
 	u.attacks = int(cfg.get("attacks", 1))
 	u.behaviour = cfg.get("behaviour", "")
@@ -124,6 +126,15 @@ func add_enemy(cfg: Dictionary) -> Unit:
 	u.is_boss = bool(cfg.get("boss", false))
 	u.passive = cfg.get("passive", "")
 	u.defense_bonus = int(cfg.get("defense", 0))
+	u.immune = cfg.get("immune", []).duplicate()
+	u.traits = cfg.get("traits", []).duplicate()
+	if u.traits.has("taunt"):
+		u.add_status("taunt", 99)
+	if u.traits.has("invisible_first"):
+		u.add_status("invisible", 1)
+	if u.traits.has("underground"):
+		u.add_status("invulnerable", 1)
+		u.statuses.invulnerable.hold = true
 	for key in ["dismount", "split", "on_hit_status"]:
 		if cfg.has(key):
 			u.set_meta(key, cfg[key])
@@ -160,6 +171,11 @@ func living(side: String = "") -> Array[Unit]:
 		if u.alive() and (side == "" or u.side == side):
 			out.append(u)
 	return out
+
+
+## Живые волшебники (без призванных существ).
+func party_wizards() -> Array[Unit]:
+	return living(Unit.PARTY).filter(func(u: Unit) -> bool: return u.is_wizard())
 
 
 func opposite(side: String) -> String:
@@ -236,6 +252,7 @@ func turn_queue(n: int) -> Array[Unit]:
 
 
 func _start_of_turn(u: Unit) -> void:
+	u.set_meta("turn_mark", u.hp)
 	if u.has("burn"):
 		_log("%s горит." % u.name, "dot", "burn")
 		_hurt(u, 1.0, null)
@@ -283,7 +300,7 @@ func _check_outcome() -> void:
 				s.wizard.item = s.item
 				_log("%s возвращает украденный предмет: %s." % [s.wizard.name, items.get(s.item, {}).get("name", s.item)], "item")
 		stolen.clear()
-	elif living(Unit.PARTY).is_empty():
+	elif party_wizards().is_empty():
 		outcome = "defeat"
 
 
@@ -333,6 +350,10 @@ func new_bag(caster: Unit, book_id: String, luck_plan: Dictionary = {}) -> ChipB
 	var bag: Dictionary = books[book_id].bag
 	var extra := bag_extra_chaos(caster, book_id)
 	var out := ChipBag.new(bag, extra)
+	if caster.has_meta("foresight"):
+		out.forced = vision_chips(caster.get_meta("foresight"), book_id)
+		caster.remove_meta("foresight")
+		return out
 	if not luck_plan.is_empty() and Luck.has_luck(caster):
 		var odds := ChipBag.odds(bag, extra)
 		var combo := Luck.roll(books[book_id], odds, Luck.clean(books[book_id], odds, luck_plan), rng)
@@ -379,6 +400,10 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	if not bag.forced.is_empty():
 		_log("Удача подправила фишки!", "luck")
 	_apply_spell(caster, target, spell, bag.chips, book_id)
+	if caster.has("echo_next") and caster.alive():
+		caster.statuses.erase("echo_next")
+		_log("Двойник заклинания: «%s» срабатывает ещё раз!" % spell.name, "misfire")
+		_apply_spell(caster, target if target and target.alive() else caster, spell, bag.chips, book_id)
 	_pay_cast_cost(caster, book_id)
 	_sheep_check(caster, book_id, bag)
 	_druid_grumble(caster, bag)
@@ -562,9 +587,9 @@ func nudged_letter(caster: Unit, target: Unit, book_id: String, bag: ChipBag) ->
 		if int(bag.counts.get(letter, 0)) <= 0:
 			continue
 		var spec := EffectParser.parse(sp)
-		var harmful: bool = spec.damage > 0 or spec.splash > 0 or spec.statuses.any(
+		var harmful: bool = EffectParser.deals_damage(spec) or spec.statuses.any(
 			func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id))
-		var good: bool = (spec.damage > 0 or spec.splash > 0) if want_damage else not harmful
+		var good: bool = EffectParser.deals_damage(spec) if want_damage else not harmful
 		if not good:
 			continue
 		var p := float(odds.get(combo, 0.0))
@@ -910,7 +935,7 @@ func _cane_strike(caster: Unit, target: Unit, spell: Dictionary) -> void:
 	if caster.ability != "cane" or target == null or target.side == caster.side or not target.alive():
 		return
 	var spec := EffectParser.parse(spell)
-	if spec.damage > 0 or spec.splash > 0:
+	if EffectParser.deals_damage(spec):
 		return
 	_log("%s добивает тростью!" % caster.name, "damage")
 	_hit(target, 1.0, caster)
@@ -939,6 +964,16 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 	var harmful: bool = spec.damage > 0 or spec.meter < 0 or spec.strip_buffs or spec.statuses.any(
 		func(s: Dictionary) -> bool: return Unit.DEBUFFS.has(s.id))
 
+	var alive_before := living()
+	if target and harmful and caster.has("misdirect"):
+		caster.statuses.erase("misdirect")
+		var any := living()
+		target = any[rng.randi_range(0, any.size() - 1)]
+		_log("Дурной знак: заклинание уходит в %s!" % target.name, "misfire")
+	if target and harmful and caster.has("self_trap") and target != caster:
+		caster.statuses.erase("self_trap")
+		target = caster
+		_log("Зеркальная ловушка: %s бьёт сам себя!" % caster.name, "misfire")
 	var recipients := _recipients(spec, caster, target)
 	if caster.ability == "visions" and ChipBag.key_for(chips) in ["X2", "X3"] and not recipients.has(caster):
 		recipients.append(caster)
@@ -958,7 +993,11 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		if not who.alive():
 			continue
 		if spec.damage > 0:
-			_hit(who, float(maxi(0, spec.damage + bonus)), caster, element)
+			var dmg: int = spec.damage
+			if spec.get("undead_damage", 0) > 0 and is_undead(who):
+				dmg = spec.undead_damage
+				_log("Святой огонь жжёт нежить!", "damage")
+			_hit(who, float(maxi(0, dmg + bonus)), caster, element, spec.get("pierce", false))
 			if who != caster and who.side == caster.side:
 				hurt_ally = true
 		if who.side != caster.side and (spec.heal > 0 or spec.shield > 0
@@ -995,6 +1034,11 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 			_apply_status(who, s, caster)
 		if spec.meter != 0:
 			_shift_meter(who, spec.meter)
+		for sid in spec.get("special", []):
+			if not ONCE_SPECIALS.has(sid):
+				_special(sid, caster, who, spell, book_id)
+		if not spec.get("special", []).has("echo"):
+			who.set_meta("last_spell", {"spell": spell, "book": book_id, "chips": chips})
 
 	if spec.splash > 0 and target:
 		for u in living(target.side):
@@ -1002,6 +1046,12 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 				_hit(u, float(spec.splash), caster, element)
 				if u != caster and u.side == caster.side:
 					hurt_ally = true
+	for j in spec.jumps:
+		for u in _jump_targets(j, caster, target):
+			_log("Молния перескакивает на %s!" % u.name, "damage")
+			_hit(u, float(j.damage), caster, element)
+			if u != caster and u.side == caster.side:
+				hurt_ally = true
 	_check_oath(caster, hurt_ally)
 	if caster.is_wizard() and (hurt_ally or helped_enemy):
 		tally.mishaps += 1
@@ -1012,6 +1062,16 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		_restore(caster, float(spec.self_heal))
 	for s in spec.caster_statuses:
 		_apply_status(caster, s, caster)
+	for sid in spec.get("special", []):
+		if ONCE_SPECIALS.has(sid):
+			_special(sid, caster, target, spell, book_id)
+	if not spec.get("summon", {}).is_empty():
+		_summon_from_spec(spec.summon, caster, target)
+	if spec.get("raise_fallen", "") != "":
+		for u in alive_before:
+			if not u.alive() and not u.is_wizard() and u.side != caster.side:
+				_log("%s встаёт из мёртвых на стороне %s!" % [u.name, caster.name], "revive")
+				summon(spec.raise_fallen, caster, caster.side)
 
 
 func _recipients(spec: Dictionary, caster: Unit, target: Unit) -> Array[Unit]:
@@ -1032,6 +1092,26 @@ func _recipients(spec: Dictionary, caster: Unit, target: Unit) -> Array[Unit]:
 		"random":
 			var any := living()
 			out.append(any[rng.randi_range(0, any.size() - 1)])
+	return out
+
+
+## Кого задевает перескок урона: случайные живые, кроме основной цели (и кастующего — для союзников).
+func _jump_targets(jump: Dictionary, caster: Unit, target: Unit) -> Array[Unit]:
+	var pool: Array[Unit] = []
+	match String(jump.side):
+		"target":
+			if target:
+				pool = living(target.side)
+		"caster":
+			pool = living(caster.side)
+		_:
+			pool = living()
+	pool = pool.filter(func(u: Unit) -> bool: return u != target and (jump.side != "caster" or u != caster))
+	var out: Array[Unit] = []
+	for i in mini(int(jump.count), pool.size()):
+		var k := rng.randi_range(0, pool.size() - 1)
+		out.append(pool[k])
+		pool.remove_at(k)
 	return out
 
 
@@ -1153,9 +1233,13 @@ func _shift_meter(who: Unit, percent: int) -> void:
 
 
 ## Удар с учётом Неуязвимости, Элементальной формы, Жабы, Уязвимости и Защиты.
-func _hit(who: Unit, amount: float, source: Unit, element: String = "?") -> void:
+func _hit(who: Unit, amount: float, source: Unit, element: String = "?", pierce: bool = false) -> void:
 	if not who.alive() or amount <= 0.0:
 		return
+	if who.has("doom"):
+		who.statuses.erase("doom")
+		amount += 3.0
+		_log("Кармический долг: +3 урона по %s." % who.name, "damage")
 	if who.has("invulnerable"):
 		if not who.statuses.invulnerable.get("hold", false):
 			who.statuses.erase("invulnerable")
@@ -1171,7 +1255,7 @@ func _hit(who: Unit, amount: float, source: Unit, element: String = "?") -> void
 		_log("%s снова человек (удар по жабе — двойной)." % who.name, "debuff", "toad")
 	if who.has("vulnerable"):
 		amount += 1.0
-	var guard := who.defense()
+	var guard := 0 if pierce else who.defense()
 	if who.passive == "rat_guard" and living(who.side).size() > 1:
 		guard += 1
 	amount = maxf(1.0, amount - guard)
@@ -1182,7 +1266,29 @@ func _hit(who: Unit, amount: float, source: Unit, element: String = "?") -> void
 ## Сначала тратится Укрепление, потом Щит, потом здоровье.
 func _hurt(who: Unit, amount: float, source: Unit) -> void:
 	amount = Unit.q(amount)
+	if not _splitting and amount > 0.0:
+		if who.has("shared_pain"):
+			var side := living(who.side)
+			if side.size() > 1:
+				_splitting = true
+				var part := Unit.q(amount / side.size())
+				_log("Преломление: урон по %s делится на всех на её стороне." % who.name, "block")
+				for u in side:
+					_hurt(u, part, source)
+				_splitting = false
+				return
+		if who.has("bond"):
+			var mate := _unit_by_id(int(who.statuses.bond.source))
+			if mate and mate.alive() and mate != who:
+				_splitting = true
+				var half := Unit.q(amount / 2.0)
+				_log("Кровная связь: %s принимает половину урона." % mate.name, "block")
+				_hurt(mate, half, source)
+				_splitting = false
+				amount = Unit.q(amount - half)
 	for layer in ["fortify", "shield"]:
+		if layer == "shield" and source and source.traits.has("pierce_shield"):
+			continue
 		var pool: float = who.get(layer)
 		if pool <= 0.0 or amount <= 0.0:
 			continue
@@ -1218,6 +1324,11 @@ func _on_down(who: Unit, source: Unit) -> void:
 		who.wizard.shift_items()
 		_revive(who, hp)
 		return
+	if who.traits.has("reassemble") and not who.get_meta("reassembled", false):
+		who.set_meta("reassembled", true)
+		_log("%s рассыпается… и собирается обратно!" % who.name, "revive")
+		_revive(who, ceilf(who.max_hp / 2.0))
+		return
 	if who.passive == "mount":
 		for rider in living(who.side):
 			if rider.has_meta("dismount"):
@@ -1248,6 +1359,7 @@ func _restore(who: Unit, amount: float) -> void:
 	var before := who.hp
 	who.hp = Unit.q(minf(who.max_hp, who.hp + amount))
 	if who.hp > before:
+		who.set_meta("healed_total", float(who.get_meta("healed_total", 0.0)) + who.hp - before)
 		hp_changed.emit(who, who.hp - before, "heal")
 		_log("%s лечится на %s (%s)." % [who.name, Unit._num(who.hp - before), who.hp_text()], "big_heal" if who.hp - before >= BIG_HIT else "heal")
 
@@ -1265,11 +1377,15 @@ func _split(who: Unit, amount: float) -> void:
 	var acc := float(who.get_meta("split_acc", 0.0)) + amount
 	while acc >= float(cfg.every):
 		acc -= float(cfg.every)
-		var u := add_enemy(cfg.unit)
+		var u := add_enemy(cfg.unit, who.side)
+		u.creature = who.creature
 		u.set_meta("spawned_by", who.id)
 		u.set_meta("summoned", true)
 		_log("От %s отделяется %s!" % [who.name, u.name], "summon")
 		unit_added.emit(u)
+		if cfg.get("once", false):
+			who.remove_meta("split")
+			return
 	who.set_meta("split_acc", acc)
 
 
@@ -1286,23 +1402,426 @@ func _morale_break(leader: Unit, killer: Unit) -> void:
 
 ## Ход противника: особая атака, если перезарядилась, иначе обычное действие.
 func enemy_act(enemy: Unit) -> void:
+	if enemy.has("echo_next"):
+		enemy.statuses.erase("echo_next")
+		_log("Двойник заклинания: %s действует дважды!" % enemy.name, "misfire")
+		_enemy_action(enemy)
+		if not enemy.alive() or outcome != "":
+			end_turn(enemy)
+			return
+	_enemy_action(enemy)
+	end_turn(enemy)
+
+
+func _enemy_action(enemy: Unit) -> void:
 	var special := _ready_special(enemy)
 	if not special.is_empty():
 		special.cd = int(special.cooldown)
 		_use_special(enemy, special)
 	elif enemy.behaviour == "healer" and _heal_ally(enemy):
 		pass
+	elif enemy.attack <= 0:
+		_log("%s ждёт." % enemy.name, "enemy")
+	elif enemy.traits.has("every_other") and enemy.get_meta("resting", false):
+		enemy.set_meta("resting", false)
+		_log("%s переводит дух." % enemy.name, "enemy")
 	else:
+		if enemy.traits.has("every_other"):
+			enemy.set_meta("resting", true)
+		if enemy.traits.has("owl"):
+			_owl_watch(enemy)
+		var wounded := false
 		for i in enemy.attacks:
 			var target := _enemy_target(enemy)
 			if target == null or not enemy.alive():
 				break
-			_log("%s атакует %s." % [enemy.name, target.name], "enemy")
-			_enemy_strike(enemy, target, float(enemy.attack))
-			if enemy.has_meta("on_hit_status") and target.alive():
-				var st: Dictionary = enemy.get_meta("on_hit_status")
-				_apply_status(target, {"id": st.id, "turns": int(st.turns)}, enemy)
-	end_turn(enemy)
+			if i == 0:
+				wounded = target.hp < target.max_hp
+			var hits: Array[Unit] = [target]
+			if enemy.traits.has("swarm"):
+				hits = living(target.side)
+				_log("%s налетает на всех на стороне %s." % [enemy.name, target.name], "enemy")
+			else:
+				_log("%s атакует %s." % [enemy.name, target.name], "enemy")
+			for t in hits:
+				_enemy_strike(enemy, t, float(enemy.attack))
+				if enemy.has_meta("on_hit_status") and t.alive():
+					var st: Dictionary = enemy.get_meta("on_hit_status")
+					_apply_status(t, {"id": st.id, "turns": int(st.turns)}, enemy)
+		if enemy.traits.has("double_if_wounded") and wounded:
+			var again := _enemy_target(enemy)
+			if again and enemy.alive():
+				_log("%s чует кровь и бьёт ещё раз!" % enemy.name, "enemy")
+				_enemy_strike(enemy, again, float(enemy.attack))
+
+
+## Сова: снимает Невидимость с врагов и Ослепление с хозяина.
+func _owl_watch(owl: Unit) -> void:
+	for u in living(opposite(owl.side)):
+		if u.has("invisible"):
+			u.statuses.erase("invisible")
+			_log("%s замечает %s — Невидимость снята." % [owl.name, u.name], "debuff", "invisible")
+	var master := _unit_by_id(int(owl.get_meta("owner", -1)))
+	if master and master.has("blind"):
+		master.statuses.erase("blind")
+		_log("%s ведёт %s — Ослепление снято." % [owl.name, master.name], "buff", "blind")
+
+
+# --- Особые эффекты заклинаний (EffectParser.SPECIAL_PHRASES) -------------------
+
+## Срабатывают один раз на каст, а не на каждого получателя.
+const ONCE_SPECIALS := ["give_item_party", "shuffle_meters", "flip_all", "random_chaos", "random_spell", "pick_spell"]
+const RANDOM_DEBUFFS := ["burn", "poison", "slow", "vulnerable", "weak", "blind", "confusion", "forget", "disease"]
+const RANDOM_BUFFS := ["regen", "haste", "stoneskin", "inspire", "bless", "reflect", "invulnerable"]
+
+
+## Нежить: призванные Некрономиконом и все скелеты, зомби, призраки.
+func is_undead(u: Unit) -> bool:
+	if u.creature and GameData.creatures().get(u.class_id, {}).get("group", "") == "undead":
+		return true
+	var n := u.name.to_lower()
+	return n.contains("скелет") or n.contains("зомби") or n.contains("призрак") \
+		or (u.wizard != null and u.wizard.zombie)
+
+
+func _pick(list: Array) -> Variant:
+	return list[rng.randi_range(0, list.size() - 1)]
+
+
+func _special(id: String, caster: Unit, who: Unit, spell: Dictionary, book_id: String) -> void:
+	match id:
+		"give_potion", "give_item":
+			if who == null or who.wizard == null:
+				_log("Предмет достаётся только волшебнику — не сработало.", "fizzle")
+				return
+			var item_id := "potion_heal" if id == "give_potion" else String(_pick(_item_ids()))
+			if who.wizard.add_item(item_id):
+				_log("%s получает предмет: %s." % [who.name, items[item_id].name], "item")
+			else:
+				_log("У %s нет места под предмет." % who.name, "fizzle")
+		"give_item_party":
+			for u in party_wizards():
+				var item_id := String(_pick(_item_ids()))
+				if u.wizard.add_item(item_id):
+					_log("%s получает предмет: %s." % [u.name, items[item_id].name], "item")
+		"upgrade_item":
+			if who == null or who.wizard == null:
+				return
+			var w := who.wizard
+			if w.item == "":
+				_special("give_item", caster, who, spell, book_id)
+				return
+			var better: Array = _item_ids().filter(func(i: String) -> bool: return int(items[i].weight) < int(items[w.item].weight))
+			if better.is_empty():
+				_log("Предмет %s и так редчайший." % who.name, "fizzle")
+				return
+			var old: String = items[w.item].name
+			w.item = String(_pick(better))
+			_log("%s: «%s» становится «%s»." % [who.name, old, items[w.item].name], "item")
+		"bond":
+			if who == caster:
+				return
+			who.add_status("bond", 2, 1, caster)
+			caster.add_status("bond", 2, 1, who)
+			_log("%s и %s связаны кровью: урон делится пополам." % [caster.name, who.name], "buff")
+			status_applied.emit(who, "bond")
+		"undo_turn":
+			var lost := float(who.get_meta("turn_mark", who.hp)) - who.hp
+			if lost <= 0.0:
+				_log("%s ничего не терял с прошлого хода." % who.name, "fizzle")
+			else:
+				_restore(who, minf(4.0, lost))
+		"extend_buffs":
+			for sid in who.statuses:
+				if Unit.BUFFS.has(sid) and int(who.statuses[sid].turns) < 99:
+					who.statuses[sid].turns += 2
+			_log("Баффы %s продлены на 2 хода." % who.name, "buff")
+		"shuffle_meters":
+			var all := living()
+			var meters: Array = all.map(func(u: Unit) -> float: return u.meter)
+			for i in range(meters.size() - 1, 0, -1):
+				var j := rng.randi_range(0, i)
+				var t: float = meters[i]
+				meters[i] = meters[j]
+				meters[j] = t
+			for i in all.size():
+				all[i].meter = meters[i]
+			_log("Очередь ходов перемешана!", "misfire")
+		"echo":
+			var last: Dictionary = who.get_meta("last_spell", {})
+			if last.is_empty() or _spell_depth > 1:
+				_log("На %s ещё ничего не кастовали — эху нечего повторить." % who.name, "fizzle")
+				return
+			_log("Эхо: «%s» повторяется по %s." % [last.spell.name, who.name], "misfire")
+			_nested(caster, who, last.spell, last.book)
+		"copy_buffs":
+			for sid in who.statuses:
+				if Unit.BUFFS.has(sid):
+					caster.add_status(sid, int(who.statuses[sid].turns))
+			_log("%s копирует баффы %s." % [caster.name, who.name], "buff")
+		"swap_meter_side", "swap_meter_any":
+			var pool := living() if id == "swap_meter_any" else living(who.side)
+			pool.erase(who)
+			if pool.is_empty():
+				return
+			var other: Unit = _pick(pool)
+			var t := who.meter
+			who.meter = other.meter
+			other.meter = t
+			_log("%s и %s меняются местами в очереди." % [who.name, other.name], "misfire")
+		"swap_meter_caster":
+			var t := who.meter
+			who.meter = caster.meter
+			caster.meter = t
+			_log("%s и %s меняются шкалами хода." % [caster.name, who.name], "misfire")
+		"random_meter":
+			who.meter = rng.randf_range(0.0, 100.0)
+			_log("Шкала хода %s теперь %d %%." % [who.name, int(who.meter)], "misfire")
+		"borrow_book":
+			if who.is_wizard() and not caster.books.is_empty():
+				var b: String = _pick(caster.books)
+				who.set_meta("borrowed_book", b)
+				_log("%s в следующий раз кастует из книги «%s»." % [who.name, books[b].name], "misfire")
+			elif not who.is_wizard():
+				_log("%s повторяет свою атаку по самому себе!" % who.name, "misfire")
+				_hit(who, float(maxi(1, who.attack)), who)
+		"double_next":
+			who.add_status("echo_next", 99)
+			status_applied.emit(who, "echo_next")
+		"swap_statuses":
+			if who == caster:
+				return
+			var t := who.statuses
+			who.statuses = caster.statuses
+			caster.statuses = t
+			_log("%s и %s меняются всеми эффектами." % [caster.name, who.name], "misfire")
+		"self_trap", "misdirect", "doom":
+			who.add_status(id, 99)
+			status_applied.emit(who, id)
+		"share_pain":
+			who.add_status("shared_pain", 2)
+			status_applied.emit(who, "shared_pain")
+		"fate_reflect":
+			who.add_status("reflect", 3)
+			status_applied.emit(who, "reflect")
+		"flip_all":
+			for u in living():
+				var flipped := {}
+				for sid in u.statuses:
+					var st: Dictionary = u.statuses[sid]
+					if Unit.BUFFS.has(sid):
+						flipped[_pick(RANDOM_DEBUFFS)] = {"turns": st.turns, "stacks": 1, "source": st.source}
+					elif Unit.DEBUFFS.has(sid):
+						flipped[_pick(RANDOM_BUFFS)] = {"turns": st.turns, "stacks": 1, "source": st.source}
+					else:
+						flipped[sid] = st
+				u.statuses = flipped
+			_log("Зеркальный мир: все эффекты на арене — наоборот!", "misfire")
+		"foresight":
+			if who.is_wizard():
+				var bag := ChipBag.new(books[who.books[0]].bag, bag_extra_chaos(who, who.books[0])) if not who.books.is_empty() else null
+				if bag == null:
+					return
+				while not bag.is_complete():
+					bag.draw(rng)
+				var order := letters_by_count(books[who.books[0]].bag)
+				who.set_meta("foresight", bag.chips.map(func(c: String) -> int: return -1 if c == ChipBag.CHAOS else order.find(c)))
+				_log("%s видит свою следующую тройку заранее." % who.name, "luck")
+			else:
+				var sp := _ready_special_peek(who)
+				_log("Раскрыто: следующая способность %s — %s." % [who.name, sp], "luck")
+		"curse_stat":
+			match rng.randi_range(0, 3):
+				0:
+					who.wisdom -= 1
+					_log("%s: −1 Мудрость до конца боя." % who.name, "debuff")
+				1:
+					who.defense_bonus -= 1
+					_log("%s: −1 Защита до конца боя." % who.name, "debuff")
+				2:
+					who.luck_bonus -= 1
+					_log("%s: −1 Удача до конца боя." % who.name, "debuff")
+				_:
+					who.speed = maxf(1.0, who.speed - 1.0)
+					_log("%s: −1 Скорость до конца боя." % who.name, "debuff")
+		"karma":
+			var dmg := minf(5.0, float(who.get_meta("healed_total", 0.0)))
+			if dmg <= 0.0:
+				_log("%s за бой не лечился — карма чиста." % who.name, "fizzle")
+			else:
+				_log("Карма: %s получает %s урона за всё своё лечение." % [who.name, Unit._num(dmg)], "damage")
+				_hurt(who, dmg, caster)
+		"fortune":
+			if who.is_wizard():
+				who.add_status("muse", 99)
+				status_applied.emit(who, "muse")
+			else:
+				who.add_status("miss", 99)
+				status_applied.emit(who, "miss")
+		"random_debuff", "random_buff", "random_both":
+			if id != "random_buff":
+				_apply_status(who, {"id": _pick(RANDOM_DEBUFFS), "turns": 2}, caster)
+			if id != "random_debuff":
+				_apply_status(who, {"id": _pick(RANDOM_BUFFS), "turns": 2}, caster)
+		"swap_hp":
+			if who == caster or who.is_boss:
+				_log("%s невосприимчив к обмену телами." % who.name, "fizzle")
+				return
+			var a := who.hp
+			who.hp = Unit.q(clampf(caster.hp, 0.1, who.max_hp))
+			caster.hp = Unit.q(clampf(a, 0.1, caster.max_hp))
+			_log("%s и %s меняются здоровьем: %s и %s." % [caster.name, who.name, caster.hp_text(), who.hp_text()], "misfire")
+			hp_changed.emit(who, 0.0, "heal")
+			hp_changed.emit(caster, 0.0, "heal")
+		"random_spell", "random_chaos", "pick_spell":
+			_random_cast(id, caster, who, book_id)
+		_:
+			push_warning("Неизвестный особый эффект: %s" % id)
+
+
+func _item_ids() -> Array:
+	var ids := items.keys()
+	ids.sort()
+	return ids
+
+
+## Вложенный каст (эхо, случайное заклинание). Глубина ограничена, чтобы хаос не вызывал хаос бесконечно.
+func _nested(caster: Unit, target: Unit, spell: Dictionary, book_id: String) -> void:
+	if _spell_depth > 2:
+		return
+	_spell_depth += 1
+	var chips: Array[String] = []
+	var combo := String(spell.combo)
+	if combo.begins_with("X"):
+		for i in int(combo.substr(1)):
+			chips.append(ChipBag.CHAOS)
+	else:
+		for c in combo:
+			chips.append(c)
+	_apply_spell(caster, target, spell, chips, book_id)
+	_spell_depth -= 1
+
+
+## Дикий всплеск (хаос из любой книги), Всплеск (любое заклинание по цели),
+## «Судьба переписана» (лучшая комбинация своей книги).
+func _random_cast(kind: String, caster: Unit, target: Unit, book_id: String) -> void:
+	var ids := books.keys()
+	ids.sort()
+	var picks: Array = []  # [book, spell]
+	for b in ids:
+		if kind == "pick_spell" and b != book_id:
+			continue
+		for sp in books[b].spells:
+			var chaos := String(sp.combo).begins_with("X")
+			if kind == "random_chaos" and not chaos:
+				continue
+			if kind != "random_chaos" and chaos:
+				continue
+			var sid: Array = EffectParser.parse(sp).get("special", [])
+			if sid.has("random_chaos") or sid.has("random_spell") or sid.has("pick_spell"):
+				continue
+			picks.append([b, sp])
+	if picks.is_empty():
+		return
+	var choice: Array = _pick(picks)
+	if kind == "pick_spell":
+		var foe := target != null and target.side != caster.side
+		var best := -1.0
+		for p in picks:
+			var spec := EffectParser.parse(p[1])
+			var v: float = float(EffectParser.harm_total(spec)) if foe else float(spec.heal + spec.shield)
+			if v > best:
+				best = v
+				choice = p
+		_log("%s переписывает судьбу и выбирает «%s»." % [caster.name, choice[1].name], "luck")
+	else:
+		_log("Срабатывает «%s» из книги «%s»!" % [choice[1].name, books[choice[0]].name], "chaos")
+	var aim := target if target != null and target.alive() else caster
+	_nested(caster, aim, choice[1], choice[0])
+
+
+## Какая особая атака врага будет следующей (без изменения перезарядок).
+func _ready_special_peek(enemy: Unit) -> String:
+	var best: Dictionary = {}
+	for sp in enemy.specials:
+		if best.is_empty() or int(sp.cd) < int(best.cd):
+			best = sp
+	if best.is_empty():
+		return "обычная атака"
+	return "«%s» через %d ход(а)" % [best.name, maxi(0, int(best.cd))]
+
+
+## Одолженная книга (Копия приёма): волшебник обязан кастовать из неё. Возвращает id или "".
+func take_borrowed_book(u: Unit) -> String:
+	if not u.has_meta("borrowed_book"):
+		return ""
+	var b: String = u.get_meta("borrowed_book")
+	u.remove_meta("borrowed_book")
+	return b
+
+
+# --- Призванные существа (balance.md, раздел 6) ----------------------------------
+
+const SUMMON_LIMIT := 2
+
+
+## Призывает существо из data/creatures.json. side — сторона, target — цель заклинания:
+## первым ходом существо атакует её (враг) или принимает первый удар по ней (союзник).
+func summon(creature_id: String, caster: Unit, side: String, target: Unit = null) -> Unit:
+	var db := GameData.creatures()
+	if not db.has(creature_id):
+		return null
+	var cfg: Dictionary = db[creature_id]
+	var u := add_enemy(cfg, side)
+	u.creature = true
+	u.class_id = creature_id
+	u.set_meta("summoned", true)
+	if caster and side == caster.side:
+		u.set_meta("owner", caster.id)
+		var own: Array[Unit] = living(side).filter(func(x: Unit) -> bool:
+			return x.creature and int(x.get_meta("owner", -1)) == caster.id)
+		while own.size() > SUMMON_LIMIT:
+			var old: Unit = own.pop_front()
+			old.hp = 0.0
+			old.statuses.clear()
+			_log("%s уходит: у %s не больше %d существ." % [old.name, caster.name, SUMMON_LIMIT], "info")
+			hp_changed.emit(old, 0.0, "damage")
+	if target and target.alive() and target != u:
+		if target.side != side:
+			u.set_meta("first_target", target.id)
+		else:
+			target.set_meta("guarded_by", u.id)
+	var whose := "" if caster == null else (" на стороне %s" % caster.name if side == caster.side else " — против %s" % caster.name)
+	_log("Появляется %s%s!" % [u.name, whose], "summon")
+	unit_added.emit(u)
+	return u
+
+
+func _summon_from_spec(sm: Dictionary, caster: Unit, target: Unit) -> void:
+	var id: String = sm.get("id", "")
+	if id == "":
+		var pool: Array = []
+		for cid in GameData.creatures():
+			if GameData.creatures()[cid].group == sm.group:
+				pool.append(cid)
+		pool.sort()
+		if pool.is_empty():
+			return
+		id = pool[rng.randi_range(0, pool.size() - 1)]
+	var side := caster.side
+	match String(sm.side):
+		"random":
+			side = caster.side if rng.randf() < 0.5 else opposite(caster.side)
+		"enemy":
+			side = opposite(caster.side)
+	summon(id, caster, side, target)
+
+
+func _unit_by_id(id: int) -> Unit:
+	for u in units:
+		if u.id == id:
+			return u
+	return null
 
 
 ## Уменьшает перезарядки и возвращает готовую особую атаку (первая по списку).
@@ -1390,6 +1909,24 @@ func _heal_ally(healer: Unit) -> bool:
 
 func _enemy_strike(attacker: Unit, target: Unit, damage: float) -> void:
 	var dmg := maxf(0.0, damage - (1.0 if attacker.has("weak") else 0.0))
+	if target.has_meta("guarded_by"):
+		var guard := _unit_by_id(int(target.get_meta("guarded_by")))
+		target.remove_meta("guarded_by")
+		if guard and guard.alive() and guard.side == target.side:
+			_log("%s закрывает собой %s!" % [guard.name, target.name], "block")
+			target = guard
+	if attacker.has("self_trap"):
+		attacker.statuses.erase("self_trap")
+		_log("Зеркальная ловушка: %s бьёт сам себя!" % attacker.name, "misfire")
+		target = attacker
+	elif attacker.has("miss"):
+		attacker.statuses.erase("miss")
+		if rng.randf() < 0.5:
+			_log("Колесо фортуны: %s промахивается!" % attacker.name, "block")
+			return
+	if target.traits.has("thorns") and attacker.alive():
+		_log("%s колется: %s получает 1 урон." % [target.name, attacker.name], "damage")
+		_hurt(attacker, 1.0, target)
 	if target.has("reflect") and target.side != attacker.side:
 		target.statuses.erase("reflect")
 		_log("%s отражает атаку!" % target.name, "reflect", "reflect")
@@ -1400,6 +1937,23 @@ func _enemy_strike(attacker: Unit, target: Unit, damage: float) -> void:
 func _enemy_target(enemy: Unit) -> Unit:
 	var any := living()
 	any.erase(enemy)
+	if enemy.has("misdirect"):
+		enemy.statuses.erase("misdirect")
+		if not any.is_empty():
+			var t := any[rng.randi_range(0, any.size() - 1)]
+			_log("Дурной знак: удар %s уходит в %s!" % [enemy.name, t.name], "misfire")
+			return t
+	if enemy.has_meta("first_target"):
+		var first := _unit_by_id(int(enemy.get_meta("first_target")))
+		enemy.remove_meta("first_target")
+		if first and first.alive() and first.side != enemy.side and not enemy.has("blind"):
+			return first
+	if enemy.traits.has("drunk") and rng.randf() < 0.2:
+		var mates := living(enemy.side)
+		mates.erase(enemy)
+		if not mates.is_empty():
+			_log("%s спьяну путает своих с чужими!" % enemy.name, "misfire")
+			return mates[rng.randi_range(0, mates.size() - 1)]
 	if enemy.has("blind") or (enemy.has("confusion") and rng.randf() < 0.5) \
 			or (enemy.has("chaos_curse") and rng.randf() < 0.25):
 		return any[rng.randi_range(0, any.size() - 1)] if not any.is_empty() else null
@@ -1411,7 +1965,7 @@ func _enemy_target(enemy: Unit) -> Unit:
 	var foes: Array[Unit] = []
 	var taunting: Array[Unit] = []
 	for u in living(opposite(enemy.side)):
-		if u.has("invisible") or enemy.fears(u):
+		if (u.has("invisible") and not enemy.traits.has("true_sight")) or enemy.fears(u):
 			continue
 		foes.append(u)
 		if u.has("taunt"):

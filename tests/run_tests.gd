@@ -14,6 +14,9 @@ func _initialize() -> void:
 	test_combo_odds(books)
 	test_luck_scale(books)
 	test_parser_coverage(books)
+	test_chain_lightning()
+	test_summons(books)
+	test_every_spell_runs(books)
 	test_rat_pack_simulation(books)
 	test_rest_and_fortify()
 	test_loot_rules()
@@ -74,7 +77,9 @@ func test_art_assets(books: Dictionary) -> void:
 		ui.append("loot_frame_" + r)
 	groups["интерфейс"] = ui.map(func(n): return "res://assets/ui/%s.png" % n)
 	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
-	var pending := []
+	# Иконки новых эффектов — промты в docs/art_prompts_battle.md.
+	var pending := ["creature.png", "bond.png", "shared_pain.png", "doom.png", "misdirect.png",
+		"self_trap.png", "miss.png", "echo_next.png"]
 	for g in groups:
 		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
 		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))
@@ -217,6 +222,129 @@ func test_parser_coverage(books: Dictionary) -> void:
 
 
 ## Уровень 1 должен проходиться почти всегда.
+func test_chain_lightning() -> void:
+	print("Цепная молния:")
+	var storm := EffectParser.parse({"effect": "3 урона цели и 1 урон двум случайным участникам на её стороне.", "damage": 3})
+	check(storm.jumps.size() == 1 and storm.jumps[0].count == 2 and storm.jumps[0].damage == 1, "Книга Бурь: перескок 1 урона на двоих")
+	var wild := EffectParser.parse({"effect": "2 урона цели, 1 урон всем на её стороне и 1 урон случайному союзнику кастующего.", "damage": 2})
+	check(wild.splash == 1 and wild.jumps.size() == 1 and wild.jumps[0].side == "caster", "Дикая книга: добивка по всем и удар по своему")
+	var mirror := EffectParser.parse({"effect": "7 урона цели и такой же урон случайному участнику на её стороне.", "damage": 7})
+	check(mirror.area == "target" and mirror.jumps[0].damage == 7, "Зеркало: такой же урон перескакивает")
+	var chaos := EffectParser.parse({"effect": "4 урона цели и 4 урона случайному участнику боя.", "damage": 4})
+	check(chaos.area == "target" and chaos.jumps[0].side == "any", "Дикий хаос: бьёт цель и ещё кого-то")
+	var adv := Adventure.new(["pyromancer", "priest"], 5)
+	var c := adv.start_combat(5)
+	var caster: Unit = c.units[0]
+	var foes: Array[Unit] = c.living(c.opposite(caster.side))
+	while foes.size() < 3:
+		foes = c.living(c.opposite(caster.side))
+		break
+	var before := {}
+	for u in foes:
+		u.shield = 0
+		before[u] = u.hp
+	var chips: Array[String] = ["W", "L", "L"]
+	c._apply_spell(caster, foes[0], c.spell_for("storm", "WLL"), chips, "storm")
+	var hit_others := 0
+	for u in foes:
+		if u != foes[0] and (u.hp < before[u] or not u.alive()):
+			hit_others += 1
+	check(foes[0].hp < before[foes[0]] and hit_others == mini(2, foes.size() - 1), "урон перескочил на %d соседей цели" % hit_others)
+
+
+func test_summons(books: Dictionary) -> void:
+	print("Призыв существ:")
+	var missing: Array[String] = []
+	for id in ["bestiary", "necronomicon", "druid"]:
+		for sp in books[id].spells:
+			if String(sp.effect).contains("Призывает") and EffectParser.parse(sp).summon.is_empty():
+				missing.append(sp.name)
+	check(missing.is_empty(), "все «Призывает…» разобраны%s" % ("" if missing.is_empty() else ": " + ", ".join(PackedStringArray(missing))))
+	var adv := Adventure.new(["pyromancer", "priest"], 9)
+	var c := adv.start_combat(9)
+	var caster: Unit = c.units[0]
+	var foe: Unit = c.living(Unit.ENEMIES)[0]
+	var chips: Array[String] = ["D", "W", "F"]
+	var before := c.units.size()
+	c._apply_spell(caster, foe, c.spell_for("necronomicon", "DWF"), chips, "necronomicon")
+	var sk: Unit = c.units[c.units.size() - 1]
+	check(c.units.size() == before + 1 and sk.creature and sk.side == Unit.PARTY and not sk.is_wizard(), "Подъём скелета: скелет на стороне отряда")
+	check(int(sk.get_meta("first_target", -1)) == foe.id, "первый ход скелет бьёт цель заклинания")
+	c.summon("bear", caster, Unit.PARTY)
+	c.summon("wolf", caster, Unit.PARTY)
+	var own := c.living(Unit.PARTY).filter(func(u: Unit) -> bool: return u.creature)
+	check(own.size() == 2 and not sk.alive(), "лимит 2 существа: самый старый уходит")
+	var bear: Unit = own[0]
+	check(bear.has("taunt"), "Медведь провоцирует")
+	var skel := c.summon("skeleton", caster, Unit.PARTY)
+	c._hurt(skel, 10.0, foe)
+	check(skel.alive() and skel.hp == 2.0, "скелет собирается один раз")
+	c._hurt(skel, 10.0, foe)
+	check(not skel.alive(), "второй раз — рассыпается насовсем")
+	var deer := c.summon("deer", caster, Unit.PARTY)
+	caster.hp = caster.max_hp - 2.0
+	c.enemy_act(deer)
+	check(caster.hp == caster.max_hp - 1.0, "Олень лечит раненого на 1")
+	for u in c.party_wizards():
+		u.hp = 0.0
+	c.outcome = ""
+	c._check_outcome()
+	check(c.outcome == "defeat", "пали волшебники — поражение, даже если звери живы")
+	var rnd := EffectParser.parse(books.bestiary.spells.filter(func(sp: Dictionary) -> bool: return sp.combo == "X1")[0])
+	check(rnd.summon.group == "bestiary" and rnd.summon.side == "random", "Сбежал со страницы: случайное существо на случайную сторону")
+	var reap := EffectParser.parse(books.necronomicon.spells.filter(func(sp: Dictionary) -> bool: return sp.combo == "X3")[0])
+	check(reap.raise_fallen == "skeleton", "Жатва: погибшие встают скелетами")
+
+
+## Каждое заклинание каждой книги срабатывает по врагу и по союзнику без ошибок и хоть что-то меняет.
+func test_every_spell_runs(books: Dictionary) -> void:
+	print("Все заклинания срабатывают:")
+	var silent: Array[String] = []
+	var count := 0
+	var ids := books.keys()
+	ids.sort()
+	for bid in ids:
+		for sp in books[bid].spells:
+			for on_foe in [true, false]:
+				var adv := Adventure.new(["pyromancer", "priest", "water"], 77)
+				var c := adv.start_combat(77)
+				var caster: Unit = c.units[0]
+				caster.hp = caster.max_hp - 3.0
+				var t: Unit = c.living(Unit.ENEMIES)[0] if on_foe else c.units[1]
+				t.hp = maxf(1.0, t.max_hp - 3.0)
+				t.set_meta("turn_mark", t.max_hp)
+				t.set_meta("healed_total", 2.0)
+				var before := _state_sig(c)
+				var chips: Array[String] = []
+				var combo := String(sp.combo)
+				if combo.begins_with("X"):
+					for i in int(combo.substr(1)):
+						chips.append(ChipBag.CHAOS)
+				else:
+					for ch in combo:
+						chips.append(ch)
+				c._apply_spell(caster, t, sp, chips, bid)
+				count += 1
+				var spec := EffectParser.parse(sp)
+				if _state_sig(c) == before and not spec.nothing and on_foe:
+					silent.append("%s %s «%s»" % [bid, combo, sp.name])
+	print("       проверено кастов: %d" % count)
+	if not silent.is_empty():
+		print("       по врагу ничего не изменили (бывает при промахе удачи или без условий): %s" % ", ".join(silent))
+	check(silent.size() <= 12, "почти каждое заклинание меняет бой (молчат: %d)" % silent.size())
+
+
+func _state_sig(c: Combat) -> String:
+	var parts := []
+	for u in c.units:
+		parts.append("%s|%s|%s|%s|%s|%s|%s" % [u.hp, u.shield, JSON.stringify(u.statuses), snappedf(u.meter, 0.01), u.wisdom + u.defense_bonus + u.luck_bonus, u.speed,
+			u.get_meta_list().size()])
+		if u.wizard:
+			parts.append(u.wizard.item + u.wizard.item2)
+	parts.append(str(c.units.size()))
+	return ";".join(parts)
+
+
 func test_rat_pack_simulation(books: Dictionary) -> void:
 	print("Симуляция: стартовый отряд против Крысиной стаи (2000 боёв):")
 	var stats: Dictionary = load("res://tests/simulate.gd").run(
