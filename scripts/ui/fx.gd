@@ -68,6 +68,38 @@ static func lunge(c: Control, to_left: bool) -> void:
 	tw.parallel().tween_property(c, "rotation_degrees", 0.0, t(0.14))
 
 
+## Бросок в атаку: карточка заметно выезжает вперёд (к противнику) и возвращается на место.
+static func charge(c: Control, to_left: bool) -> void:
+	if not is_instance_valid(c):
+		return
+	c.pivot_offset = c.size / 2.0
+	var dx := -46.0 if to_left else 46.0
+	var home := c.position
+	var base := c.scale
+	c.z_index = 5
+	var tw := c.create_tween()
+	tw.tween_property(c, "position:x", home.x - dx * 0.15, t(0.08)).set_trans(Tween.TRANS_SINE)  # замах
+	tw.tween_property(c, "position:x", home.x + dx, t(0.12)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(c, "scale", base * 1.06, t(0.12))
+	tw.tween_interval(t(0.08))
+	tw.tween_property(c, "position:x", home.x, t(0.22)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(c, "scale", base, t(0.22))
+	tw.tween_callback(func() -> void: c.z_index = 2 if c.get_meta("focus", false) else 0)
+
+
+## Тот, кто ходит, — карточка чуть крупнее; остальные — обычного размера.
+static func focus(c: Control, on: bool) -> void:
+	if not is_instance_valid(c):
+		return
+	var want := Vector2(1.06, 1.06) if on else Vector2.ONE
+	if c.scale.is_equal_approx(want) or c.get_meta("focus", false) == on:
+		return
+	c.set_meta("focus", on)
+	c.pivot_offset = c.size / 2.0
+	c.z_index = 2 if on else 0
+	c.create_tween().tween_property(c, "scale", want, t(0.18)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 ## Появление: карточка выпрыгивает из ничего.
 static func pop_in(c: Control) -> void:
 	if not is_instance_valid(c):

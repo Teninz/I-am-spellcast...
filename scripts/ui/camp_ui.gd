@@ -318,10 +318,11 @@ func _wizard_column(i: int) -> Control:
 		card.add_child(flat)
 	# Содержимое — строго внутри рамки (доли от размера рамки), без прокрутки.
 	var col := VBoxContainer.new()
-	col.anchor_left = 0.095
-	col.anchor_right = 0.905
-	col.anchor_top = 0.155
-	col.anchor_bottom = 0.935
+	# Зелёное поле рамки: x 11–89 %, y 13–91 %; ещё отступ от рваного края и угловых накладок.
+	col.anchor_left = 0.14
+	col.anchor_right = 0.86
+	col.anchor_top = 0.16
+	col.anchor_bottom = 0.875
 	col.add_theme_constant_override("separation", 5)
 	col.clip_contents = true
 	card.add_child(col)
@@ -333,7 +334,7 @@ func _wizard_column(i: int) -> Control:
 	col.add_child(head)
 	var face_tex := Art.portrait_head(w.class_id, Art.portrait_state(w.hp, w.max_hp(), w.zombie))
 	if face_tex:
-		var face := Art.portrait_rect(face_tex, Vector2(46, 60))
+		var face := Art.portrait_rect(face_tex, Vector2(40, 52))
 		if not w.alive():
 			face.modulate = Color(0.45, 0.45, 0.5)
 		head.add_child(face)
@@ -379,7 +380,7 @@ func _wizard_column(i: int) -> Control:
 		for k in pending:
 			var o: Dictionary = adventure.offers[k]
 			var tile := _tile(_offer_texture(o), 46, true, sel.get("type", "") == "offer" and int(sel.k) == k, _offer_rarity_of(o))
-			tile.tooltip_text = adventure.offer_name(o)
+			_set_tip(tile, adventure.offer_name(o), _offer_rarity_of(o), Array(_offer_text(o).split("\n", false)))
 			tile.pressed.connect(_select.bind(i, {"type": "offer", "k": k}))
 			_glowing.append(tile)
 			loot_row.add_child(tile)
@@ -387,7 +388,6 @@ func _wizard_column(i: int) -> Control:
 
 	# Инвентарь: книги, предметы, шляпа, ботинки. Подсвечены слоты, куда можно положить выбранную добычу.
 	var target := _loot_target(sel)
-	col.add_child(_section("Книги %d/%d" % [w.books.size(), w.max_books]))
 	var books_row := HBoxContainer.new()
 	books_row.add_theme_constant_override("separation", 6)
 	for n in maxi(w.max_books, w.books.size()):
@@ -395,12 +395,16 @@ func _wizard_column(i: int) -> Control:
 		var tile := _tile(Art.book(b) if b != "" else null, 52, false,
 			sel.get("type", "") == "book" and sel.get("id", "") == b and b != "",
 			adventure.books[b].rarity if b != "" else "", 1.3)
-		tile.tooltip_text = adventure.books[b].name if b != "" else "Пустой слот книги"
+		if b != "":
+			_set_tip(tile, adventure.books[b].name, adventure.books[b].rarity, _book_lines(b, w))
+		else:
+			tile.tooltip_text = "Пустой слот книги · занято %d из %d" % [w.books.size(), w.max_books]
 		var glow: bool = target == "book" and (b == "" and _has_key(sel, "take") or b != "" and _has_key(sel, "swap:" + b))
 		if glow:
 			_glowing.append(tile)
 			var key := _offer_key(sel, "take" if b == "" else "swap:" + b)
 			tile.tooltip_text += "\nКлик — положить сюда: %s" % _buttons[key].text
+			tile.tip_lines = tile.tip_lines + ["Клик — положить сюда: %s" % _buttons[key].text]
 			tile.pressed.connect(_press.bind(key))
 		elif b != "":
 			tile.pressed.connect(_select.bind(i, {"type": "book", "id": b}))
@@ -413,11 +417,10 @@ func _wizard_column(i: int) -> Control:
 			wear.offset_top = -18
 			wear.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tile.add_child(wear)
-			tile.tooltip_text += " (износ %d/%d)" % [w.wear_of(b), Wizard.WEAR_LIMIT]
+			pass
 		books_row.add_child(tile)
 	col.add_child(books_row)
 
-	col.add_child(_section("Предмет%s · Шляпа · Ботинки" % ("ы" if w.max_items > 1 else "")))
 	var gear_row := HBoxContainer.new()
 	gear_row.add_theme_constant_override("separation", 6)
 	var slots: Array = ["item"]
@@ -445,6 +448,14 @@ func _wizard_column(i: int) -> Control:
 				tip = "Шляпы нет" if slot == "hat" else "Ботинок нет"
 		var tile := _tile(tex, 46, false, sel.get("type", "") == slot, rarity)
 		tile.tooltip_text = tip
+		if slot in ["item", "item2"]:
+			var iid: String = w.item if slot == "item" else w.item2
+			if iid != "":
+				_set_tip(tile, adventure.items[iid].name, "", ["Расходуемый предмет", adventure.items[iid].text])
+		elif tex != null:
+			var eq := w.equipment(slot)
+			_set_tip(tile, eq.name, eq.rarity, [("Шляпа" if slot == "hat" else "Ботинки") + " · " + RARITY_NAMES[eq.rarity],
+				_equipment_text(eq).substr(_equipment_text(eq).find(": ") + 2)])
 		var glow_key := ""
 		if target == "item" and slot == ("item" if w.item == "" or w.max_items < 2 else "item2") and _has_key(sel, "take"):
 			glow_key = _offer_key(sel, "take")
@@ -453,6 +464,7 @@ func _wizard_column(i: int) -> Control:
 		if glow_key != "":
 			_glowing.append(tile)
 			tile.tooltip_text += "\nКлик — %s" % _buttons[glow_key].text.to_lower()
+			tile.tip_lines = tile.tip_lines + ["Клик — %s" % _buttons[glow_key].text.to_lower()]
 			tile.pressed.connect(_press.bind(glow_key))
 		elif tex != null:
 			tile.pressed.connect(_select.bind(i, {"type": slot}))
@@ -463,6 +475,21 @@ func _wizard_column(i: int) -> Control:
 	col.add_child(_details(i, w, sel))
 	_btn_owner = -1
 	return panel
+
+
+## Описание вещи — в карточке при наведении на слот (а не текстом под инвентарём).
+func _set_tip(tile: LootTile, title: String, rarity: String, lines: Array) -> void:
+	tile.tip_title = title
+	tile.tip_color = RARITY_COLORS.get(rarity, Color("ffe9a8"))
+	tile.tip_lines = lines
+	tile.tooltip_text = title
+
+
+func _book_lines(b: String, w: Wizard = null) -> Array:
+	var lines: Array = Array(_offer_text({"kind": "book", "id": b}).split("\n", false))
+	if w != null and w.wear_of(b) > 0:
+		lines.append("Износ %d/%d — на пределе книга порвётся." % [w.wear_of(b), Wizard.WEAR_LIMIT])
+	return lines
 
 
 ## Куда ляжет выбранная добыча: book / item / hat / boots или "".
@@ -509,9 +536,7 @@ func _details(i: int, w: Wizard, sel: Dictionary) -> Control:
 			if r != "":
 				title.add_theme_color_override("font_color", RARITY_COLORS[r])
 			col.add_child(title)
-			col.add_child(row)  # действия — сразу под названием, всегда на виду
-			for line in _offer_text(o).split("\n", false):
-				col.add_child(_small(line))
+			col.add_child(row)  # действия — сразу под названием; описание — при наведении на вещь
 			if o.kind == "book":
 				col.add_child(_local_btn("Открыть книгу", _open_book.bind(o.id)))
 				if not w.can_use_book(o.id):
@@ -526,16 +551,12 @@ func _details(i: int, w: Wizard, sel: Dictionary) -> Control:
 		"book":
 			var b: String = sel.id
 			col.add_child(_label(adventure.books[b].name, 16))
-			var wear := w.wear_of(b)
-			if wear > 0:
-				col.add_child(_small("Износ %d/%d — на пределе книга порвётся." % [wear, Wizard.WEAR_LIMIT]))
 			col.add_child(_local_btn("Открыть книгу", _open_book.bind(b)))
 			prefix = "w%d:book:%s:" % [i, b]
 		"item", "item2":
 			var id: String = w.item if sel.type == "item" else w.item2
 			if id != "":
 				col.add_child(_label(adventure.items[id].name, 16))
-				col.add_child(_small(adventure.items[id].text))
 			if sel.type == "item":
 				prefix = "w%d:item" % i
 		"hat", "boots":
@@ -544,9 +565,8 @@ func _details(i: int, w: Wizard, sel: Dictionary) -> Control:
 				var t := _label(e.name, 16)
 				t.add_theme_color_override("font_color", RARITY_COLORS.get(e.rarity, Color.WHITE))
 				col.add_child(t)
-				col.add_child(_small(_equipment_text(e)))
 		_:
-			col.add_child(_small("Кликни по вещи в инвентаре, чтобы прочитать о ней и отдать или выбросить."))
+			col.add_child(_small("Наведи на вещь — появится описание. Кликни — чтобы отдать или выбросить."))
 	if row.get_parent() == null:
 		col.add_child(row)
 	if prefix != "":
@@ -579,8 +599,8 @@ func _offer_rarity_of(o: Dictionary) -> String:
 
 
 ## Слот инвентаря: картинка в рамке (цвет редкости), выделенный — золотая рамка.
-func _tile(tex: Texture2D, px: int, loot: bool, selected: bool, rarity: String, tall: float = 1.0) -> Button:
-	var b := Button.new()
+func _tile(tex: Texture2D, px: int, loot: bool, selected: bool, rarity: String, tall: float = 1.0) -> LootTile:
+	var b := LootTile.new()
 	b.custom_minimum_size = Vector2(px, px * tall)
 	b.focus_mode = Control.FOCUS_NONE
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -635,8 +655,8 @@ func _action_btn(key: String) -> Button:
 	var e: Dictionary = _buttons[key]
 	var b := Button.new()
 	b.text = e.text
-	b.add_theme_font_size_override("font_size", 13)
-	b.custom_minimum_size = Vector2(0, 30)
+	b.add_theme_font_size_override("font_size", 12)
+	b.custom_minimum_size = Vector2(0, 26)
 	var owner: int = e.owner
 	b.disabled = NetSession.online() and owner >= 0 and not adventure.controls(adventure.wizards[owner], NetSession.my_id())
 	b.pressed.connect(_press.bind(key))

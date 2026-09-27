@@ -129,6 +129,7 @@ func _add_card(u: Unit) -> void:
 	if _cards_ready and _anim():
 		Fx.pop_in(card)
 		await get_tree().process_frame
+		await get_tree().process_frame  # контейнер расставляет карточки на следующем кадре
 		if is_instance_valid(card):
 			Fx.puff(self, Fx.center(card))
 
@@ -156,8 +157,8 @@ func _advance() -> void:
 		if combat.outcome != "" or state == State.OVER:
 			return
 		if _anim() and _cards.has(u.id):
-			Fx.lunge(_cards[u.id], u.side == Unit.ENEMIES)
-			await _wait(0.12)
+			Fx.charge(_cards[u.id], u.side == Unit.ENEMIES)
+			await _wait(0.2)
 			if combat.outcome != "" or state == State.OVER:
 				return
 		combat.enemy_act(u)
@@ -771,6 +772,8 @@ func _refresh() -> void:
 			targetable = _ability_targets().has(u)
 		card.disabled = state in [State.CHOOSE_TARGET, State.ITEM_TARGET, State.ABILITY_TARGET] and not targetable
 		card.modulate = Color(1, 1, 1, 1) if u.alive() else Color(1, 1, 1, 0.35)
+		if _anim():
+			Fx.focus(card, u == actor and u.alive())
 	_ability_label.text = ""
 	if actor and actor.is_wizard() and actor.wizard.item != "":
 		_ability_label.text = "Предмет: %s — %s" % [adventure.items[actor.wizard.item].name,
@@ -1870,6 +1873,7 @@ func _build_ui() -> void:
 	var party_scroll := ScrollContainer.new()
 	party_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	party_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	party_scroll.clip_contents = false  # увеличенная карточка того, кто ходит, не обрезается
 	party_col.add_child(party_scroll)
 	_party_box = VBoxContainer.new()
 	_party_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2058,6 +2062,7 @@ func _build_ui() -> void:
 	var enemy_scroll := ScrollContainer.new()
 	enemy_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	enemy_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	enemy_scroll.clip_contents = false  # враг в броске выезжает из колонки
 	enemy_col.add_child(enemy_scroll)
 	_enemy_box = VBoxContainer.new()
 	_enemy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2078,9 +2083,9 @@ func _build_ui() -> void:
 
 func _make_card(u: Unit) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(260, 98)  # пропорции рамки 512×192
+	b.custom_minimum_size = Vector2(260, 104)
 	if u.creature:
-		b.custom_minimum_size = Vector2(260, 82)  # существа — чуть ниже, чтобы отряд влезал
+		b.custom_minimum_size = Vector2(260, 88)  # существа — чуть ниже, чтобы отряд влезал
 	b.pressed.connect(_on_card_pressed.bind(u))
 	var frame_name := "card_party" if u.side == Unit.PARTY else ("card_boss" if u.is_boss else ("card_leader" if u.is_leader else "card_enemy"))
 	var box: StyleBox = Art.frame(frame_name, 40, 0.42)
@@ -2106,8 +2111,10 @@ func _make_card(u: Unit) -> Button:
 	var margin := MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 14 if side in ["left", "right"] else 10)
+	# Отступы — внутрь узорной рамки (её край ≈ 17 px), чтобы лицо, имя и ЗД не залезали на рамку.
+	var pads := {"left": 16, "right": 20, "top": 14, "bottom": 13}
+	for side in pads:
+		margin.add_theme_constant_override("margin_" + side, pads[side])
 	b.add_child(margin)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2121,7 +2128,7 @@ func _make_card(u: Unit) -> Button:
 	else:
 		face_tex = Art.enemy_face(u.name) if ringed else Art.enemy_head(u.name)
 	if face_tex != null:
-		var av := Art.avatar(face_tex, _ring_kind(u), 82)
+		var av := Art.avatar(face_tex, _ring_kind(u), 60 if u.creature else 74)
 		row.add_child(av)
 		b.set_meta("avatar", av)
 	var col := VBoxContainer.new()

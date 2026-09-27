@@ -41,6 +41,13 @@ func _process(_delta: float) -> bool:
 	if s.get_script() == CampUI and not camp_shot:
 		camp_shot = true
 		busy = true
+		# Подсказка при наведении на первую вещь из добычи.
+		var tiles: Array = s.find_children("*", "LootTile", true, false).filter(func(t): return t.tip_title != "")
+		if not tiles.is_empty():
+			var tip: Control = tiles[0]._make_custom_tooltip("")
+			tip.top_level = true
+			s.add_child(tip)
+			tip.position = tiles[0].get_global_rect().end + Vector2(8, 8)
 		_shot("camp.png", func() -> void:
 			var w: Wizard = game.adventure.wizards[0]
 			s._open_book(w.books[0])
