@@ -71,7 +71,22 @@ func _run(ui) -> void:
 	await create_timer(Fx.t(0.25)).timeout
 	await _shot("6_mass_split")
 	await create_timer(1.0).timeout
-	# 4. Отражение.
+	# 4. Огненный шар (листы из Blender) и Шипящий залп.
+	var fb: float = ui._fly_spell([{"kind": "hit", "caster": me.id, "to": a.id, "aimed": a.id, "turn": ""}], ["F", "F", "F"], "FFF", "fire")
+	await create_timer(Fx.t(0.25)).timeout
+	await _shot("8_fireball")
+	await create_timer(fb - Fx.t(0.25) + Fx.t(0.12)).timeout
+	await _shot("9_explosion")
+	await create_timer(Fx.t(0.3)).timeout
+	await _shot("10_explosion_late")
+	await create_timer(1.2).timeout
+	var vl: float = ui._fly_spell([{"kind": "hit", "caster": me.id, "to": b.id, "aimed": b.id, "turn": ""}], ["F", "F", "W"], "FFW", "fire")
+	await create_timer(Fx.t(0.3)).timeout
+	await _shot("11_volley")
+	await create_timer(vl - Fx.t(0.3) + Fx.t(0.2)).timeout
+	await _shot("12_steam")
+	await create_timer(1.2).timeout
+	# 5. Отражение.
 	ui._fly_spell([{"kind": "hit", "caster": me.id, "to": me.id, "aimed": b.id, "turn": "bounce"}], ["F", "F", "W"], "FFW")
 	await create_timer(Fx.t(0.5)).timeout
 	await _shot("7_bounce")

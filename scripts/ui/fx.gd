@@ -197,6 +197,114 @@ static func bolt(host: Control, from: Vector2, to: Vector2, color: Color, chaos:
 	return dur
 
 
+## Листы кадров из Blender (tools/vfx/render_fx.py): кадров, столбцов.
+const SHEETS := {"fireball": [12, 4], "explosion": [20, 5], "steam": [20, 5]}
+
+
+static func sheet(id: String) -> Texture2D:
+	return Art.texture("res://assets/fx/%s.webp" % id)
+
+
+## Покадровый эффект из листа: проигрывается в точке pos размером px (по ширине кадра).
+## loop — крутится, пока узел не уберут. Возвращает сам спрайт (или null, если листа нет).
+static func flipbook(host: Node, id: String, pos: Vector2, px: float, fps: float = 30.0, loop: bool = false) -> Sprite2D:
+	var tex := sheet(id)
+	if tex == null or not SHEETS.has(id):
+		return null
+	var frames: int = SHEETS[id][0]
+	var cols: int = SHEETS[id][1]
+	var sp := Sprite2D.new()
+	sp.texture = tex
+	sp.hframes = cols
+	sp.vframes = ceili(float(frames) / cols)
+	sp.top_level = true
+	sp.z_index = 21
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	host.add_child(sp)
+	sp.global_position = pos
+	sp.scale = Vector2.ONE * (px / (tex.get_width() / float(cols)))
+	var dur := t(frames / fps)
+	var tw := sp.create_tween()
+	if loop:
+		tw.set_loops()
+	tw.tween_method(func(k: float) -> void: sp.frame = mini(frames - 1, int(k * frames)), 0.0, 1.0, maxf(dur, 0.05))
+	if not loop:
+		tw.tween_callback(sp.queue_free)
+	return sp
+
+
+## Снаряд-картинка из листа (огненный шар): летит по дуге носом вперёд, при попадании —
+## покадровый эффект impact (взрыв, пар). via — точка поворота, как у bolt.
+## Если листов нет — обычный bolt. Возвращает время полёта.
+static func missile(host: Control, from: Vector2, to: Vector2, color: Color, fly_id: String, impact: String,
+		size: float = 1.0, via: Vector2 = Vector2.INF, delay: float = 0.0) -> float:
+	if sheet(fly_id) == null:
+		return bolt(host, from, to, color, false, via)
+	var turn := via.is_finite()
+	var leg1 := t(0.34) if turn else t(0.4)
+	var leg2 := t(0.3)
+	var total := leg1 + leg2 + t(0.06) if turn else leg1
+	var node := Node2D.new()
+	node.top_level = true
+	node.z_index = 20
+	node.visible = false
+	host.add_child(node)
+	node.global_position = from
+	var ball := flipbook(node, fly_id, from, 150.0 * size, 24.0, true)
+	ball.top_level = false
+	ball.position = Vector2.ZERO
+	var trail := CPUParticles2D.new()
+	trail.texture = dot()
+	trail.amount = 40
+	var glow := CanvasItemMaterial.new()
+	glow.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	trail.material = glow
+	trail.lifetime = 0.3
+	trail.local_coords = false
+	trail.spread = 180.0
+	trail.initial_velocity_min = 10.0
+	trail.initial_velocity_max = 30.0
+	trail.gravity = Vector2(0, -40)
+	trail.scale_amount_min = 0.3 * size
+	trail.scale_amount_max = 0.8 * size
+	trail.color = color
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1, 1, 1, 0.8))
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	trail.color_ramp = ramp
+	node.add_child(trail)
+	node.move_child(trail, 0)
+	var prev := [from]
+	var step := func(k: float, a: Vector2, b: Vector2) -> void:
+		var mid := (a + b) / 2.0 + Vector2(0, -minf(140.0, a.distance_to(b) * 0.25))
+		var p := a.lerp(mid, k).lerp(mid.lerp(b, k), k)
+		var v: Vector2 = p - prev[0]
+		if v.length() > 0.5:
+			ball.rotation = v.angle()  # хвост всегда позади
+		prev[0] = p
+		node.global_position = p
+	var tw := node.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.tween_callback(func() -> void: node.visible = true)
+	if turn:
+		tw.tween_method(step.bind(from, via), 0.0, 1.0, leg1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(func() -> void: burst(host, via, color, 10))
+		tw.tween_interval(t(0.06))
+		tw.tween_method(step.bind(via, to), 0.0, 1.0, leg2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	else:
+		tw.tween_method(step.bind(from, to), 0.0, 1.0, leg1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		ball.visible = false
+		trail.emitting = false
+		if flipbook(host, impact, to + Vector2(0, -10 * size), 250.0 * size) == null:
+			burst(host, to, color, 26)
+		burst(host, to, color.lightened(0.3), int(16 * size)))
+	tw.tween_interval(0.4)
+	tw.tween_callback(node.queue_free)
+	return delay + total
+
+
 ## Шаг полёта по дуге: середина пути приподнята.
 static func _arc_step(k: float, orb: Node2D, a0: Vector2, b0: Vector2) -> void:
 	var mid := (a0 + b0) / 2.0 + Vector2(0, -minf(140.0, a0.distance_to(b0) * 0.25))

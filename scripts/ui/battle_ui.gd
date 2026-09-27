@@ -555,7 +555,7 @@ func _do_cast() -> void:
 	_hold = animate
 	var spell := combat.cast(actor, target, book_id, bag, not again)
 	if animate:
-		var fly := _fly_spell(combat.trace, chips_now, combo)
+		var fly := _fly_spell(combat.trace, chips_now, combo, book_id)
 		if fly > 0.0:
 			await get_tree().create_timer(fly, false).timeout
 		if not is_inside_tree():
@@ -605,9 +605,10 @@ func _release() -> void:
 ## до середины экрана и оттуда к новой цели; отражённый — от цели обратно к магу; массовое —
 ## одним шаром до развилки и врассыпную; молния — ломаными разрядами, перескоки ветвятся от цели.
 ## Возвращает, сколько ждать до последнего попадания.
-func _fly_spell(trace: Array, chips: Array, combo: String) -> float:
+func _fly_spell(trace: Array, chips: Array, combo: String, book: String = "") -> float:
 	var chaos := chips.has(ChipBag.CHAOS)
 	var color := _spell_color(chips)
+	var look: Dictionary = SPELL_FX.get("%s:%s" % [book, combo], {})
 	var zap := not chaos and _main_element(chips) == "L"
 	var hits: Array = []
 	var extra: Array = []
@@ -647,7 +648,14 @@ func _fly_spell(trace: Array, chips: Array, combo: String) -> float:
 					via = Fx.center(_cards[h.aimed])
 			_:
 				via = fork
-		if zap and h.turn == "":
+		if not look.is_empty():
+			# Нарисованный снаряд (Blender): огненный шар; залп — несколько маленьких подряд.
+			var n := int(look.get("volley", 1))
+			for k in n:
+				var spread := Vector2(0, (k - (n - 1) / 2.0) * 26.0)
+				land = maxf(land, Fx.missile(self, from + spread, to + spread * 0.6, color, look.fly, look.hit,
+					float(look.get("size", 1.0)), via, Fx.t(0.11) * k))
+		elif zap and h.turn == "":
 			if via.is_finite():
 				Fx.lightning(self, from, via, color)
 				land = maxf(land, Fx.lightning(self, via, to, color, Fx.t(0.05)))
@@ -674,6 +682,13 @@ func _fly_spell(trace: Array, chips: Array, combo: String) -> float:
 	if combo in ["X2", "X3"]:
 		Fx.screen_shake(self, 9.0 if combo == "X3" else 6.0)
 	return after
+
+
+## Заклинания с нарисованными эффектами: «книга:комбо» → снаряд, попадание, размер, залп.
+const SPELL_FX := {
+	"fire:FFF": {"fly": "fireball", "hit": "explosion", "size": 1.0},
+	"fire:FFW": {"fly": "fireball", "hit": "steam", "size": 0.55, "volley": 3},
+}
 
 
 func _main_element(chips: Array) -> String:
