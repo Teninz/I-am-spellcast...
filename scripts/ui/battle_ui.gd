@@ -190,8 +190,16 @@ func _make_token(u: Unit) -> Button:
 	b.flat = true
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(62, 78)
-	b.pressed.connect(_on_card_pressed.bind(u))
+	b.pressed.connect(func() -> void:
+		if state in [State.CHOOSE_TARGET, State.ITEM_TARGET, State.ABILITY_TARGET] and _can_input():
+			_on_card_pressed(u)
+		else:
+			_open_sheet(u))
 	b.set_meta("token", true)
+	# ПКМ — карточка существа; ЛКМ — цель, если сейчас выбирают цель, иначе тоже карточка.
+	b.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+			_open_sheet(u))
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -245,6 +253,7 @@ func _update_token(t: Button, u: Unit) -> void:
 		st.append("Щит %s" % Unit._num(u.shield))
 	if not st.is_empty():
 		lines.append("Эффекты: " + ", ".join(st))
+	lines.append("Клик — карточка характеристик.")
 	t.tooltip_text = "\n".join(lines)
 
 
@@ -1036,6 +1045,22 @@ func _queue_face(u: Unit, now: bool) -> Control:
 		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(letter)
 	return holder
+
+
+## Карточка характеристик существа или врага.
+func _open_sheet(u: Unit) -> void:
+	for c in get_children():
+		if c is CreatureSheet:
+			c.queue_free()
+	var owner := _unit_by_id_ui(int(u.get_meta("owner", -1)))
+	CreatureSheet.open(self, u, owner.name if owner else "", _faces_left(u))
+
+
+func _unit_by_id_ui(id: int) -> Unit:
+	for x in combat.units:
+		if x.id == id:
+			return x
+	return null
 
 
 ## Призванный на сторону отряда враг из Бестиария: его портрет нарисован лицом влево.
@@ -2260,6 +2285,11 @@ func _make_card(u: Unit) -> Button:
 	if u.creature:
 		b.custom_minimum_size = Vector2(260, 88)  # существа — чуть ниже, чтобы отряд влезал
 	b.pressed.connect(_on_card_pressed.bind(u))
+	if not u.is_wizard():
+		b.gui_input.connect(func(e: InputEvent) -> void:
+			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+				_open_sheet(u))
+		b.tooltip_text = "ПКМ — карточка характеристик"
 	var frame_name := "card_party" if u.side == Unit.PARTY else ("card_boss" if u.is_boss else ("card_leader" if u.is_leader else "card_enemy"))
 	var box: StyleBox = Art.frame(frame_name, 40, 0.42)
 	if box == null:
