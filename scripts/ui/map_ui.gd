@@ -63,7 +63,6 @@ func _ready() -> void:
 		pr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		pr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		pr.modulate = Color(0.5, 0.47, 0.44)
 		pr.clip_contents = true
 		pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		map_panel.add_child(pr)

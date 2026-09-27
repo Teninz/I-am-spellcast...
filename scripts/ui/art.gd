@@ -173,7 +173,6 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	f.material = circle_material()
-	f.self_modulate = Color(1.08, 1.08, 1.08)  # портреты тёмные — чуть светлее, без сдвига цвета
 	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -207,37 +206,14 @@ static func circle_material() -> ShaderMaterial:
 		sh.code = """
 shader_type canvas_item;
 void fragment() {
-	vec4 c = texture(TEXTURE, UV);
+	// COLOR уже содержит цвет картинки — меняем только прозрачность по кругу, цвета не трогаем.
 	float d = distance(UV, vec2(0.5));
-	c.a *= 1.0 - smoothstep(0.485, 0.5, d);
-	COLOR = c * COLOR;
+	COLOR.a *= 1.0 - smoothstep(0.485, 0.5, d);
 }
 """
 		_circle = ShaderMaterial.new()
 		_circle.shader = sh
 	return _circle
-
-
-static var _backdrop: ShaderMaterial = null
-
-
-## Фон приглушён только сам (не интерфейс): меньше насыщенности и оранжевого зарева,
-## чтобы карточки и лица читались. Тени не поднимаются — без белёсой дымки.
-static func backdrop_material() -> ShaderMaterial:
-	if _backdrop == null:
-		var sh := Shader.new()
-		sh.code = """
-shader_type canvas_item;
-void fragment() {
-	vec4 c = texture(TEXTURE, UV);
-	float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-	vec3 g = mix(vec3(l), c.rgb, 0.8);
-	COLOR = vec4(g * 0.92, c.a) * COLOR;
-}
-"""
-		_backdrop = ShaderMaterial.new()
-		_backdrop.shader = sh
-	return _backdrop
 
 
 ## Обложка книги в рамке цвета редкости. Без картинки — цветная плашка с названием.
@@ -381,7 +357,7 @@ static func frame(name: String, margin: float, factor: float = 0.5, content: flo
 
 
 ## Фон экрана: картинка «на весь экран» с затемнением сверху.
-static func background(name: String, dim: float = 0.35, fallback: String = "") -> Control:
+static func background(name: String, _dim: float = 0.0, fallback: String = "") -> Control:
 	var tex := Art.texture("res://assets/ui/%s.png" % name)
 	if tex == null and fallback != "":
 		tex = Art.texture("res://assets/ui/%s.png" % fallback)
@@ -400,13 +376,7 @@ static func background(name: String, dim: float = 0.35, fallback: String = "") -
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tr.material = backdrop_material()
-		holder.add_child(tr)
-		var shade := ColorRect.new()
-		shade.color = Color(0.06, 0.05, 0.09, dim)
-		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(shade)
+		holder.add_child(tr)  # фон как есть: без затемнения и подкраски
 	return holder
 
 

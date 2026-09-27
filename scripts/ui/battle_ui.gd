@@ -96,6 +96,7 @@ func start_battle() -> void:
 	combat.turn_started.connect(func(u: Unit) -> void: _log.start_turn(u))
 	combat.hp_changed.connect(_float_number)
 	combat.unit_added.connect(_add_card)
+	combat.spell_triggered.connect(_announce_spell)
 	combat.status_applied.connect(_stamp)
 	var enc := adventure.encounter()
 	_title_label.text = "Уровень %d из %d — %s" % [adventure.level, adventure.level_count(), enc.name]
@@ -382,6 +383,10 @@ func _do_reroll(slot: int) -> void:
 	_update_chips()
 	if state == State.READY:
 		_show_preview()
+
+
+func current_is_enemy() -> bool:
+	return actor != null and not actor.is_wizard()
 
 
 ## Анимации включены: не в тестах и не выключены в настройках.
@@ -702,7 +707,6 @@ func _set_state(s: State) -> void:
 	state = s
 	if _bag_button:
 		_bag_button.disabled = s != State.DRAWING
-		_bag_button.modulate = Color(1, 1, 1) if s == State.DRAWING else Color(0.6, 0.6, 0.6)
 	_cast_button.disabled = s != State.READY
 	_item_button.visible = s in [State.CHOOSE_TARGET, State.ITEM_TARGET] and actor != null \
 		and actor.is_wizard() and combat.can_use_item(actor)
@@ -1036,7 +1040,7 @@ func _open_book(id: String, choosing: bool) -> void:
 	if Luck.has_luck(actor) and not before_draw:
 		note = "Фишки уже тянутся — удачу можно вложить только до первой фишки."
 	var view := BookView.open(self, books[id], combat.book_odds(actor, id), can, _luck_plans.get(id, {}),
-		"Кастовать из этой книги" if choosing and _can_input() else "", note)
+		(("Использовать механическую овцу" if id == "sheep" else "Кастовать из этой книги") if choosing and _can_input() else ""), note)
 	view.plan_changed.connect(func(plan: Dictionary) -> void:
 		_luck_plans[id] = plan
 		# Книга уже выбрана, фишек ещё нет — пересобираем мешочек с новой удачей.
@@ -1381,27 +1385,135 @@ func _stamp(u: Unit, id: String) -> void:
 	if fast or not _cards.has(u.id):
 		return
 	Sfx.play("status_good" if Unit.BUFFS.has(id) or id in ["shield", "fortify"] else "status_bad")
-	var card: Control = _cards[u.id]
-	var big := StatusIcon.make(id, "", 0, 128)
-	big.rich_tooltip = false
-	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	big.top_level = true
-	add_child(big)
-	var rect := card.get_global_rect()
-	big.size = Vector2(128, 128)
-	big.pivot_offset = Vector2(64, 64)
-	big.global_position = rect.get_center() - Vector2(64, 80)
-	big.scale = Vector2(1.4, 1.4)
-	big.modulate.a = 0.0
-	var target_pos := Vector2(rect.position.x + 8 - 64 + 19, rect.end.y - 27 - 64)
-	var tw := create_tween()
-	tw.tween_property(big, "modulate:a", 1.0, 0.12)
-	tw.parallel().tween_property(big, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.35)
-	tw.tween_property(big, "global_position", target_pos, 0.25).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(big, "scale", Vector2(0.3, 0.3), 0.25).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(big, "modulate:a", 0.0, 0.25)
-	tw.tween_callback(big.queue_free)
+	var icon := StatusIcon.make(id, "", 0, 56)
+	icon.rich_tooltip = false
+	var kind: String = GameData.statuses().get(id, {}).get("kind", "special")
+	_announce("%s: %s" % [u.name, Combat.status_name(id)], icon, StatusIcon.FRAME_COLORS.get(kind, Color("ffd35a")))
+
+
+# --- Объявления посреди экрана (эффекты, атаки врагов) --------------------------
+
+## Заклинание «из ниоткуда» — крупно посреди экрана: как сработало, название, книга и что делает.
+func _announce_spell(caster: Unit, spell: Dictionary, book: String, how: String) -> void:
+	if fast:
+		return
+	var panel := PanelContainer.new()
+	panel.top_level = true
+	panel.z_index = 8
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.09, 0.06, 0.13, 0.96)
+	box.border_color = Color("b070ff")
+	box.set_border_width_all(3)
+	box.set_corner_radius_all(10)
+	box.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", box)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(row)
+	if books.has(book):
+		var cover := Art.book_cover(books[book], 64)
+		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(cover)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(col)
+	var head := _label("%s · %s" % [how, caster.name], 15)
+	head.add_theme_color_override("font_color", Color("d8b8ff"))
+	col.add_child(head)
+	var title := _label("«%s»" % spell.get("name", "?"), 26)
+	title.add_theme_color_override("font_color", Color("ffe9a8"))
+	col.add_child(title)
+	if books.has(book):
+		var from := _label("из книги «%s»" % books[book].name, 14)
+		from.modulate = Color(1, 1, 1, 0.75)
+		col.add_child(from)
+	var eff := _label(String(spell.get("effect", "")), 18)
+	eff.autowrap_mode = TextServer.AUTOWRAP_WORD
+	eff.custom_minimum_size = Vector2(460, 0)
+	col.add_child(eff)
+	add_child(panel)
+	await get_tree().process_frame
+	if not is_instance_valid(panel):
+		return
+	var vp := get_viewport_rect().size
+	panel.position = Vector2((vp.x - panel.size.x) / 2.0, vp.y * 0.12)
+	panel.pivot_offset = panel.size / 2.0
+	panel.scale = Vector2(0.6, 0.6)
+	panel.modulate.a = 0.0
+	if _anim():
+		Fx.burst(self, panel.position + panel.size / 2.0, Color("b070ff"), 30, true)
+	var tw := panel.create_tween()
+	tw.tween_property(panel, "scale", Vector2.ONE, Settings.delay(0.2)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(panel, "modulate:a", 1.0, Settings.delay(0.15))
+	tw.tween_interval(Settings.delay(3.2))
+	tw.tween_property(panel, "modulate:a", 0.0, Settings.delay(0.4))
+	tw.tween_callback(panel.queue_free)
+
+
+var _announcer: VBoxContainer = null
+
+
+## Плашка посреди экрана: иконка и текст. Несколько подряд встают столбиком и гаснут по очереди,
+## не закрывая значки на карточках.
+func _announce(text: String, icon: Control = null, color: Color = Color("ffd35a")) -> void:
+	if fast:
+		if icon:
+			icon.queue_free()
+		return
+	if _announcer == null or not is_instance_valid(_announcer):
+		_announcer = VBoxContainer.new()
+		_announcer.top_level = true
+		_announcer.z_index = 7
+		_announcer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_announcer.alignment = BoxContainer.ALIGNMENT_CENTER
+		_announcer.add_theme_constant_override("separation", 6)
+		add_child(_announcer)
+	var vp := get_viewport_rect().size
+	_announcer.size = Vector2(520, 0)
+	_announcer.position = Vector2((vp.x - 520) / 2.0, vp.y * 0.44)
+	while _announcer.get_child_count() >= 4:
+		var old := _announcer.get_child(0)
+		_announcer.remove_child(old)
+		old.queue_free()
+	var plate := PanelContainer.new()
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.07, 0.06, 0.09, 0.93)
+	box.border_color = color
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(8)
+	box.content_margin_left = 10
+	box.content_margin_right = 14
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	plate.add_theme_stylebox_override("panel", box)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(row)
+	if icon:
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
+	var l := _label(text, 20)
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	l.add_theme_color_override("font_outline_color", Color.BLACK)
+	l.add_theme_constant_override("outline_size", 5)
+	row.add_child(l)
+	_announcer.add_child(plate)
+	plate.pivot_offset = Vector2(120, 30)
+	plate.scale = Vector2(0.7, 0.7)
+	plate.modulate.a = 0.0
+	var tw := plate.create_tween()
+	tw.tween_property(plate, "scale", Vector2.ONE, Settings.delay(0.15)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(plate, "modulate:a", 1.0, Settings.delay(0.12))
+	tw.tween_interval(Settings.delay(1.3))
+	tw.tween_property(plate, "modulate:a", 0.0, Settings.delay(0.35))
+	tw.tween_callback(plate.queue_free)
 
 
 func _shout() -> void:
@@ -1422,6 +1534,27 @@ func _shout() -> void:
 
 func _on_log(text: String, kind: String = "info", icon: String = "") -> void:
 	_log.add(text, kind, icon)
+	# Полученные предметы — тоже посреди экрана, с картинкой предмета.
+	if kind == "item" and not fast and text.contains("получает предмет"):
+		var item_name := text.get_slice(": ", 1).trim_suffix(".")
+		var pic: Control = null
+		for id in adventure.items:
+			if adventure.items[id].name == item_name:
+				pic = Art.item_icon(id, 52)
+		_announce(text.trim_suffix("."), pic, Color("ffd35a"))
+	# Неожиданные повороты (наоборот, отражение, призыв, воскрешение, «не сработало») — тоже по центру.
+	if not fast and kind in ["misfire", "reflect", "summon", "revive", "fizzle"]:
+		var tint: Color = {"misfire": Color("b070ff"), "reflect": Color("8fc0ff"), "summon": Color("e0b04a"),
+			"revive": Color("6cf07a"), "fizzle": Color("9a9aa4")}[kind]
+		_announce(text.trim_suffix("."), null, tint)
+	# Атаки и особые приёмы врагов — посреди экрана, с лицом нападающего.
+	if kind in ["enemy", "special", "enemy_heal"] and not fast and current_is_enemy():
+		var face: Control = null
+		if actor and not actor.is_wizard():
+			var tex := Art.enemy_face(actor.name)
+			if tex:
+				face = Art.avatar(tex, _ring_kind(actor), 52)
+		_announce(text.trim_suffix("."), face, Color("e0413a") if kind != "enemy_heal" else Color("6cf07a"))
 	if not fast:
 		var sound: String = {"kill": "down", "special": "enemy_special", "summon": "summon", "luck": "luck"}.get(kind, "")
 		if sound != "":

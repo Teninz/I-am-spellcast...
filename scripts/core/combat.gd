@@ -10,6 +10,8 @@ signal turn_started(u: Unit)
 ## Изменение здоровья или поглощение урона (для всплывающих чисел): kind — damage, heal, block.
 signal hp_changed(u: Unit, amount: float, kind: String)
 signal unit_added(u: Unit)
+## Сработало заклинание «из ниоткуда»: случайное (Дикий всплеск), выбранное судьбой, эхо.
+signal spell_triggered(caster: Unit, spell: Dictionary, book_id: String, how: String)
 ## Эффект наложен (для анимации «штампа» в интерфейсе).
 signal status_applied(u: Unit, status_id: String)
 
@@ -1586,6 +1588,7 @@ func _special(id: String, caster: Unit, who: Unit, spell: Dictionary, book_id: S
 				_log("На %s ещё ничего не кастовали — эху нечего повторить." % who.name, "fizzle")
 				return
 			_log("Эхо: «%s» повторяется по %s." % [last.spell.name, who.name], "misfire")
+			spell_triggered.emit(caster, last.spell, last.book, "Эхо")
 			_nested(caster, who, last.spell, last.book)
 		"copy_buffs":
 			for sid in who.statuses:
@@ -1763,6 +1766,7 @@ func _random_cast(kind: String, caster: Unit, target: Unit, book_id: String) -> 
 		for p in picks:
 			if String(p[1].combo) == want:
 				_log("%s переписывает судьбу и выбирает «%s»." % [caster.name, p[1].name], "luck")
+				spell_triggered.emit(caster, p[1], p[0], "Судьба переписана")
 				_nested(caster, target if target != null and target.alive() else caster, p[1], p[0])
 				return
 	if kind == "pick_spell":
@@ -1775,8 +1779,10 @@ func _random_cast(kind: String, caster: Unit, target: Unit, book_id: String) -> 
 				best = v
 				choice = p
 		_log("%s переписывает судьбу и выбирает «%s»." % [caster.name, choice[1].name], "luck")
+		spell_triggered.emit(caster, choice[1], choice[0], "Судьба переписана")
 	else:
 		_log("Срабатывает «%s» из книги «%s»!" % [choice[1].name, books[choice[0]].name], "chaos")
+		spell_triggered.emit(caster, choice[1], choice[0], "Случайное хаос-заклинание" if kind == "random_chaos" else "Случайное заклинание")
 	var aim := target if target != null and target.alive() else caster
 	_nested(caster, aim, choice[1], choice[0])
 
