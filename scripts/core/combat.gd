@@ -1414,6 +1414,9 @@ func _split(who: Unit, amount: float) -> void:
 		acc -= float(cfg.every)
 		var u := add_enemy(cfg.unit, who.side)
 		u.creature = who.creature
+		if who.has_meta("owner"):
+			u.set_meta("owner", who.get_meta("owner"))
+		u.class_id = who.class_id
 		u.set_meta("spawned_by", who.id)
 		u.set_meta("summoned", true)
 		_log("От %s отделяется %s!" % [who.name, u.name], "summon")

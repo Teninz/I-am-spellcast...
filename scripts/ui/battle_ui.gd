@@ -120,9 +120,11 @@ func start_battle() -> void:
 func _add_card(u: Unit) -> void:
 	if u.creature and u.side == Unit.PARTY:
 		_tip_once("summon", "Призванное существо",
-			"Появилось на стороне отряда и ходит само, как враги. Первым ходом бьёт цель заклинания "
-			+ "(или закрывает собой союзника). У волшебника не больше 2 существ, в конце боя они уходят. "
-			+ "Наведи на значок существа на его карточке — там написано, что оно умеет.")
+			"Появилось под своим волшебником круглым значком и ходит само, как враги. Первым ходом бьёт цель "
+			+ "заклинания (или закрывает собой союзника). У волшебника не больше 2 существ, в конце боя они уходят. "
+			+ "Наведи на значок — там написано, что оно умеет.")
+		_add_token(u)
+		return
 	var card := _make_card(u)
 	(_party_box if u.side == Unit.PARTY else _enemy_box).add_child(card)
 	_cards[u.id] = card
@@ -132,6 +134,128 @@ func _add_card(u: Unit) -> void:
 		await get_tree().process_frame  # контейнер расставляет карточки на следующем кадре
 		if is_instance_valid(card):
 			Fx.puff(self, Fx.center(card))
+
+
+# --- Призванные существа отряда: круглые значки под призывателем ------------------
+
+var _summon_rows := {}  # id призывателя -> HBoxContainer со значками
+
+
+func _add_token(u: Unit) -> void:
+	var row := _summon_row_for(u)
+	var t := _make_token(u)
+	row.add_child(t)
+	row.get_parent().visible = true
+	_cards[u.id] = t
+	_update_token(t, u)
+	if _cards_ready and _anim():
+		Fx.pop_in(t)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		if is_instance_valid(t):
+			Fx.puff(self, Fx.center(t))
+
+
+## Ряд значков сразу под карточкой призывателя: он раздвигает карточки ниже.
+func _summon_row_for(u: Unit) -> HBoxContainer:
+	var owner_id := int(u.get_meta("owner", -1))
+	if not _cards.has(owner_id) or _cards[owner_id].has_meta("token"):
+		owner_id = -1
+		for w in combat.units:
+			if w.is_wizard():
+				owner_id = w.id
+				break
+	if _summon_rows.has(owner_id) and is_instance_valid(_summon_rows[owner_id]):
+		return _summon_rows[owner_id]
+	var holder := MarginContainer.new()
+	holder.add_theme_constant_override("margin_left", 30)
+	holder.add_theme_constant_override("margin_top", -2)
+	holder.add_theme_constant_override("margin_bottom", 4)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(row)
+	_party_box.add_child(holder)
+	if _cards.has(owner_id):
+		_party_box.move_child(holder, _cards[owner_id].get_index() + 1)
+	_summon_rows[owner_id] = row
+	return row
+
+
+func _make_token(u: Unit) -> Button:
+	var b := Button.new()
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(62, 78)
+	b.pressed.connect(_on_card_pressed.bind(u))
+	b.set_meta("token", true)
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.add_theme_constant_override("separation", 1)
+	b.add_child(col)
+	var tex := Art.enemy_face(u.name)
+	var av: Control = Art.avatar(tex, "enemy_summon", 56) if tex else _label(u.name.left(1), 24)
+	av.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(av)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(52, 6)
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.1, 0.1, 0.12, 0.9)
+	bg.set_corner_radius_all(3)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color("4cc46a")
+	fill.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fill)
+	col.add_child(bar)
+	var hp := _label("", 11)
+	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp.add_theme_color_override("font_outline_color", Color.BLACK)
+	hp.add_theme_constant_override("outline_size", 4)
+	hp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(hp)
+	b.set_meta("bar", bar)
+	b.set_meta("hp", hp)
+	return b
+
+
+func _update_token(t: Button, u: Unit) -> void:
+	var bar: ProgressBar = t.get_meta("bar")
+	bar.max_value = u.max_hp
+	bar.value = u.hp
+	var hp: Label = t.get_meta("hp")
+	hp.text = u.hp_text()
+	var cr: Dictionary = GameData.creatures().get(u.class_id, {})
+	var lines: Array[String] = ["%s — ЗД %s" % [u.name, u.hp_text()], String(cr.get("text", "")), "Ходит само, в конце боя уходит."]
+	var st: Array[String] = []
+	for id in u.statuses:
+		st.append(Combat.status_name(id))
+	if u.shield > 0.0:
+		st.append("Щит %s" % Unit._num(u.shield))
+	if not st.is_empty():
+		lines.append("Эффекты: " + ", ".join(st))
+	t.tooltip_text = "\n".join(lines)
+
+
+## Погибшее существо сразу исчезает; пустой ряд прячется.
+func _drop_token(u: Unit) -> void:
+	var t: Control = _cards.get(u.id)
+	_cards.erase(u.id)
+	if t == null or not is_instance_valid(t):
+		return
+	var row := t.get_parent()
+	if _anim():
+		Fx.burst(self, Fx.center(t), Color(0.6, 0.55, 0.5), 14)
+	row.remove_child(t)
+	t.queue_free()
+	if row.get_child_count() == 0:
+		row.get_parent().visible = false
 
 
 # --- Ход -----------------------------------------------------------------
@@ -763,8 +887,16 @@ func _refresh() -> void:
 		return
 	_rebuild_queue()
 	for u in combat.units:
+		if not _cards.has(u.id):
+			continue
 		var card: Button = _cards[u.id]
-		_update_card(card, u)
+		if card.has_meta("token"):
+			if not u.alive():
+				_drop_token(u)
+				continue
+			_update_token(card, u)
+		else:
+			_update_card(card, u)
 		var targetable := state == State.CHOOSE_TARGET and combat.can_target(actor, u)
 		if state == State.ITEM_TARGET:
 			targetable = combat.item_targets(actor, actor.wizard.item).has(u)

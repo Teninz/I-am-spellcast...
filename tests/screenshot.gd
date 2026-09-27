@@ -110,6 +110,9 @@ func _play(ui: Node) -> void:
 					# Призванные существа на поле — посмотреть их портреты в кольцах.
 					ui.combat.summon("bear", ui.actor, Unit.PARTY)
 					ui.combat.summon("skeleton", ui.actor, Unit.PARTY)
+					var first: Unit = ui.combat.party_wizards()[0]
+					ui.combat.summon("wolf", first, Unit.PARTY)
+					ui.combat.summon("owl", first, Unit.PARTY)
 					ui._refresh()
 					ui._build_tutorial()
 					ui._tutorial_step()
