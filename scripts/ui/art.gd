@@ -168,23 +168,32 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	holder.custom_minimum_size = Vector2(px, px)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Маска-круг: лицо — дочерний узел круга с обрезкой по его форме (лица — вырезки из атласа,
+	# поэтому шейдер по UV их не обрезает).
+	var mask := TextureRect.new()
+	mask.texture = circle_texture()
+	mask.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mask.stretch_mode = TextureRect.STRETCH_SCALE
+	mask.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+	mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var f := TextureRect.new()
 	f.texture = face
 	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	f.material = circle_material()
 	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mask.add_child(f)
 	# Кольцо — маска: лицо — круг чуть больше самого широкого места отверстия этого кольца.
 	# Край лица всегда прячется под кольцом: ни зазора внутри, ни лица снаружи.
 	var face_r := ring_hole(ring_kind) + 0.015
 	var inset := (px - face_r * px / 0.4925) / 2.0
-	f.offset_left = inset
-	f.offset_top = inset
-	f.offset_right = -inset
-	f.offset_bottom = -inset
-	holder.add_child(f)
+	mask.offset_left = inset
+	mask.offset_top = inset
+	mask.offset_right = -inset
+	mask.offset_bottom = -inset
+	holder.add_child(mask)
 	var r := TextureRect.new()
 	r.texture = ring_tex
 	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -196,6 +205,23 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	holder.set_meta("face", f)
 	holder.set_meta("ring", r)
 	return holder
+
+
+static var _circle_tex: Texture2D = null
+
+
+## Белый круг со сглаженным краем — маска для лиц.
+static func circle_texture() -> Texture2D:
+	if _circle_tex == null:
+		var n := 256
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var c := (n - 1) / 2.0
+		for y in n:
+			for x in n:
+				var d := Vector2(x - c, y - c).length()
+				img.set_pixel(x, y, Color(1, 1, 1, clampf(c - d, 0.0, 1.0)))
+		_circle_tex = ImageTexture.create_from_image(img)
+	return _circle_tex
 
 
 static var _holes: Dictionary = {}
@@ -493,6 +519,25 @@ static func ui_theme() -> Theme:
 	th.set_color("font_disabled_color", "Button", Color(1, 1, 1, 0.45))
 	th.set_color("font_outline_color", "Button", Color(0.1, 0.06, 0.03))
 	th.set_constant("outline_size", "Button", 4)
+	# Подсказки: у своих карточек-подсказок — только мягкая тень, у простых — тёмная плашка.
+	var tip_panel := StyleBoxFlat.new()
+	tip_panel.draw_center = false
+	tip_panel.set_corner_radius_all(9)
+	tip_panel.shadow_color = Color(0, 0, 0, 0.45)
+	tip_panel.shadow_size = 12
+	tip_panel.set_content_margin_all(0)
+	th.set_stylebox("panel", "TooltipPanel", tip_panel)
+	var tip_label := StyleBoxFlat.new()
+	tip_label.bg_color = Color(0.1, 0.09, 0.13, 0.96)
+	tip_label.border_color = Color(0.88, 0.69, 0.29, 0.6)
+	tip_label.set_border_width_all(1)
+	tip_label.set_corner_radius_all(8)
+	tip_label.content_margin_left = 10
+	tip_label.content_margin_right = 10
+	tip_label.content_margin_top = 6
+	tip_label.content_margin_bottom = 6
+	th.set_stylebox("normal", "TooltipLabel", tip_label)
+	th.set_color("font_color", "TooltipLabel", Color("f3ead6"))
 	return th
 
 

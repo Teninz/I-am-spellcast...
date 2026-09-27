@@ -169,6 +169,7 @@ func _card(cid: String) -> Control:
 	var cover: Control
 	if Art.portrait(cid) != null:
 		cover = Art.portrait_rect(Art.portrait_head(cid), Vector2(96, 128))
+		cover.size_flags_vertical = Control.SIZE_FILL  # портрет — на всю высоту карточки, не съезжает
 		if not open:
 			cover.modulate = Color(0.35, 0.35, 0.4)  # закрытый класс — в тени
 	else:
@@ -189,6 +190,8 @@ func _card(cid: String) -> Control:
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # текст — в ширину карточки, перенос целыми словами
 	info.add_theme_font_size_override("font_size", 12)
+	info.max_lines_visible = 5  # длинное описание не вылезает за карточку; полное — в подсказке
+	b.tooltip_text = info.text
 	info.modulate = Color(1, 1, 1, 0.85 if open else 0.6)
 	text.add_child(info)
 	for c in [m, row, text, name_l, info, cover]:

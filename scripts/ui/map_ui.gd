@@ -6,10 +6,10 @@ signal chosen(node_id: int)
 
 const SITE_COLORS := {
 	"path": Color("9a7650"),
-	"library": Color("4d7fc4"),
-	"cellar": Color("5aa05a"),
+	"library": Color("3f6f9e"),
+	"cellar": Color("5b8a45"),
 }
-const BOSS_COLOR := Color("c0392b")
+const BOSS_COLOR := Color("9e2b20")  # как сургучная печать
 const GOLD := Color("ffd35a")
 
 var adventure: Adventure
@@ -343,21 +343,28 @@ class MapView:
 			if _is_choice(id):
 				var pulse := 0.5 + 0.5 * sin(_time * 4.0)
 				draw_circle(p, r + 6.0 + 3.0 * pulse, Color(GOLD, 0.25 + 0.25 * pulse))
-			# Объём: тёмный обод, основной круг, блик сверху слева.
-			draw_circle(p + Vector2(0, 2), r + 1.5, Color(0, 0, 0, 0.45))
-			draw_circle(p, r, fill.darkened(0.25))
-			draw_circle(p + Vector2(-r * 0.12, -r * 0.12), r * 0.82, fill)
-			draw_circle(p + Vector2(-r * 0.35, -r * 0.38), r * 0.28, Color(1, 1, 1, 0.22 if not closed else 0.06))
-			var ring := Color(0, 0, 0, 0.7)
+			# Пергаментный жетон: мягкая тень, чернильный обод, выцветшая заливка, тонкое внутреннее кольцо.
+			var ink := Color("2e1f12")
+			var faded := fill.lerp(Color("e3cf9f"), 0.3) if not closed else Color(0.55, 0.5, 0.42, 0.5)
+			draw_circle(p + Vector2(1.5, 2.5), r + 2.0, Color(0.15, 0.1, 0.05, 0.35))
+			draw_circle(p, r + 1.5, ink)
+			draw_circle(p, r - 1.0, faded)
+			draw_circle(p + Vector2(0, r * 0.18), r * 0.78, faded.darkened(0.12))  # тень снизу — «вдавлено» в бумагу
+			draw_circle(p - Vector2(0, r * 0.05), r * 0.72, faded)
+			draw_arc(p, r * 0.72, 0, TAU, 40, Color(ink, 0.55), 1.2, true)
+			draw_arc(p, r - 1.0, PI * 1.1, PI * 1.6, 12, Color(1, 0.97, 0.85, 0.35), 1.5, true)  # блик на ободе
+			var ring := Color(0, 0, 0, 0)
 			if adventure.path.has(id):
 				ring = GOLD
 			elif id == hover:
-				ring = Color.WHITE
-			draw_arc(p, r, 0, TAU, 32, ring, 2.5 if ring != Color(0, 0, 0, 0.7) else 1.5, true)
+				ring = Color("fff4dc")
+			if ring.a > 0.0:
+				draw_arc(p, r + 3.5, 0, TAU, 40, ring, 2.5, true)
 			if id == adventure.node_id:
-				draw_circle(p, r * 0.4, GOLD)
+				draw_circle(p, r * 0.36, Color("2e1f12"))
+				draw_circle(p, r * 0.28, GOLD)
 			elif not adventure.is_revealed(id) and not closed:
-				_centered(font, "?", p, 13, Color(1, 1, 1, 0.8))
+				_centered(font, "?", p, 14, Color("fff4dc"))
 			if _is_choice(id) or (boss and not closed):
 				var label: String = GameData.load_encounter(n.encounter).get("name", "") if adventure.is_revealed(id) else "?"
 				_centered(font, label, p + Vector2(0, r + 16), 13, Color.WHITE)

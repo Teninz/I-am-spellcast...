@@ -289,6 +289,7 @@ static func chip_fly(host: Control, tex: Texture2D, from: Vector2, to: Vector2, 
 	s.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	s.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	s.size = Vector2(px, px)
+	s.material = Art.circle_material()  # у фишки квадратная картинка с фоном — обрезаем по кругу
 	s.pivot_offset = s.size / 2.0
 	host.add_child(s)
 	s.global_position = from - s.size / 2.0

@@ -410,6 +410,8 @@ func _wizard_column(i: int) -> Control:
 			tile.pressed.connect(_select.bind(i, {"type": "book", "id": b}))
 		if b != "" and b != "sheep" and not w.stats().no_wear:
 			var left := w.life_of(b)
+			if left <= 2:
+				tile.set_wear(left)
 			var wear := _label("%d %s" % [left, _battles_word(left)], 11)
 			wear.add_theme_color_override("font_color", Color("ff8a6a") if left <= 1 else (Color("ffd35a") if left == 2 else Color.WHITE))
 			wear.add_theme_color_override("font_outline_color", Color.BLACK)
