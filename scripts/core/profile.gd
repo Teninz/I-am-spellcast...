@@ -11,6 +11,47 @@ var runs := 0
 var victories := 0
 var achievements: Dictionary = {}  # id -> true
 
+## Особые умения боссов, которые игрок уже видел в деле (до этого их описание — «???»).
+const BOSS_PASSIVES := ["split", "mount", "mounted", "rat_guard"]
+static var _seen: Array = []
+static var _seen_path := ""
+
+
+static func _load_seen() -> void:
+	if _seen_path == path:
+		return
+	_seen_path = path
+	_seen = []
+	if FileAccess.file_exists(path):
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if data is Dictionary:
+			_seen = data.get("seen_passives", []).duplicate()
+
+
+## Знает ли игрок, что делает это умение босса.
+static func knows_passive(id: String) -> bool:
+	if not BOSS_PASSIVES.has(id):
+		return true
+	_load_seen()
+	return _seen.has(id)
+
+
+## Умение сработало на глазах у игрока — описание открывается навсегда.
+static func learn_passive(id: String) -> void:
+	_load_seen()
+	if _seen.has(id):
+		return
+	_seen.append(id)
+	var data: Dictionary = {}
+	if FileAccess.file_exists(path):
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if d is Dictionary:
+			data = d
+	data["seen_passives"] = _seen
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(data, "  "))
+
 
 static func load_or_new(classes: Dictionary) -> Profile:
 	var p := Profile.new()
@@ -30,10 +71,11 @@ static func load_or_new(classes: Dictionary) -> Profile:
 
 
 func save() -> void:
+	_load_seen()  # до открытия на запись: иначе файл уже пуст
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"unlocked": unlocked, "runs": runs,
-			"victories": victories, "achievements": achievements}, "  "))
+			"victories": victories, "achievements": achievements, "seen_passives": _seen}, "  "))
 
 
 ## Итог приключения. Возвращает список только что открытых классов.

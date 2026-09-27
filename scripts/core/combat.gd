@@ -12,6 +12,8 @@ signal hp_changed(u: Unit, amount: float, kind: String)
 signal unit_added(u: Unit)
 ## Сработало заклинание «из ниоткуда»: случайное (Дикий всплеск), выбранное судьбой, эхо.
 signal spell_triggered(caster: Unit, spell: Dictionary, book_id: String, how: String)
+## Особое умение (пассивка босса) сработало — интерфейс раскрывает его описание.
+signal passive_triggered(u: Unit, passive_id: String)
 ## Эффект наложен (для анимации «штампа» в интерфейсе).
 signal status_applied(u: Unit, status_id: String)
 
@@ -1280,6 +1282,7 @@ func _hit(who: Unit, amount: float, source: Unit, element: String = "?", pierce:
 	var guard := 0 if pierce else who.defense()
 	if who.passive == "rat_guard" and living(who.side).size() > 1:
 		guard += 1
+		passive_triggered.emit(who, "rat_guard")
 	amount = maxf(1.0, amount - guard)
 	_hurt(who, amount, source)
 
@@ -1363,12 +1366,14 @@ func _on_down(who: Unit, source: Unit) -> void:
 		_revive(who, ceilf(who.max_hp / 2.0))
 		return
 	if who.passive == "mount":
+		passive_triggered.emit(who, "mount")
 		for rider in living(who.side):
 			if rider.has_meta("dismount"):
 				var d: Dictionary = rider.get_meta("dismount")
 				rider.speed = float(d.speed)
 				rider.attack += int(d.damage)
 				rider.remove_meta("dismount")
+				passive_triggered.emit(rider, "mounted")
 				_log("%s спешивается: медленнее, но злее (урон +%d)!" % [rider.name, int(d.damage)], "special", "leader")
 	if who.is_leader:
 		_morale_break(who, source)
@@ -1412,6 +1417,7 @@ func _split(who: Unit, amount: float) -> void:
 	var acc := float(who.get_meta("split_acc", 0.0)) + amount
 	while acc >= float(cfg.every):
 		acc -= float(cfg.every)
+		passive_triggered.emit(who, "split")
 		var u := add_enemy(cfg.unit, who.side)
 		u.creature = who.creature
 		if who.has_meta("owner"):

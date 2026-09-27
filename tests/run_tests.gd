@@ -18,6 +18,7 @@ func _initialize() -> void:
 	test_summons(books)
 	test_every_spell_runs(books)
 	test_pick_and_stats(books)
+	test_boss_passive_reveal()
 	test_rat_pack_simulation(books)
 	test_rest_and_fortify()
 	test_loot_rules()
@@ -91,8 +92,7 @@ func test_art_assets(books: Dictionary) -> void:
 			encs.append("res://assets/ui/bg_battle_%s.png" % f.get_basename())
 	groups["фоны локаций"] = encs + ["res://assets/ui/bg_map.png"]
 	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
-	# Пассивки боссов пока показывают портрет (слизень, свинья) — своя иконка по docs/art_prompts_battle.md.
-	var pending := ["split.png", "mount.png", "mounted.png"]
+	var pending := []
 	for g in groups:
 		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
 		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))
@@ -378,6 +378,26 @@ func test_pick_and_stats(books: Dictionary) -> void:
 	check(adv.run_stats.battles == 1 and float(adv.run_stats.wizards[0].dmg) > 0.0, "итоги забега копятся")
 	var back := SaveGame.restore(JSON.parse_string(JSON.stringify(SaveGame.dump(adv))))
 	check(back != null and float(back.run_stats.wizards[0].dmg) == float(adv.run_stats.wizards[0].dmg), "итоги забега переживают сохранение")
+
+
+func test_boss_passive_reveal() -> void:
+	print("Умения боссов — «???» до первого срабатывания:")
+	var old := Profile.path
+	Profile.path = "user://test_passives_profile.json"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
+	check(not Profile.knows_passive("split") and Profile.knows_passive("burn"), "до встречи описание скрыто (обычные эффекты — видны)")
+	var adv := Adventure.new(["pyromancer", "priest"], 3)
+	var c := adv.start_combat(3)
+	var slime := c.add_enemy(GameData.load_encounter("mother_slime").members[0])
+	var seen: Array[String] = []
+	c.passive_triggered.connect(func(_u: Unit, id: String) -> void: seen.append(id))
+	c._hurt(slime, 5.0, c.units[0])
+	check(seen.has("split"), "Деление сработало — сигнал для интерфейса")
+	Profile.learn_passive("split")
+	Profile.path = "user://test_passives_profile2.json"
+	Profile.path = "user://test_passives_profile.json"
+	check(Profile.knows_passive("split"), "раскрытое умение запоминается в профиле")
+	Profile.path = old
 
 
 func test_rat_pack_simulation(books: Dictionary) -> void:

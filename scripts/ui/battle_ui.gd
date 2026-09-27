@@ -97,6 +97,7 @@ func start_battle() -> void:
 	combat.hp_changed.connect(_float_number)
 	combat.unit_added.connect(_add_card)
 	combat.spell_triggered.connect(_announce_spell)
+	combat.passive_triggered.connect(_on_passive)
 	combat.status_applied.connect(_stamp)
 	var enc := adventure.encounter()
 	_title_label.text = "Уровень %d из %d — %s" % [adventure.level, adventure.level_count(), enc.name]
@@ -1548,6 +1549,21 @@ func _stamp(u: Unit, id: String) -> void:
 
 
 # --- Объявления посреди экрана (эффекты, атаки врагов) --------------------------
+
+## Пассивка босса сработала впервые — описание открывается и показывается посреди экрана.
+func _on_passive(u: Unit, id: String) -> void:
+	if Profile.knows_passive(id):
+		return
+	Profile.learn_passive(id)
+	for card in _cards.values():
+		card.set_meta("icons_sig", "")  # значки пересоберутся уже с описанием
+	var info: Dictionary = GameData.statuses().get(id, {})
+	var icon := StatusIcon.make(id, "", 0, 56)
+	icon.rich_tooltip = false
+	_announce("Раскрыто умение: %s" % info.get("name", id), icon, Color("e0b04a"))
+	_on_log("Раскрыто умение %s — «%s»: %s" % [u.name, info.get("name", id), info.get("desc", "")], "special")
+	_refresh()
+
 
 ## Заклинание «из ниоткуда» — крупно посреди экрана: как сработало, название, книга и что делает.
 func _announce_spell(caster: Unit, spell: Dictionary, book: String, how: String) -> void:

@@ -13,6 +13,7 @@ const FRAME_COLORS := {
 }
 
 static var _textures: Dictionary = {}
+const HIDDEN_DESC := "Особое умение. Что оно делает, станет ясно, когда оно впервые сработает в бою."
 
 var status_id := ""
 var counter := ""  # число в правом нижнем углу (ходы, остаток щита)
@@ -35,6 +36,8 @@ static func make(id: String, counter_text: String = "", stack_count: int = 0, ic
 	icon.mouse_filter = Control.MOUSE_FILTER_PASS
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	icon.tooltip_text = "%s%s\n%s" % [icon.info.name, " (%s)" % counter_text if counter_text != "" else "", icon.info.desc]
+	if not Profile.knows_passive(id):
+		icon.tooltip_text = "???\n" + HIDDEN_DESC
 	return icon
 
 
@@ -62,6 +65,8 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 ## Карточка: крупная иконка, название, ходы, кто наложил, описание.
 static func big_card(id: String, counter_text: String = "", source: String = "", icon_size: int = 112, desc_text: String = "") -> Control:
 	var info_d: Dictionary = GameData.statuses().get(id, {"name": id, "kind": "special", "desc": ""})
+	if not Profile.knows_passive(id):
+		info_d = {"name": "???", "kind": "special", "desc": HIDDEN_DESC}
 	var panel := PanelContainer.new()
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color("24232f")

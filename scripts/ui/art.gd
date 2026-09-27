@@ -176,7 +176,10 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var inset := px * 0.11  # край лица уходит под кольцо (отверстие колец — 12–15 % от края), без тёмного зазора
+	# Кольцо — маска: лицо — круг чуть больше самого широкого места отверстия этого кольца.
+	# Край лица всегда прячется под кольцом: ни зазора внутри, ни лица снаружи.
+	var face_r := ring_hole(ring_kind) + 0.015
+	var inset := (px - face_r * px / 0.4925) / 2.0
 	f.offset_left = inset
 	f.offset_top = inset
 	f.offset_right = -inset
@@ -193,6 +196,35 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	holder.set_meta("face", f)
 	holder.set_meta("ring", r)
 	return holder
+
+
+static var _holes: Dictionary = {}
+
+
+## Радиус отверстия кольца (самое широкое место) в долях стороны — по прозрачности картинки.
+static func ring_hole(kind: String) -> float:
+	if _holes.has(kind):
+		return _holes[kind]
+	var r_max := 0.37
+	var tex := Art.ring(kind)
+	if tex:
+		var img := tex.get_image()
+		if img.is_compressed():
+			img.decompress()
+		var w := img.get_width()
+		var c := Vector2(w, img.get_height()) / 2.0
+		r_max = 0.0
+		for k in 48:
+			var dir := Vector2.from_angle(TAU * k / 48.0)
+			var r := 0.0
+			while r < w / 2.0 - 1.0:
+				var p := c + dir * r
+				if img.get_pixel(int(p.x), int(p.y)).a > 0.5:
+					break
+				r += 1.0
+			r_max = maxf(r_max, r / w)
+	_holes[kind] = r_max
+	return r_max
 
 
 static func book(id: String) -> Texture2D:
