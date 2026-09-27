@@ -22,8 +22,8 @@ var _chat: ChatOverlay
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	theme = Art.ui_theme()
 	Settings.load_from_disk()
+	theme = Art.ui_theme()
 	var net := NetSession.get_session()
 	net.command.connect(_on_command)
 	net.started.connect(_on_net_started)

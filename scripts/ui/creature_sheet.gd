@@ -71,7 +71,7 @@ func _build(u: Unit, owner_name: String, flip: bool) -> void:
 	pic.custom_minimum_size = Vector2(270, 360)
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	pic.texture_filter = Art.filter_for(pic.texture)
 	pic.flip_h = flip
 	frame.add_child(pic)
 	row.add_child(frame)

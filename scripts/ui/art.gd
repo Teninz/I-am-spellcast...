@@ -48,7 +48,33 @@ static func portrait_state(hp: float, max_hp: float, zombie: bool = false) -> St
 	return "hurt" if r >= 1.0 / 3.0 else "critical"
 
 
+## Проба пиксель-арта (настройка «Пиксельный стиль»): картинки из assets/pixel_trial/px,
+## если для персонажа/врага/фона они есть, и чёткие пиксели без сглаживания.
+const PIXEL_DIR := "res://assets/pixel_trial/px/"
+
+
+static func pixel_mode() -> bool:
+	return bool(Settings.value("pixel_trial"))
+
+
+static func _pixel(id: String) -> Texture2D:
+	return texture(PIXEL_DIR + id + ".png") if pixel_mode() else null
+
+
+## Фильтр для картинки: пиксельная — без сглаживания, остальные — как раньше.
+static func filter_for(tex: Texture2D) -> CanvasItem.TextureFilter:
+	var t := tex
+	if t is AtlasTexture:
+		t = (t as AtlasTexture).atlas
+	if t != null and t.resource_path.begins_with("res://assets/pixel_trial/"):
+		return CanvasItem.TEXTURE_FILTER_NEAREST
+	return CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
+
 static func portrait(class_id: String, state: String = "healthy") -> Texture2D:
+	var px := _pixel(PORTRAIT_FILES.get(class_id, class_id))
+	if px:
+		return px
 	return texture("res://assets/characters/%s_%s.png" % [PORTRAIT_FILES.get(class_id, class_id), state])
 
 
@@ -83,7 +109,7 @@ static func portrait_rect(tex: Texture2D, size: Vector2) -> TextureRect:
 	tr.custom_minimum_size = size
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	tr.texture_filter = filter_for(tex)
 	tr.clip_contents = true
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -96,6 +122,9 @@ static var _enemy_ids: Dictionary = {}
 ## Портрет врага по имени (data/enemy_portraits.json): assets/enemies/<id>.png или null.
 static func enemy_portrait(enemy_name: String) -> Texture2D:
 	var id := enemy_portrait_id(enemy_name)
+	var px := _pixel(id) if id != "" else null
+	if px:
+		return px
 	return texture("res://assets/enemies/%s.png" % id) if id != "" else null
 
 
@@ -128,6 +157,8 @@ static func face_crop(full: Texture2D, crop_id: String) -> Texture2D:
 		return _cache[key]
 	if _crops.is_empty():
 		_crops = GameData.load_json("res://data/portrait_crops.json")
+	if full.resource_path.begins_with(PIXEL_DIR):
+		crop_id = "px:" + crop_id  # у пиксельных портретов своя компоновка — по грудь
 	var c: Array = _crops.get(crop_id, _crops.get("_default", [0.5, 0.2, 0.56]))
 	var w := float(full.get_width())
 	var h := float(full.get_height())
@@ -181,7 +212,7 @@ static func avatar(face: Texture2D, ring_kind: String, px: int) -> Control:
 	f.texture = face
 	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	f.texture_filter = filter_for(face)
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mask.add_child(f)
@@ -416,7 +447,11 @@ static func frame(name: String, margin: float, factor: float = 0.5, content: flo
 
 ## Фон экрана: картинка «на весь экран» с затемнением сверху.
 static func background(name: String, _dim: float = 0.0, fallback: String = "") -> Control:
-	var tex := Art.texture("res://assets/ui/%s.png" % name)
+	var tex := _pixel(name)
+	if tex == null:
+		tex = Art.texture("res://assets/ui/%s.png" % name)
+	if tex == null and fallback != "":
+		tex = _pixel(fallback)
 	if tex == null and fallback != "":
 		tex = Art.texture("res://assets/ui/%s.png" % fallback)
 	var holder := Control.new()
@@ -434,6 +469,7 @@ static func background(name: String, _dim: float = 0.0, fallback: String = "") -
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.texture_filter = filter_for(tex)
 		holder.add_child(tr)  # фон как есть: без затемнения и подкраски
 	return holder
 
@@ -538,7 +574,25 @@ static func ui_theme() -> Theme:
 	tip_label.content_margin_bottom = 6
 	th.set_stylebox("normal", "TooltipLabel", tip_label)
 	th.set_color("font_color", "TooltipLabel", Color("f3ead6"))
+	if pixel_mode():
+		th.default_font = pixel_font()
+		th.default_font_size = 18  # у Tiny5 мелкие строчные — на размер крупнее обычного
 	return th
+
+
+static var _pixel_font: Font = null
+
+
+## Пиксельный шрифт Tiny5 (OFL): латиница + кириллица запасным шрифтом.
+static func pixel_font() -> Font:
+	if _pixel_font == null:
+		var latin := load("res://assets/fonts/tiny5/tiny5-latin-400-normal.woff2") as FontFile
+		var cyr := load("res://assets/fonts/tiny5/tiny5-cyrillic-400-normal.woff2") as FontFile
+		if latin == null or cyr == null:
+			return null
+		latin.fallbacks = [cyr, ThemeDB.fallback_font]
+		_pixel_font = latin
+	return _pixel_font
 
 
 ## Рамка редкости: для крупных — картинка рамки добычи, для мелких — цветная обводка.

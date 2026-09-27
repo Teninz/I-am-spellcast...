@@ -239,6 +239,10 @@ static func impact(host: Node, id: String, pos: Vector2, size: float = 1.0, dela
 
 
 static func sheet(id: String) -> Texture2D:
+	if Art.pixel_mode():
+		var px := Art.texture("res://assets/pixel_trial/fx/%s.webp" % id)
+		if px:
+			return px
 	return Art.texture("res://assets/fx/%s.webp" % id)
 
 
@@ -256,7 +260,9 @@ static func flipbook(host: Node, id: String, pos: Vector2, px: float, fps: float
 	sp.vframes = ceili(float(frames) / cols)
 	sp.top_level = true
 	sp.z_index = 21
-	sp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	sp.texture_filter = Art.filter_for(tex)
+	if sp.texture_filter != CanvasItem.TEXTURE_FILTER_NEAREST:
+		sp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	if GLOW_SHEETS.has(id):
 		var add := CanvasItemMaterial.new()
 		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD

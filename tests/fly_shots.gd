@@ -6,16 +6,20 @@ const PartySelectUI := preload("res://scripts/ui/party_select_ui.gd")
 var game: Node
 var out := ""
 var busy := false
+var pixel := false
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="):
 			out = a.substr(4)
+		if a == "pixel":
+			pixel = true
 	Profile.path = "user://test_fly_profile.json"
 	Settings.path = "user://test_fly_settings.json"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.load_from_disk()
 	Settings.set_value("tutorial", false)
+	Settings.set_value("pixel_trial", pixel)
 	SaveGame.path = "user://test_fly_save.json"
 	game = load("res://scenes/main.tscn").instantiate()
 	game.fast = true
@@ -46,6 +50,7 @@ func _find_spell(ok: Callable) -> Dictionary:
 func _run(ui) -> void:
 	ui.fast = false
 	await create_timer(0.5).timeout
+	await _shot("0_battle")
 	var me: Unit = ui.actor
 	var foes: Array = ui.combat.living(ui.combat.opposite(me.side))
 	var a: Unit = foes[0]

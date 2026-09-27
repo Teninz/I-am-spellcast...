@@ -103,6 +103,16 @@ func _ready() -> void:
 	anim.button_pressed = bool(Settings.value("animations"))
 	anim.toggled.connect(func(on: bool) -> void: Settings.set_value("animations", on))
 	col.add_child(anim)
+	var pixel := _check()
+	pixel.text = "Пиксельный стиль (проба)"
+	pixel.tooltip_text = "Пиксельные портреты и фон — пока только Пиромант, Волшебник Воды, Некромант, крысы и сарай; пиксельные эффекты и шрифт. Картинки меняются со следующего экрана."
+	pixel.button_pressed = bool(Settings.value("pixel_trial"))
+	pixel.toggled.connect(func(on: bool) -> void:
+		Settings.set_value("pixel_trial", on)
+		var root := get_tree().current_scene as Control
+		if root:
+			root.theme = Art.ui_theme())
+	col.add_child(pixel)
 	var tip_reset := _check()
 	tip_reset.text = "Показывать одноразовые подсказки снова"
 	tip_reset.button_pressed = false
