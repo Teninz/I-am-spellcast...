@@ -17,6 +17,7 @@ func _initialize() -> void:
 	test_chain_lightning()
 	test_summons(books)
 	test_every_spell_runs(books)
+	test_pick_and_stats(books)
 	test_rat_pack_simulation(books)
 	test_rest_and_fortify()
 	test_loot_rules()
@@ -343,6 +344,28 @@ func _state_sig(c: Combat) -> String:
 			parts.append(u.wizard.item + u.wizard.item2)
 	parts.append(str(c.units.size()))
 	return ";".join(parts)
+
+
+func test_pick_and_stats(books: Dictionary) -> void:
+	print("Выбор заклинания и итоги забега:")
+	var adv := Adventure.new(["pyromancer", "priest"], 21)
+	var c := adv.start_combat(21)
+	var caster: Unit = c.units[0]
+	var foe: Unit = c.living(Unit.ENEMIES)[0]
+	var bag := ChipBag.new(books.mystery.bag, 0)
+	bag.chips.assign(["X", "X", "T"])
+	check(c.needs_pick("mystery", bag), "«Судьба переписана» просит выбрать заклинание")
+	var pick: Dictionary = c.pickable_spells("mystery").filter(func(sp: Dictionary) -> bool: return EffectParser.parse(sp).damage > 0)[0]
+	caster.set_meta("picked_combo", pick.combo)
+	var said: Array[String] = []
+	c.logged.connect(func(t: String, _k: String, _i: String) -> void: said.append(t))
+	c.cast(caster, foe, "mystery", bag)
+	check(said.any(func(t: String) -> bool: return t.contains("«%s»" % pick.name) and t.contains("выбирает")), "сработало выбранное: %s" % pick.name)
+	check(float(c.stats[caster.id].dmg) > 0.0 and int(c.stats[caster.id].casts) == 1, "статистика боя: урон и касты кастующего")
+	adv.finish_combat(c)
+	check(adv.run_stats.battles == 1 and float(adv.run_stats.wizards[0].dmg) > 0.0, "итоги забега копятся")
+	var back := SaveGame.restore(JSON.parse_string(JSON.stringify(SaveGame.dump(adv))))
+	check(back != null and float(back.run_stats.wizards[0].dmg) == float(adv.run_stats.wizards[0].dmg), "итоги забега переживают сохранение")
 
 
 func test_rat_pack_simulation(books: Dictionary) -> void:

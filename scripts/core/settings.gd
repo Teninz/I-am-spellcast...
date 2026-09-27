@@ -11,7 +11,11 @@ const DEFAULTS := {
 	"music": 0.6,        # музыка 0..1 (музыка появится позже)
 	"tutorial": true,    # подсказки обучения в бою
 	"player_name": "Волшебник",  # имя в сетевой игре
+	"ui_scale": 1.0,     # размер интерфейса (для маленьких экранов — крупнее)
+	"tips_seen": [],     # одноразовые подсказки, которые уже показаны
 }
+const UI_SCALES := [0.9, 1.0, 1.1, 1.2]
+const UI_SCALE_NAMES := ["Мельче", "Обычный", "Крупнее", "Крупный"]
 
 static var path := "user://settings.json"
 static var _data: Dictionary = {}
@@ -71,6 +75,9 @@ static func apply() -> void:
 	_set_bus("Master", float(_data.get("master", 0.8)))
 	_set_bus("SFX", float(_data.get("sfx", 1.0)))
 	_set_bus("Music", float(_data.get("music", 0.6)))
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree and tree.root:
+		tree.root.content_scale_factor = clampf(float(_data.get("ui_scale", 1.0)), 0.75, 1.5)
 
 
 static func _set_bus(bus_name: String, v: float) -> void:

@@ -274,7 +274,7 @@ func _show_end(victory: bool) -> void:
 	if art:
 		var pic := TextureRect.new()
 		pic.texture = art
-		pic.custom_minimum_size = Vector2(300, 300)
+		pic.custom_minimum_size = Vector2(220, 220)
 		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -287,6 +287,7 @@ func _show_end(victory: bool) -> void:
 	title.add_theme_font_size_override("font_size", 28)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
+	box.add_child(_run_stats_panel())
 	var db: Dictionary = GameData.load_json("res://data/achievements.json")
 	for id in _run_achievements:
 		var got := Label.new()
@@ -317,6 +318,70 @@ func _show_end(victory: bool) -> void:
 	box.add_child(again)
 	holder.set_meta("victory", victory)
 	_swap(holder)
+
+
+## Итоги забега: таблица по волшебникам, «награды» и самый громкий хаос.
+func _run_stats_panel() -> Control:
+	var rs: Dictionary = adventure.run_stats
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.07, 0.1, 0.9)
+	sb.border_color = Color("ffd35a")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(12)
+	panel.add_theme_stylebox_override("panel", sb)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+	var head := Label.new()
+	head.text = "Итоги забега · боёв: %d · врагов повержено: %d" % [int(rs.battles), int(rs.kills)]
+	head.add_theme_font_size_override("font_size", 18)
+	col.add_child(head)
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 22)
+	grid.add_theme_constant_override("v_separation", 3)
+	col.add_child(grid)
+	for h in ["Волшебник", "Кастов", "Урон врагам", "Лечение", "По своим", "Выбывал"]:
+		var l := Label.new()
+		l.text = h
+		l.add_theme_font_size_override("font_size", 13)
+		l.modulate = Color(1, 1, 1, 0.65)
+		grid.add_child(l)
+	var best := {"dmg": [-1.0, ""], "heal": [-1.0, ""], "friendly": [0.0, ""]}
+	for i in mini(adventure.wizards.size(), rs.wizards.size()):
+		var w := adventure.wizards[i]
+		var st: Dictionary = rs.wizards[i]
+		for v in [w.name, str(int(st.casts)), Unit._num(float(st.dmg)), Unit._num(float(st.heal)),
+				Unit._num(float(st.friendly)), str(int(st.downs))]:
+			var l := Label.new()
+			l.text = v
+			l.add_theme_font_size_override("font_size", 15)
+			grid.add_child(l)
+		for k in best:
+			if float(st[k]) > float(best[k][0]):
+				best[k] = [float(st[k]), w.name]
+	var lines: Array[String] = []
+	if best.dmg[1] != "":
+		lines.append("Главный по урону — %s (%s)." % [best.dmg[1], Unit._num(best.dmg[0])])
+	if best.heal[0] > 0.0:
+		lines.append("Лекарь отряда — %s (%s)." % [best.heal[1], Unit._num(best.heal[0])])
+	if best.friendly[0] > 0.0:
+		lines.append("«Я целился не в тебя!» — %s: %s урона по своим." % [best.friendly[1], Unit._num(best.friendly[0])])
+	var loud: Dictionary = {}
+	for m in rs.chaos:
+		if loud.is_empty() or int(m.rank) >= int(loud.rank):
+			loud = m
+	if not loud.is_empty():
+		lines.append("Самый громкий хаос: «%s» (Хаос %s) — %s." % [loud.name, "III" if int(loud.rank) == 3 else "II", loud.caster])
+	for t in lines:
+		var l := Label.new()
+		l.text = t
+		l.add_theme_font_size_override("font_size", 15)
+		l.add_theme_color_override("font_color", Color("ffe9a8"))
+		col.add_child(l)
+	return panel
 
 
 func _swap(next: Control) -> void:

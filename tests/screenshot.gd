@@ -103,6 +103,9 @@ func _play(ui: Node) -> void:
 					ui._build_tutorial()
 					ui._tutorial_step()
 					_shot("battle.png", func() -> void:
+						ui._open_picker()
+						_shot("picker.png", func() -> void: ui._close_picker())
+						await create_timer(0.6).timeout
 						ui._tutorial.queue_free()
 						ui._tutorial = null
 						ui._stop_pulse()
@@ -138,7 +141,12 @@ func _play(ui: Node) -> void:
 												game.new_adventure()
 												_shot("select_continue.png", func() -> void:
 													SettingsView.open(game.screen)
-													_shot("settings.png", func() -> void: quit())))))), 0.25)))
+													_shot("settings.png", func() -> void:
+														for sv in game.screen.get_children():
+															if sv is SettingsView:
+																sv.queue_free()
+														game._show_end(true)
+														_shot("end.png", func() -> void: quit()))))))), 0.25)))
 					return
 			ui._on_cast_pressed()
 

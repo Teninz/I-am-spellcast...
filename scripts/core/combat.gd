@@ -49,6 +49,17 @@ var last_cast := {}
 var _next_id: int = 0
 var _splitting := false  # урон уже делится (Кровная связь, Преломление) — не делить снова
 var _spell_depth := 0    # вложенные случайные заклинания (Дикий всплеск)
+## Статистика боя по участникам (для итогов забега): id -> {dmg, heal, friendly, taken, casts}.
+var stats: Dictionary = {}
+## Хаос II и III этого боя: [{name, caster, rank}].
+var chaos_moments: Array = []
+var _healer: Unit = null  # кто сейчас лечит (заклинание, Наложение рук, предмет)
+
+
+func _stat(u: Unit) -> Dictionary:
+	if not stats.has(u.id):
+		stats[u.id] = {"dmg": 0.0, "heal": 0.0, "friendly": 0.0, "taken": 0.0, "casts": 0}
+	return stats[u.id]
 
 
 ## wizards — Array[Wizard]; fortify_turns/decay — параметры Укрепления.
@@ -394,6 +405,8 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 	var spell := spell_for(book_id, bag.combo_key())
 	if bag.combo_key() in ["X2", "X3"] and caster.is_wizard():
 		tally.chaos_big += 1
+		chaos_moments.append({"name": spell.name, "caster": caster.name, "rank": int(bag.combo_key().substr(1))})
+	_stat(caster).casts += 1
 	caster.books_used[book_id] = true
 	var aim := "" if target == null or target == caster else " → %s" % target.name
 	_log("%s: «Я кастую!» — %s%s." % [caster.name, spell.name, aim], "chaos" if bag.chips.has(ChipBag.CHAOS) else "cast")
@@ -892,7 +905,9 @@ func lay_on_hands(paladin: Unit, target: Unit) -> void:
 	var amount := Unit.q(minf(paladin.ability_pool, target.max_hp - target.hp))
 	paladin.ability_pool = Unit.q(paladin.ability_pool - amount)
 	_log("%s: Наложение рук на %s (запас %s)." % [paladin.name, target.name, Unit._num(paladin.ability_pool)], "heal")
+	_healer = paladin
 	_restore(target, amount)
+	_healer = null
 
 
 ## Бард: Вдохновение — союзник может перевытянуть одну фишку в следующем касте.
@@ -965,6 +980,8 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		func(s: Dictionary) -> bool: return Unit.DEBUFFS.has(s.id))
 
 	var alive_before := living()
+	var prev_healer := _healer
+	_healer = caster
 	if target and harmful and caster.has("misdirect"):
 		caster.statuses.erase("misdirect")
 		var any := living()
@@ -1065,6 +1082,7 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 	for sid in spec.get("special", []):
 		if ONCE_SPECIALS.has(sid):
 			_special(sid, caster, target, spell, book_id)
+	_healer = prev_healer
 	if not spec.get("summon", {}).is_empty():
 		_summon_from_spec(spec.summon, caster, target)
 	if spec.get("raise_fallen", "") != "":
@@ -1184,7 +1202,9 @@ func use_item(owner: Unit, target: Unit) -> void:
 	if e.get("cleanse", false):
 		target.remove_debuffs()
 	if e.has("heal"):
+		_healer = owner
 		_restore(target, float(e.heal))
+		_healer = null
 	if e.has("shield"):
 		target.shield += float(e.shield)
 		_log("%s получает Щит %d." % [target.name, e.shield], "shield", "shield")
@@ -1299,7 +1319,18 @@ func _hurt(who: Unit, amount: float, source: Unit) -> void:
 		hp_changed.emit(who, absorbed, "block")
 	if amount <= 0.0:
 		return
+	var dealt := minf(who.hp, amount)
 	who.hp = Unit.q(maxf(0.0, who.hp - amount))
+	_stat(who).taken += dealt
+	if source and source != who:
+		var by := source
+		if source.creature and source.has_meta("owner"):
+			by = _unit_by_id(int(source.get_meta("owner")))
+		if by:
+			if by.side == who.side:
+				_stat(by).friendly += dealt
+			else:
+				_stat(by).dmg += dealt
 	hp_changed.emit(who, amount, "damage")
 	if who.alive() and who.has_meta("split"):
 		_split(who, amount)
@@ -1360,6 +1391,8 @@ func _restore(who: Unit, amount: float) -> void:
 	who.hp = Unit.q(minf(who.max_hp, who.hp + amount))
 	if who.hp > before:
 		who.set_meta("healed_total", float(who.get_meta("healed_total", 0.0)) + who.hp - before)
+		if _healer and _healer.side == who.side:
+			_stat(_healer).heal += who.hp - before
 		hp_changed.emit(who, who.hp - before, "heal")
 		_log("%s лечится на %s (%s)." % [who.name, Unit._num(who.hp - before), who.hp_text()], "big_heal" if who.hp - before >= BIG_HIT else "heal")
 
@@ -1724,6 +1757,14 @@ func _random_cast(kind: String, caster: Unit, target: Unit, book_id: String) -> 
 	if picks.is_empty():
 		return
 	var choice: Array = _pick(picks)
+	if kind == "pick_spell" and caster.has_meta("picked_combo"):
+		var want := String(caster.get_meta("picked_combo"))
+		caster.remove_meta("picked_combo")
+		for p in picks:
+			if String(p[1].combo) == want:
+				_log("%s переписывает судьбу и выбирает «%s»." % [caster.name, p[1].name], "luck")
+				_nested(caster, target if target != null and target.alive() else caster, p[1], p[0])
+				return
 	if kind == "pick_spell":
 		var foe := target != null and target.side != caster.side
 		var best := -1.0
@@ -1738,6 +1779,26 @@ func _random_cast(kind: String, caster: Unit, target: Unit, book_id: String) -> 
 		_log("Срабатывает «%s» из книги «%s»!" % [choice[1].name, books[choice[0]].name], "chaos")
 	var aim := target if target != null and target.alive() else caster
 	_nested(caster, aim, choice[1], choice[0])
+
+
+## Можно ли в этой тройке выбрать заклинание самому («Судьба переписана»).
+func needs_pick(book_id: String, bag: ChipBag) -> bool:
+	if bag == null or not bag.is_complete():
+		return false
+	return EffectParser.parse(spell_for(book_id, bag.combo_key())).get("special", []).has("pick_spell")
+
+
+## Заклинания книги, из которых можно выбрать (без хаоса и без других «выборов»).
+func pickable_spells(book_id: String) -> Array:
+	var out := []
+	for sp in books[book_id].spells:
+		if String(sp.combo).begins_with("X"):
+			continue
+		var sid: Array = EffectParser.parse(sp).get("special", [])
+		if sid.has("random_chaos") or sid.has("random_spell") or sid.has("pick_spell"):
+			continue
+		out.append(sp)
+	return out
 
 
 ## Какая особая атака врага будет следующей (без изменения перезарядок).

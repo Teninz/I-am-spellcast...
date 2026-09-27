@@ -33,6 +33,8 @@ var trophy_boss := ""
 var last_scars: Array = []
 ## Счётчики забега для достижений.
 var run := {"downs": 0, "items": 0, "chaos_big": 0, "books_cast": {}, "flawless_streak": 0}
+## Итоги забега для финального экрана: по волшебникам (в порядке отряда) и яркие моменты хаоса.
+var run_stats := {"wizards": [], "chaos": [], "battles": 0, "kills": 0}
 ## Достижения, полученные в этом приключении, и ещё не показанные игроку.
 var earned: Array[String] = []
 var fresh_achievements: Array[String] = []
@@ -417,6 +419,28 @@ func _earn(id: String) -> void:
 		fresh_achievements.append(id)
 
 
+func _track_stats(c: Combat) -> void:
+	while run_stats.wizards.size() < wizards.size():
+		run_stats.wizards.append({"dmg": 0.0, "heal": 0.0, "friendly": 0.0, "taken": 0.0, "casts": 0, "downs": 0})
+	run_stats.battles += 1
+	for u in c.units:
+		if u.side == Unit.ENEMIES and not u.alive():
+			run_stats.kills += 1
+		if not u.is_wizard() or u.wizard == null:
+			continue
+		var i := wizards.find(u.wizard)
+		if i < 0:
+			continue
+		var st: Dictionary = c.stats.get(u.id, {})
+		var acc: Dictionary = run_stats.wizards[i]
+		for k in ["dmg", "heal", "friendly", "taken", "casts"]:
+			acc[k] = acc[k] + st.get(k, 0)
+		if c.downed.has(u):
+			acc.downs += 1
+	for m in c.chaos_moments:
+		run_stats.chaos.append(m)
+
+
 ## Достижения, полученные с прошлого вызова (для показа и записи в профиль).
 func take_fresh_achievements() -> Array[String]:
 	var out := fresh_achievements.duplicate()
@@ -425,6 +449,7 @@ func take_fresh_achievements() -> Array[String]:
 
 
 func _track(c: Combat, boss_fight: bool) -> void:
+	_track_stats(c)
 	run.downs += int(c.tally.downs)
 	run.items += int(c.tally.items)
 	run.chaos_big += int(c.tally.chaos_big)

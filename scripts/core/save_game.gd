@@ -76,7 +76,7 @@ static func dump(adv: Adventure) -> Dictionary:
 		"refusals_left": adv.refusals_left, "resurrection_dropped": adv.resurrection_dropped,
 		"last_was_boss": adv.last_was_boss, "unlocked_classes": adv.unlocked_classes,
 		"map_nodes": adv.map_nodes, "node_id": adv.node_id, "path": adv.path,
-		"trophy_boss": adv.trophy_boss, "run": adv.run, "earned": adv.earned,
+		"trophy_boss": adv.trophy_boss, "run": adv.run, "run_stats": adv.run_stats, "earned": adv.earned,
 		"patron_due": adv.patron_due.map(func(w: Wizard) -> int: return adv.wizards.find(w)),
 		"offers": offers, "wizards": wizards,
 	}
@@ -111,6 +111,10 @@ static func restore(d: Dictionary) -> Adventure:
 	for k in adv.run:
 		if run.has(k):
 			adv.run[k] = run[k] if k == "books_cast" else int(run[k])
+	var rs: Dictionary = d.get("run_stats", {})
+	if rs.has("wizards"):
+		adv.run_stats = {"wizards": rs.wizards, "chaos": rs.get("chaos", []),
+			"battles": int(rs.get("battles", 0)), "kills": int(rs.get("kills", 0))}
 	adv.earned.assign(d.get("earned", []))
 	for i in d.get("patron_due", []):
 		if int(i) >= 0 and int(i) < adv.wizards.size():

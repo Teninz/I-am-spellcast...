@@ -116,6 +116,11 @@ func start_battle() -> void:
 
 
 func _add_card(u: Unit) -> void:
+	if u.creature and u.side == Unit.PARTY:
+		_tip_once("summon", "Призванное существо",
+			"Появилось на стороне отряда и ходит само, как враги. Первым ходом бьёт цель заклинания "
+			+ "(или закрывает собой союзника). У волшебника не больше 2 существ, в конце боя они уходят. "
+			+ "Наведи на значок существа на его карточке — там написано, что оно умеет.")
 	var card := _make_card(u)
 	(_party_box if u.side == Unit.PARTY else _enemy_box).add_child(card)
 	_cards[u.id] = card
@@ -228,6 +233,8 @@ func _exec(cmd: Dictionary) -> void:
 		"reroll":
 			_do_reroll(int(cmd.slot))
 		"cast":
+			if cmd.has("pick") and state == State.READY and actor:
+				actor.set_meta("picked_combo", String(cmd.pick))
 			_do_cast()
 		"item":
 			_do_item()
@@ -260,6 +267,10 @@ func _on_chip_pressed(slot: int) -> void:
 
 
 func _on_cast_pressed() -> void:
+	# «Судьба переписана»: сначала игрок выбирает заклинание книги (в тестах — выбирает игра).
+	if not fast and state == State.READY and _can_input() and combat.needs_pick(book_id, bag) and _picker == null:
+		_open_picker()
+		return
 	_act({"t": "cast"})
 
 
@@ -369,7 +380,10 @@ func _do_cast() -> void:
 	var again := actor.extra_casts > 0
 	if again:
 		actor.extra_casts -= 1
+	_summary.clear()
+	_collecting = true
 	var spell := combat.cast(actor, target, book_id, bag, not again)
+	_show_summary()
 	_update_chips()
 	_spell_label.text = "%s\n%s" % [spell.name, spell.effect]
 	_show_effects(spell)
@@ -589,7 +603,8 @@ func _on_auto_timer() -> void:
 		State.DRAWING:
 			_on_draw_pressed(false)
 		State.READY:
-			_on_cast_pressed()
+			_close_picker()
+			_act({"t": "cast"})  # время вышло — заклинание выберет судьба
 		State.REWIND:
 			_on_rewind_skip()
 		State.CHOOSE_BOOK:
@@ -637,6 +652,9 @@ func _game_over() -> void:
 
 func _set_state(s: State) -> void:
 	_stop_pulse()
+	_clear_aim()
+	if s != State.READY:
+		_close_picker()
 	state = s
 	if _bag_button:
 		_bag_button.disabled = s != State.DRAWING
@@ -977,6 +995,278 @@ func _show_preview() -> void:
 	elif actor.has("muse"):
 		hint = "Нажми «Я кастую!» или кликни по фишке — Муза позволит её перевытянуть."
 	_prompt_label.text = hint
+	if combat.needs_pick(book_id, bag):
+		_prompt_label.text = "«Судьба переписана»: нажми «Я кастую!» и выбери любое заклинание книги."
+	_mark_aim(spell)
+
+
+# --- Кого заденет заклинание ------------------------------------------------------
+
+## Рамки на карточках: сплошная — точно заденет, полупрозрачная с «?» — может задеть (случайно).
+func _mark_aim(spell: Dictionary) -> void:
+	_clear_aim()
+	if spell.is_empty() or actor == null:
+		return
+	var spec := EffectParser.parse(spell)
+	var harm: bool = EffectParser.deals_damage(spec) or spec.meter < 0 or spec.strip_buffs \
+		or spec.statuses.any(func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id))
+	var sure: Array[Unit] = []
+	var maybe: Array[Unit] = []
+	match String(spec.area):
+		"target":
+			if target:
+				sure.append(target)
+		"target_side":
+			if target:
+				sure.append_array(combat.living(target.side))
+		"arena":
+			for u in combat.living():
+				if not (spec.exclude_caster and u == actor):
+					sure.append(u)
+		"enemies":
+			sure.append_array(combat.living(combat.opposite(actor.side)))
+		"caster_side":
+			sure.append_array(combat.living(actor.side))
+		"random":
+			maybe.append_array(combat.living())
+	if spec.splash > 0 and target:
+		for u in combat.living(target.side):
+			if not sure.has(u):
+				sure.append(u)
+	for j in spec.get("jumps", []):
+		var pool: Array[Unit] = combat.living() if j.side == "any" else combat.living(actor.side if j.side == "caster" else (target.side if target else actor.side))
+		for u in pool:
+			if not sure.has(u) and not maybe.has(u) and u != target:
+				maybe.append(u)
+	var special: Array = spec.get("special", [])
+	if special.has("random_chaos") or special.has("random_spell"):
+		for u in combat.living():
+			if not sure.has(u) and not maybe.has(u):
+				maybe.append(u)
+	for u in sure:
+		var foe := u.side != actor.side
+		var text := ("ранит своего!" if harm and not foe else "поможет врагу!" if not harm and foe else "удар" if harm else "поможет")
+		var warn := (harm and not foe) or (not harm and foe)
+		_aim(u, Color("ff9a4a") if warn else (Color("ff5a4a") if harm else Color("6cf07a")), text, false)
+	for u in maybe:
+		_aim(u, Color("ffd35a"), "может задеть", true)
+	if spec.self_damage > 0 or not spec.caster_statuses.is_empty():
+		if not sure.has(actor):
+			_aim(actor, Color("ff9a4a") if spec.self_damage > 0 else Color("8fc0ff"), "отдача" if spec.self_damage > 0 else "на себя", false)
+
+
+func _aim(u: Unit, color: Color, text: String, uncertain: bool) -> void:
+	if not _cards.has(u.id):
+		return
+	var card: Control = _cards[u.id]
+	var p := Panel.new()
+	p.name = "Aim"
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var box := StyleBoxFlat.new()
+	box.draw_center = false
+	box.border_color = Color(color, 0.55 if uncertain else 0.95)
+	box.set_border_width_all(2 if uncertain else 4)
+	box.set_corner_radius_all(8)
+	p.add_theme_stylebox_override("panel", box)
+	var tag := Label.new()
+	tag.text = text
+	tag.add_theme_font_size_override("font_size", 12)
+	tag.add_theme_color_override("font_color", color)
+	tag.add_theme_color_override("font_outline_color", Color.BLACK)
+	tag.add_theme_constant_override("outline_size", 4)
+	tag.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	tag.offset_left = -130
+	tag.offset_right = -10
+	tag.offset_top = 4
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	p.add_child(tag)
+	card.add_child(p)
+
+
+func _clear_aim() -> void:
+	for id in _cards:
+		var card: Control = _cards[id]
+		for c in card.get_children():
+			if c.name.begins_with("Aim"):
+				card.remove_child(c)
+				c.queue_free()
+
+
+# --- «Судьба переписана»: выбор заклинания ---------------------------------------
+
+var _picker: Control = null
+
+
+func _open_picker() -> void:
+	_close_picker()
+	var o := Control.new()
+	o.top_level = true
+	o.z_index = 8
+	o.mouse_filter = Control.MOUSE_FILTER_STOP
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(center)
+	var panel := PanelContainer.new()
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("24232f")
+	box.border_color = Color("ffd35a")
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(8)
+	box.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", box)
+	center.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	panel.add_child(col)
+	col.add_child(_label("Судьба переписана: выбери заклинание «%s» → %s" % [books[book_id].name, target.name if target else actor.name], 20))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(760, 440)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 4)
+	scroll.add_child(list)
+	for sp in combat.pickable_spells(book_id):
+		var b := Button.new()
+		b.text = "%s — %s" % [sp.name, sp.effect]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD
+		b.custom_minimum_size = Vector2(720, 0)
+		b.add_theme_font_size_override("font_size", 14)
+		b.tooltip_text = "Категория: %s" % Luck.CATEGORY_NAMES.get(sp.get("category", ""), sp.get("category", ""))
+		var combo := String(sp.combo)
+		b.pressed.connect(func() -> void:
+			_close_picker()
+			_act({"t": "cast", "pick": combo}))
+		list.add_child(b)
+	var fate := Button.new()
+	fate.text = "Пусть выберет судьба (лучшее для цели)"
+	fate.pressed.connect(func() -> void:
+		_close_picker()
+		_act({"t": "cast"}))
+	col.add_child(fate)
+	add_child(o)
+	_picker = o
+
+
+func _close_picker() -> void:
+	if _picker != null:
+		_picker.queue_free()
+		_picker = null
+
+
+# --- Итог каста над карточками ---------------------------------------------------
+
+var _summary: Dictionary = {}  # id участника -> {dmg, heal, block, st: [имена]}
+var _collecting := false
+
+
+func _note(u: Unit, key: String, value: Variant) -> void:
+	if not _collecting:
+		return
+	if not _summary.has(u.id):
+		_summary[u.id] = {"dmg": 0.0, "heal": 0.0, "block": 0.0, "st": []}
+	var e: Dictionary = _summary[u.id]
+	if key == "st":
+		if not e.st.has(value):
+			e.st.append(value)
+	else:
+		e[key] = e[key] + float(value)
+
+
+## Плашка «−3 · Горение · Щит 2» над каждой задетой карточкой.
+func _show_summary() -> void:
+	_collecting = false
+	if fast:
+		_summary.clear()
+		return
+	for id in _summary:
+		if not _cards.has(id):
+			continue
+		var e: Dictionary = _summary[id]
+		var parts: Array[String] = []
+		if e.dmg > 0.0:
+			parts.append("−%s" % Unit._num(e.dmg))
+		if e.heal > 0.0:
+			parts.append("+%s" % Unit._num(e.heal))
+		if e.block > 0.0:
+			parts.append("щит поглотил %s" % Unit._num(e.block))
+		for n in e.st:
+			parts.append(n)
+		if parts.is_empty():
+			continue
+		var card: Control = _cards[id]
+		var plate := PanelContainer.new()
+		plate.top_level = true
+		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(0.07, 0.06, 0.09, 0.92)
+		box.border_color = Color("ff5a4a") if e.dmg > 0.0 else Color("6cf07a") if e.heal > 0.0 else Color("ffd35a")
+		box.set_border_width_all(2)
+		box.set_corner_radius_all(6)
+		box.set_content_margin_all(5)
+		plate.add_theme_stylebox_override("panel", box)
+		var l := _label(" · ".join(parts), 15)
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		plate.add_child(l)
+		add_child(plate)
+		var r := card.get_global_rect()
+		plate.global_position = Vector2(r.position.x + 90, r.position.y + r.size.y - 30)
+		var tw := create_tween()
+		tw.tween_interval(Settings.delay(2.2))
+		tw.tween_property(plate, "modulate:a", 0.0, 0.4)
+		tw.tween_callback(plate.queue_free)
+	_summary.clear()
+
+
+# --- Подсказки, которые показываются один раз -------------------------------------
+
+func _tip_once(key: String, title: String, text: String) -> void:
+	if fast:
+		return
+	var seen: Array = Settings.value("tips_seen")
+	if seen.has(key):
+		return
+	seen = seen.duplicate()
+	seen.append(key)
+	Settings.set_value("tips_seen", seen)
+	var panel := PanelContainer.new()
+	panel.top_level = true
+	panel.z_index = 6
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("24232f")
+	box.border_color = Color("ffd35a")
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(8)
+	box.set_content_margin_all(12)
+	panel.add_theme_stylebox_override("panel", box)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+	var t := _label(title, 18)
+	t.add_theme_color_override("font_color", Color("ffd35a"))
+	col.add_child(t)
+	var body := _label(text, 14)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD
+	body.custom_minimum_size = Vector2(440, 0)
+	col.add_child(body)
+	var ok := Button.new()
+	ok.text = "Понятно"
+	ok.size_flags_horizontal = Control.SIZE_SHRINK_END
+	ok.pressed.connect(panel.queue_free)
+	col.add_child(ok)
+	add_child(panel)
+	panel.position = Vector2((get_viewport_rect().size.x - 470) / 2.0, 70)
+	get_tree().create_timer(15.0, false).timeout.connect(func() -> void:
+		if is_instance_valid(panel):
+			panel.queue_free())
 
 
 ## Крупные иконки эффектов, которые наложит заклинание.
@@ -1001,6 +1291,8 @@ func _show_effects(spell: Dictionary) -> void:
 
 ## Эффект «штамп»: крупная иконка появляется над карточкой и впечатывается в неё.
 func _stamp(u: Unit, id: String) -> void:
+	if id != "shield":
+		_note(u, "st", Combat.status_name(id))
 	if fast or not _cards.has(u.id):
 		return
 	Sfx.play("status_good" if Unit.BUFFS.has(id) or id in ["shield", "fortify"] else "status_bad")
@@ -1053,6 +1345,8 @@ func _on_log(text: String, kind: String = "info", icon: String = "") -> void:
 
 ## Всплывающее число над карточкой: −урон красным, +лечение зелёным, поглощение — голубым.
 func _float_number(u: Unit, amount: float, kind: String) -> void:
+	if amount > 0.0:
+		_note(u, {"damage": "dmg", "heal": "heal", "block": "block"}.get(kind, "dmg"), amount)
 	if fast or not _cards.has(u.id) or amount <= 0.0:
 		return
 	match kind:
@@ -1099,10 +1393,32 @@ func _wait(seconds: float) -> Signal:
 var _pause_overlay: Control = null
 
 
+## Горячие клавиши: Esc/P — пауза; 1–4 — книга; пробел или Enter — достать фишку / «Я кастую!».
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo \
-			and (event.keycode == KEY_ESCAPE or event.keycode == KEY_P):
-		toggle_pause()
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var key: Key = event.keycode
+	if key == KEY_ESCAPE or key == KEY_P:
+		if _picker != null and key == KEY_ESCAPE:
+			_close_picker()
+		else:
+			toggle_pause()
+		get_viewport().set_input_as_handled()
+		return
+	if _pause_overlay != null or _picker != null or not _can_input():
+		return
+	if state == State.CHOOSE_BOOK and key >= KEY_1 and key <= KEY_4:
+		var n := int(key - KEY_1)
+		if n < actor.books.size():
+			_select_book(actor.books[n])
+			get_viewport().set_input_as_handled()
+	elif key == KEY_SPACE or key == KEY_ENTER or key == KEY_KP_ENTER:
+		if state == State.DRAWING:
+			_on_draw_pressed(true)
+		elif state == State.READY:
+			_on_cast_pressed()
+		else:
+			return
 		get_viewport().set_input_as_handled()
 
 

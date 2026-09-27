@@ -1,6 +1,6 @@
 class_name SettingsView
 extends Control
-## Окно настроек: скорость боя, громкость, автотяга фишек, обучение.
+## Окно настроек: скорость боя, размер интерфейса, громкость, подсказки, обучение.
 ## Открывается кнопкой «Настройки» на выборе отряда, в бою и на привале.
 
 signal closed
@@ -65,6 +65,25 @@ func _ready() -> void:
 		speeds.add_child(b)
 	_mark(speeds)
 
+	col.add_child(_caption("Размер интерфейса"))
+	var scales := HBoxContainer.new()
+	scales.add_theme_constant_override("separation", 8)
+	col.add_child(scales)
+	var sgroup := ButtonGroup.new()
+	for i in Settings.UI_SCALES.size():
+		var b := Button.new()
+		b.text = Settings.UI_SCALE_NAMES[i]
+		b.toggle_mode = true
+		b.button_group = sgroup
+		b.custom_minimum_size = Vector2(130, 42)
+		b.button_pressed = is_equal_approx(float(Settings.value("ui_scale")), Settings.UI_SCALES[i])
+		var v: float = Settings.UI_SCALES[i]
+		b.pressed.connect(func() -> void:
+			Settings.set_value("ui_scale", v)
+			_mark(scales))
+		scales.add_child(b)
+	_mark(scales)
+
 	col.add_child(_slider("Общая громкость", "master"))
 	col.add_child(_slider("Звуки", "sfx"))
 	col.add_child(_slider("Музыка (появится позже)", "music"))
@@ -74,6 +93,18 @@ func _ready() -> void:
 	auto_note.add_theme_font_size_override("font_size", 13)
 	auto_note.modulate = Color(1, 1, 1, 0.7)
 	col.add_child(auto_note)
+	var keys := _caption("Клавиши в бою: 1–4 — книга, пробел или Enter — достать фишку / «Я кастую!», Esc или P — пауза.")
+	keys.autowrap_mode = TextServer.AUTOWRAP_WORD
+	keys.add_theme_font_size_override("font_size", 13)
+	keys.modulate = Color(1, 1, 1, 0.7)
+	col.add_child(keys)
+	var tip_reset := _check()
+	tip_reset.text = "Показывать одноразовые подсказки снова"
+	tip_reset.button_pressed = false
+	tip_reset.toggled.connect(func(on: bool) -> void:
+		if on:
+			Settings.set_value("tips_seen", []))
+	col.add_child(tip_reset)
 	var tut := _check()
 	tut.text = "Подсказки обучения в бою"
 	tut.tooltip_text = "Показываются в первом бою. Включи снова, чтобы увидеть их ещё раз."
