@@ -555,7 +555,7 @@ func _do_cast() -> void:
 	_hold = animate
 	var spell := combat.cast(actor, target, book_id, bag, not again)
 	if animate:
-		var fly := _fly_spell(combat.trace, chips_now, combo, book_id)
+		var fly := _fly_spell(combat.trace, chips_now, combo, book_id, spell)
 		if fly > 0.0:
 			await get_tree().create_timer(fly, false).timeout
 		if not is_inside_tree():
@@ -605,10 +605,11 @@ func _release() -> void:
 ## до середины экрана и оттуда к новой цели; отражённый — от цели обратно к магу; массовое —
 ## одним шаром до развилки и врассыпную; молния — ломаными разрядами, перескоки ветвятся от цели.
 ## Возвращает, сколько ждать до последнего попадания.
-func _fly_spell(trace: Array, chips: Array, combo: String, book: String = "") -> float:
+func _fly_spell(trace: Array, chips: Array, combo: String, book: String = "", spell: Dictionary = {}) -> float:
 	var chaos := chips.has(ChipBag.CHAOS)
 	var color := _spell_color(chips)
-	var look: Dictionary = SPELL_FX.get("%s:%s" % [book, combo], {})
+	var spec := EffectParser.parse(spell) if not spell.is_empty() else {}
+	var special_look: Dictionary = SPELL_FX.get("%s:%s" % [book, combo], {})
 	var zap := not chaos and _main_element(chips) == "L"
 	var hits: Array = []
 	var extra: Array = []
@@ -635,8 +636,14 @@ func _fly_spell(trace: Array, chips: Array, combo: String, book: String = "") ->
 			continue
 		var from := Fx.center(_cards[h.caster])
 		var to := Fx.center(_cards[h.to])
+		var look: Dictionary = special_look if not special_look.is_empty() else _look_for(spec, chips, chaos)
+		var size := float(look.get("size", 1.0))
+		var hit_id := String(look.get("hit", look.get("strike", "")))
 		if h.to == h.caster and h.turn == "":
-			Fx.sparkle_up(self, _cards[h.to].get_global_rect(), color)
+			if hit_id != "":
+				Fx.impact(self, hit_id, to, size)
+			else:
+				Fx.sparkle_up(self, _cards[h.to].get_global_rect(), color)
 			continue
 		shown += 1
 		var via := Vector2.INF
@@ -648,21 +655,30 @@ func _fly_spell(trace: Array, chips: Array, combo: String, book: String = "") ->
 					via = Fx.center(_cards[h.aimed])
 			_:
 				via = fork
-		if not look.is_empty():
-			# Нарисованный снаряд (Blender): огненный шар; залп — несколько маленьких подряд.
+		var hit_at := 0.0
+		if look.has("fly"):
+			# Нарисованный снаряд (Blender): шар стихии; залп — несколько маленьких подряд.
 			var n := int(look.get("volley", 1))
 			for k in n:
 				var spread := Vector2(0, (k - (n - 1) / 2.0) * 26.0)
 				land = maxf(land, Fx.missile(self, from + spread, to + spread * 0.6, color, look.fly, look.hit,
-					float(look.get("size", 1.0)), via, Fx.t(0.11) * k))
+					size, via, Fx.t(0.11) * k))
+			continue
+		elif look.has("strike") and h.turn == "":
+			# Святость бьёт столпом света прямо в цель, без снаряда.
+			hit_at = Fx.t(0.12)
+			land = maxf(land, hit_at + Fx.t(0.2))
 		elif zap and h.turn == "":
 			if via.is_finite():
 				Fx.lightning(self, from, via, color)
-				land = maxf(land, Fx.lightning(self, via, to, color, Fx.t(0.05)))
+				hit_at = Fx.lightning(self, via, to, color, Fx.t(0.05))
 			else:
-				land = maxf(land, Fx.lightning(self, from, to, color))
+				hit_at = Fx.lightning(self, from, to, color)
 		else:
-			land = maxf(land, Fx.bolt(self, from, to, color, chaos, via))
+			hit_at = Fx.bolt(self, from, to, color, chaos, via)
+		land = maxf(land, hit_at)
+		if hit_id != "":
+			Fx.impact(self, hit_id, to, size, hit_at)
 	# Перескоки и брызги расходятся от первой цели, когда в неё попали.
 	var after := land
 	for e in extra.slice(0, 8):
@@ -689,6 +705,34 @@ const SPELL_FX := {
 	"fire:FFF": {"fly": "fireball", "hit": "explosion", "size": 1.0},
 	"fire:FFW": {"fly": "fireball", "hit": "steam", "size": 0.55, "volley": 3},
 }
+
+
+## Нарисованные эффекты по главной стихии: атакующие — снаряд и попадание,
+## Святость — столп света, Молния — вспышка в конце разряда.
+const ELEMENT_FX := {
+	"F": {"fly": "fireball", "hit": "explosion", "size": 0.75},
+	"W": {"fly": "water_orb", "hit": "splash", "size": 0.8},
+	"D": {"fly": "dark_orb", "hit": "shadow_burst", "size": 0.8},
+	"T": {"fly": "arcane_orb", "hit": "arcane_burst", "size": 0.8},
+	"H": {"strike": "holy_pillar", "size": 1.0},
+	"L": {"hit": "zap_hit", "size": 0.8},
+}
+
+
+## Чем рисовать заклинание: вредное — по стихии, лечение — зелёные искры и крестики,
+## щит — пузырь. Хаос остаётся радужным шаром.
+func _look_for(spec: Dictionary, chips: Array, chaos: bool) -> Dictionary:
+	if chaos or spec.is_empty():
+		return {}
+	var harmful: bool = spec.damage > 0 or spec.meter < 0 or spec.statuses.any(
+		func(st: Dictionary) -> bool: return Unit.DEBUFFS.has(st.id))
+	if harmful:
+		return ELEMENT_FX.get(_main_element(chips), {})
+	if spec.heal > 0 or spec.revive_hp > 0:
+		return {"hit": "heal"}
+	if spec.shield > 0:
+		return {"hit": "shield"}
+	return {}
 
 
 func _main_element(chips: Array) -> String:

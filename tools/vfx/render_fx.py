@@ -16,10 +16,20 @@ import bpy
 from PIL import Image
 
 # кадров, размер кадра, столбцов
-SPECS = {
-    "fireball": (12, 160, 4),
-    "explosion": (20, 256, 5),
-    "steam": (20, 256, 5),
+SPECS = {  # лист: кадров, размер кадра, столбцов, сцена, палитра
+    "fireball": (12, 160, 4, "orb", "FIRE"),
+    "explosion": (20, 256, 5, "explosion", "FIRE"),
+    "steam": (20, 256, 5, "steam", "STEAM"),
+    "water_orb": (12, 160, 4, "orb", "WATER"),
+    "splash": (18, 256, 6, "splash", "WATER"),
+    "dark_orb": (12, 160, 4, "orb", "DARK"),
+    "shadow_burst": (20, 256, 5, "explosion", "DARK"),
+    "arcane_orb": (12, 160, 4, "orb", "ARCANE"),
+    "arcane_burst": (18, 256, 6, "star_burst", "ARCANE"),
+    "holy_pillar": (20, 256, 5, "pillar", "HOLY"),
+    "zap_hit": (12, 256, 4, "star_burst", "LIGHT"),
+    "heal": (20, 256, 5, "heal", "HEAL"),
+    "shield": (18, 256, 6, "shield", "SHIELD"),
 }
 
 FIRE = [  # позиция на шкале «жара» → цвет (ступеньками)
@@ -29,6 +39,52 @@ FIRE = [  # позиция на шкале «жара» → цвет (ступе
     (0.62, (1.00, 0.52, 0.06, 1)),
     (0.80, (1.00, 0.84, 0.30, 1)),
     (0.93, (1.00, 0.97, 0.78, 1)),
+]
+WATER = [
+    (0.00, (0.03, 0.10, 0.25, 1)),
+    (0.22, (0.05, 0.24, 0.58, 1)),
+    (0.42, (0.12, 0.48, 0.90, 1)),
+    (0.62, (0.42, 0.76, 1.00, 1)),
+    (0.82, (0.86, 0.96, 1.00, 1)),
+]
+DARK = [
+    (0.00, (0.04, 0.02, 0.07, 1)),
+    (0.22, (0.14, 0.05, 0.22, 1)),
+    (0.42, (0.32, 0.09, 0.50, 1)),
+    (0.62, (0.60, 0.28, 0.88, 1)),
+    (0.82, (0.90, 0.74, 1.00, 1)),
+]
+ARCANE = [
+    (0.00, (0.07, 0.05, 0.20, 1)),
+    (0.22, (0.22, 0.14, 0.58, 1)),
+    (0.45, (0.45, 0.34, 0.95, 1)),
+    (0.68, (0.72, 0.68, 1.00, 1)),
+    (0.86, (1.00, 1.00, 1.00, 1)),
+]
+HOLY = [
+    (0.00, (0.45, 0.28, 0.05, 1)),
+    (0.22, (0.85, 0.58, 0.12, 1)),
+    (0.45, (1.00, 0.84, 0.35, 1)),
+    (0.68, (1.00, 0.96, 0.70, 1)),
+    (0.86, (1.00, 1.00, 0.96, 1)),
+]
+LIGHT = [
+    (0.00, (0.30, 0.24, 0.05, 1)),
+    (0.25, (0.80, 0.68, 0.10, 1)),
+    (0.50, (1.00, 0.94, 0.40, 1)),
+    (0.75, (1.00, 1.00, 0.90, 1)),
+]
+HEAL = [
+    (0.00, (0.08, 0.28, 0.08, 1)),
+    (0.25, (0.25, 0.62, 0.15, 1)),
+    (0.50, (0.58, 0.90, 0.30, 1)),
+    (0.74, (0.95, 1.00, 0.62, 1)),
+]
+SHIELD = [
+    (0.00, (0.45, 0.72, 1.00, 1)),
+    (0.45, (0.62, 0.84, 1.00, 1)),
+    (0.68, (0.86, 0.95, 1.00, 1)),
+    (0.85, (1.00, 1.00, 1.00, 1)),
 ]
 STEAM = [
     (0.00, (0.38, 0.40, 0.46, 1)),
@@ -177,9 +233,10 @@ def churn_empty(frames: int, loop_radius: float = 0.0, rise: float = 0.0) -> bpy
 
 # ——— эффекты ———
 
-def fireball(frames: int) -> None:
-    """Летящий огненный шар (зацикленный): горячее ядро, вокруг оранжевое пламя,
+def orb(frames: int, pal) -> None:
+    """Летящий шар-комета (зацикленный): горячее ядро, вокруг пламя/вода/тьма по палитре,
     хвост из язычков тянется влево и рвётся по шуму — шар летит вправо."""
+    FIRE = pal
     ch = churn_empty(frames, loop_radius=0.6)
     core = toon_material("fb_core", FIRE, ch, [(1, 0.0)], [(1, 0.95)], 2.4)
     blob("core", (0.55, 0, 0), 0.55, ch, 0.28, 0.4, core)
@@ -193,8 +250,9 @@ def fireball(frames: int) -> None:
         o.scale = (1.6, 1, 0.8)
 
 
-def explosion(frames: int) -> None:
-    """Взрыв огненного шара: вспышка, клубы огня разбухают, темнеют до копоти и растворяются."""
+def explosion(frames: int, pal) -> None:
+    """Взрыв: вспышка, клубы разбухают, темнеют (по палитре) и растворяются."""
+    FIRE = pal
     ch = churn_empty(frames, rise=-1.2)
     end = frames
     mat = toon_material("ex", FIRE, ch,
@@ -223,7 +281,7 @@ def explosion(frames: int) -> None:
                 kp.easing = "EASE_OUT"
 
 
-def steam(frames: int) -> None:
+def steam(frames: int, pal) -> None:
     """Шипение: огонёк гаснет в клубе пара — белые клубы вздуваются, поднимаются и тают."""
     ch = churn_empty(frames, rise=-1.6)
     end = frames
@@ -259,6 +317,201 @@ def steam(frames: int) -> None:
                 kp.easing = "EASE_OUT"
 
 
+def grow(o, keys, ease: str = "EASE_OUT") -> None:
+    """Ключи масштаба/положения: [(кадр, масштаб, (x, z) или None)]."""
+    for f, sc, loc in keys:
+        o.scale = (sc, sc, sc) if isinstance(sc, (int, float)) else sc
+        o.keyframe_insert("scale", frame=f)
+        if loc is not None:
+            o.location = (loc[0], o.location[1], loc[1])
+            o.keyframe_insert("location", frame=f)
+    for fc in o.animation_data.action.fcurves:
+        for kp in fc.keyframe_points:
+            kp.interpolation = "SINE"
+            kp.easing = ease
+
+
+def splash(frames: int, pal) -> None:
+    """Всплеск воды: капля бьёт и плющится, по краю встаёт корона, брызги летят дугами и падают."""
+    ch = churn_empty(frames, rise=-0.6)
+    end = frames
+    body = toon_material("sp_body", pal, ch, [(1, 0.0), (int(end * 0.5), 0.15), (end, 0.75)],
+        [(1, 0.95), (end, 0.5)], 2.4)
+    o = blob("body", (0, 0, 0), 0.7, ch, 0.35, 0.4, body)
+    grow(o, [(1, (0.6, 0.6, 0.8), (0, 0.5)), (3, (1.25, 1.0, 0.8), (0, -0.3)), (end, (1.9, 1.0, 0.4), (0, -0.9))])
+    crown = toon_material("sp_crown", pal, ch, [(1, 0.05), (int(end * 0.55), 0.2), (end, 0.8)], [(1, 0.9), (end, 0.55)], 2.8)
+    for i in range(7):
+        x = -1.2 + 2.4 * i / 6
+        c = blob(f"crown{i}", (x, 0, -0.5), 0.26, ch, 0.15, 0.3, crown)
+        h = 1.0 - abs(x) * 0.25
+        grow(c, [(1, 0.01, (x * 0.4, -0.5)), (2, (0.6, 0.6, 1.0), (x * 0.6, -0.4)),
+                 (6, (0.8, 0.8, 2.4 * h), (x, 0.0)), (int(end * 0.6), (0.6, 0.6, 1.4), (x * 1.15, -0.4)),
+                 (end, (0.2, 0.2, 0.3), (x * 1.25, -0.9))])
+    drops = toon_material("sp_drop", pal, ch, [(1, 0.0), (int(end * 0.6), 0.1), (end, 0.7)], [(1, 1.0), (end, 0.7)], 3.0)
+    import random
+    rnd = random.Random(7)
+    for i in range(12):
+        a = math.pi * (0.08 + 0.84 * i / 11)  # веер вверх
+        sp = rnd.uniform(1.2, 1.9)
+        r = rnd.uniform(0.14, 0.26)
+        d = blob(f"drop{i}", (0, 0, 0), r, ch, 0.05, 0.3, drops)
+        for f in range(1, end + 1, 2):
+            k = (f - 1) / (end - 1)
+            d.location = (math.cos(a) * sp * k * 1.2, 0, -0.2 + math.sin(a) * sp * k * 2.4 - 2.8 * k * k)
+            d.keyframe_insert("location", frame=f)
+            sc = min(1.0, k * 8) * (1.0 if k < 0.7 else 0.6)
+            d.scale = (sc, sc * 1.0, sc * 1.3)
+            d.keyframe_insert("scale", frame=f)
+
+
+def star_burst(frames: int, pal) -> None:
+    """Вспышка-звезда: яркое ядро и лучи-шипы в две смены, потом искры тают (молния, тайна)."""
+    ch = churn_empty(frames, loop_radius=0.4)
+    end = frames
+    mat = toon_material("sb", pal, ch, [(1, 0.0), (int(end * 0.5), 0.12), (end, 0.8)],
+        [(1, 1.0), (int(end * 0.5), 0.7), (end, 0.4)], 2.6)
+    core = blob("core", (0, 0, 0), 0.55, ch, 0.3, 0.4, mat)
+    grow(core, [(1, 0.2, None), (3, 1.25, None), (int(end * 0.45), 0.7, None), (end, 0.15, None)])
+    import random
+    rnd = random.Random(3)
+    for wave in range(2):
+        for i in range(6):
+            ang = (i + 0.5 * wave) * math.pi / 3 + rnd.uniform(-0.25, 0.25)
+            bpy.ops.mesh.primitive_cone_add(vertices=12, radius1=0.16, radius2=0.0, depth=1.6,
+                location=(math.cos(ang) * 0.95, 0, math.sin(ang) * 0.95))
+            c = bpy.context.active_object
+            c.rotation_euler = (0, math.pi / 2 - ang, 0)
+            c.data.materials.append(mat)
+            f0 = 1 + wave * int(end * 0.22)
+            ln = rnd.uniform(0.8, 1.25)
+            grow(c, [(f0, (0.01, 0.01, 0.01), None), (f0 + 1, (1, 1, 0.4 * ln), None),
+                     (f0 + 3, (1, 1, ln), None), (f0 + int(end * 0.35), (0.4, 0.4, ln * 1.2), None),
+                     (f0 + int(end * 0.45), (0.01, 0.01, 0.01), None)])
+
+
+def pillar(frames: int, pal) -> None:
+    """Столп света сверху: луч бьёт в цель, у подножия расходится кольцо, вверх летят искры."""
+    ch = churn_empty(frames, rise=2.5)
+    end = frames
+    beam = toon_material("pl_beam", pal, ch, [(1, 0.0), (int(end * 0.55), 0.1), (end, 0.8)],
+        [(1, 1.0), (int(end * 0.5), 0.8), (end, 0.5)], 1.8)
+    glow = toon_material("pl_glow", pal, ch, [(1, 0.25), (int(end * 0.55), 0.3), (end, 0.85)],
+        [(1, 0.6), (end, 0.35)], 3.2)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.8, depth=4.4, location=(0, 0, 0.3))
+    halo = bpy.context.active_object
+    halo.data.materials.append(glow)
+    grow(halo, [(1, (0.05, 0.05, 1), None), (4, (1.2, 1.2, 1), None), (int(end * 0.45), (1.0, 1.0, 1), None),
+                (end, (0.05, 0.05, 1), None)])
+    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.42, depth=4.4, location=(0, 0, 0.3))
+    col = bpy.context.active_object
+    col.location.y = -1.0
+    col.data.materials.append(beam)
+    grow(col, [(1, (0.05, 0.05, 1), None), (3, (1.15, 1.15, 1), None), (int(end * 0.4), (0.9, 0.9, 1), None),
+               (end, (0.05, 0.05, 1), None)])
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.0, minor_radius=0.1, location=(0, 0, -1.25))
+    ring = bpy.context.active_object
+    ring.rotation_euler = (math.radians(18), 0, 0)
+    ring.location.y = -1.5
+    ring.data.materials.append(beam)
+    grow(ring, [(1, 0.05, None), (3, 0.05, None), (int(end * 0.5), 1.1, None), (end, 1.6, None)])
+    motes = toon_material("pl_mote", pal, ch, [(1, 0.0), (int(end * 0.6), 0.1), (end, 0.7)], [(1, 1.2)], 3.0)
+    import random
+    rnd = random.Random(11)
+    for i in range(8):
+        x = rnd.uniform(-0.9, 0.9)
+        m = blob(f"mote{i}", (x, 0, -1.2), rnd.uniform(0.07, 0.13), ch, 0.02, 0.3, motes)
+        f0 = 2 + rnd.randint(0, int(end * 0.4))
+        grow(m, [(1, 0.01, (x, -1.2)), (f0, 0.01, (x, -1.2)), (f0 + 1, 1.0, (x, -1.1)),
+                 (end, 0.4, (x * 1.2, 1.6))], "EASE_IN_OUT")
+
+
+def heal(frames: int, pal) -> None:
+    """Лечение: зелёно-золотые искорки поднимаются спиралью, всплывают светлые крестики."""
+    ch = churn_empty(frames, rise=1.5)
+    end = frames
+    mat = toon_material("hl", pal, ch, [(1, 0.0), (int(end * 0.6), 0.1), (end, 0.75)],
+        [(1, 0.95), (end, 0.6)], 2.8)
+    for i in range(10):
+        m = blob(f"spark{i}", (0, 0, -1.3), 0.2, ch, 0.03, 0.3, mat)
+        ph = i * 2 * math.pi / 10 * 2.2
+        f0 = 1 + int(i * end * 0.035)
+        for f in range(f0, end + 1, 2):
+            k = (f - f0) / max(1, end - f0)
+            a = ph + k * 5.0
+            m.location = (math.cos(a) * 0.9 * (1 - 0.3 * k), 0, -1.4 + 2.8 * k)
+            m.keyframe_insert("location", frame=f)
+            sc = min(1.0, k * 6) * (1 - 0.5 * k)
+            m.scale = (sc, sc, sc)
+            m.keyframe_insert("scale", frame=f)
+        m.scale = (0, 0, 0)
+        m.keyframe_insert("scale", frame=1)
+    for i, (x, f0) in enumerate([(-0.45, 3), (0.5, 6), (0.05, 9)]):
+        for dims in ((0.26, 0.26, 0.85), (0.85, 0.26, 0.26)):
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, -0.9))
+            c = bpy.context.active_object
+            c.data.materials.append(mat)
+            grow(c, [(1, (0, 0, 0), (x, -0.9)), (f0, (0, 0, 0), (x, -0.9)), (f0 + 2, dims, (x, -0.7)),
+                     (min(end, f0 + 9), (dims[0] * 0.8, dims[1], dims[2] * 0.8), (x, 0.8)),
+                     (end, (0, 0, 0), (x, 1.2))])
+
+
+def shield(frames: int, pal) -> None:
+    """Щит: пузырь с яркой кромкой вспыхивает вокруг цели, чуть пружинит и тает."""
+    end = frames
+    m = bpy.data.materials.new("sh")
+    m.use_nodes = True
+    nt = m.node_tree
+    n = nt.nodes
+    n.clear()
+    out = n.new("ShaderNodeOutputMaterial")
+    lw = n.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.35
+    ramp = n.new("ShaderNodeValToRGB")
+    ramp.color_ramp.interpolation = "CONSTANT"
+    els = ramp.color_ramp.elements
+    els[0].position, els[0].color = pal[0]
+    els[1].position, els[1].color = pal[1]
+    for pos, c in pal[2:]:
+        els.new(pos).color = c
+    nt.links.new(lw.outputs["Facing"], ramp.inputs["Fac"])
+    emit = n.new("ShaderNodeEmission")
+    nt.links.new(ramp.outputs["Color"], emit.inputs["Color"])
+    # Прозрачность: кромка плотная, середина полупрозрачная; к концу гаснет целиком.
+    rim = n.new("ShaderNodeMath")
+    rim.operation = "GREATER_THAN"
+    rim.inputs[1].default_value = 0.4
+    nt.links.new(lw.outputs["Facing"], rim.inputs[0])
+    fill = n.new("ShaderNodeMath")
+    fill.operation = "MAXIMUM"
+    nt.links.new(rim.outputs[0], fill.inputs[0])
+    fill.inputs[1].default_value = 0.09
+    fade = n.new("ShaderNodeMath")
+    fade.operation = "MULTIPLY"
+    nt.links.new(fill.outputs[0], fade.inputs[0])
+    for f, v in [(1, 1.0), (int(end * 0.6), 1.0), (end, 0.0)]:
+        fade.inputs[1].default_value = v
+        fade.inputs[1].keyframe_insert("default_value", frame=f)
+    transp = n.new("ShaderNodeBsdfTransparent")
+    mix = n.new("ShaderNodeMixShader")
+    nt.links.new(fade.outputs[0], mix.inputs["Fac"])
+    nt.links.new(transp.outputs[0], mix.inputs[1])
+    nt.links.new(emit.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    m.blend_method = "BLEND"
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=1.55)
+    o = bpy.context.active_object
+    bpy.ops.object.shade_smooth()
+    o.data.materials.append(m)
+    grow(o, [(1, 0.2, None), (4, 1.12, None), (7, 0.96, None), (10, 1.0, None), (end, 1.05, None)])
+    # Искры по кромке в момент вспышки.
+    ch = churn_empty(frames, loop_radius=0.3)
+    sp = toon_material("sh_sp", pal, ch, [(1, 0.0), (int(end * 0.5), 0.3), (int(end * 0.7), 1.0)], [(1, 1.3)], 3.0)
+    for i in range(8):
+        a = i * math.pi / 4
+        s_ = blob(f"sp{i}", (math.cos(a) * 1.55, -1, math.sin(a) * 1.55), 0.1, ch, 0.02, 0.3, sp)
+        grow(s_, [(1, 0.01, None), (3, 0.01, None), (5, 1.2, None), (int(end * 0.6), 0.01, None)])
+
+
 def outline(path: str, px: int = 3, color=(46, 20, 12)) -> None:
     """Тёмный контур вокруг силуэта — как обводка в книжной графике игры."""
     from PIL import ImageFilter
@@ -271,10 +524,13 @@ def outline(path: str, px: int = 3, color=(46, 20, 12)) -> None:
     base.save(path)
 
 
+NO_OUTLINE = {"shield"}  # полупрозрачный пузырь — контур бы его запачкал
+
+
 def render(name: str, out_dir: str) -> str:
-    frames, size, cols = SPECS[name]
+    frames, size, cols, scene, pal = SPECS[name]
     sc = reset(size, frames)
-    globals()[name](frames)
+    globals()[scene](frames, globals()[pal])
     tmp = os.path.join(out_dir, "_frames_" + name)
     os.makedirs(tmp, exist_ok=True)
     paths = []
@@ -284,8 +540,9 @@ def render(name: str, out_dir: str) -> str:
         sc.render.filepath = p
         bpy.ops.render.render(write_still=True)
         paths.append(p)
-    for p in paths:
-        outline(p)
+    if name not in NO_OUTLINE:
+        for p in paths:
+            outline(p)
     rows = math.ceil(frames / cols)
     sheet = Image.new("RGBA", (cols * size, rows * size), (0, 0, 0, 0))
     for i, p in enumerate(paths):

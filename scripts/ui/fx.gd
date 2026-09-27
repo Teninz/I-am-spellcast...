@@ -198,7 +198,32 @@ static func bolt(host: Control, from: Vector2, to: Vector2, color: Color, chaos:
 
 
 ## Листы кадров из Blender (tools/vfx/render_fx.py): кадров, столбцов.
-const SHEETS := {"fireball": [12, 4], "explosion": [20, 5], "steam": [20, 5]}
+const SHEETS := {
+	"fireball": [12, 4], "explosion": [20, 5], "steam": [20, 5],
+	"water_orb": [12, 4], "splash": [18, 6], "dark_orb": [12, 4], "shadow_burst": [20, 5],
+	"arcane_orb": [12, 4], "arcane_burst": [18, 6], "holy_pillar": [20, 5], "zap_hit": [12, 4],
+	"heal": [20, 5], "shield": [18, 6],
+}
+## Размер попадания (px кадра при size = 1) и сдвиг вверх (доля кадра), чтобы «центр» эффекта
+## пришёлся на центр карточки: у столпа — кольцо у подножия, у лечения — сияние внизу.
+## Своя скорость кадров (остальные — 30 в секунду).
+const IMPACT_FPS := {"zap_hit": 20.0, "arcane_burst": 24.0, "shield": 24.0}
+const IMPACT_PX := {"holy_pillar": 270.0, "heal": 210.0, "shield": 175.0, "zap_hit": 200.0}
+const IMPACT_ANCHOR := {"holy_pillar": 0.31, "heal": 0.12, "splash": 0.12}
+
+
+## Попадание-картинка в точке pos (через delay секунд). Возвращает, когда оно начнётся.
+static func impact(host: Node, id: String, pos: Vector2, size: float = 1.0, delay: float = 0.0) -> float:
+	var px: float = float(IMPACT_PX.get(id, 250.0)) * size
+	var at := pos - Vector2(0, float(IMPACT_ANCHOR.get(id, 0.0)) * px)
+	var fps: float = IMPACT_FPS.get(id, 30.0)
+	if delay <= 0.0:
+		flipbook(host, id, at, px, fps)
+	else:
+		host.get_tree().create_timer(delay, false).timeout.connect(func() -> void:
+			if is_instance_valid(host):
+				flipbook(host, id, at, px, fps))
+	return delay
 
 
 static func sheet(id: String) -> Texture2D:
@@ -234,9 +259,9 @@ static func flipbook(host: Node, id: String, pos: Vector2, px: float, fps: float
 
 
 ## Снаряд-картинка из листа (огненный шар): летит по дуге носом вперёд, при попадании —
-## покадровый эффект impact (взрыв, пар). via — точка поворота, как у bolt.
+## покадровый эффект hit_id (взрыв, пар). via — точка поворота, как у bolt.
 ## Если листов нет — обычный bolt. Возвращает время полёта.
-static func missile(host: Control, from: Vector2, to: Vector2, color: Color, fly_id: String, impact: String,
+static func missile(host: Control, from: Vector2, to: Vector2, color: Color, fly_id: String, hit_id: String,
 		size: float = 1.0, via: Vector2 = Vector2.INF, delay: float = 0.0) -> float:
 	if sheet(fly_id) == null:
 		return bolt(host, from, to, color, false, via)
@@ -297,8 +322,10 @@ static func missile(host: Control, from: Vector2, to: Vector2, color: Color, fly
 	tw.tween_callback(func() -> void:
 		ball.visible = false
 		trail.emitting = false
-		if flipbook(host, impact, to + Vector2(0, -10 * size), 250.0 * size) == null:
+		if sheet(hit_id) == null:
 			burst(host, to, color, 26)
+		else:
+			impact(host, hit_id, to + Vector2(0, -10 * size), size)
 		burst(host, to, color.lightened(0.3), int(16 * size)))
 	tw.tween_interval(0.4)
 	tw.tween_callback(node.queue_free)
