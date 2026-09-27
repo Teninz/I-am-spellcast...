@@ -169,9 +169,10 @@ func _summon_row_for(u: Unit) -> HBoxContainer:
 		return _summon_rows[owner_id]
 	var holder := MarginContainer.new()
 	holder.add_theme_constant_override("margin_left", 30)
-	holder.add_theme_constant_override("margin_top", -2)
-	holder.add_theme_constant_override("margin_bottom", 4)
+	holder.add_theme_constant_override("margin_top", -24)  # значки чуть заходят на карточку призывателя
+	holder.add_theme_constant_override("margin_bottom", 0)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.z_index = 3  # поверх увеличенной карточки того, кто ходит
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2009,6 +2010,7 @@ func _build_ui() -> void:
 	party_col.add_child(party_scroll)
 	_party_box = VBoxContainer.new()
 	_party_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_box.add_theme_constant_override("separation", -2)  # карточки плотнее
 	party_scroll.add_child(_party_box)
 
 	var center := VBoxContainer.new()
@@ -2198,6 +2200,7 @@ func _build_ui() -> void:
 	enemy_col.add_child(enemy_scroll)
 	_enemy_box = VBoxContainer.new()
 	_enemy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enemy_box.add_theme_constant_override("separation", -2)
 	enemy_scroll.add_child(_enemy_box)
 
 	_log = BattleLog.new()
