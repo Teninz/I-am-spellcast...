@@ -159,7 +159,8 @@ func _card(cid: String) -> Control:
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
-		m.add_theme_constant_override("margin_" + side, 16 if side in ["left", "right"] else 14)
+		# Внутрь узорной рамки (край ≈ 17 px + угловые накладки) — портрет вписан, а не лежит поверх.
+		m.add_theme_constant_override("margin_" + side, {"left": 24, "right": 22, "top": 22, "bottom": 22}[side])
 	b.add_child(m)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -168,8 +169,8 @@ func _card(cid: String) -> Control:
 	var book: String = cfg.books[0]
 	var cover: Control
 	if Art.portrait(cid) != null:
-		cover = Art.portrait_rect(Art.portrait_head(cid), Vector2(96, 128))
-		cover.size_flags_vertical = Control.SIZE_FILL  # портрет — на всю высоту карточки, не съезжает
+		cover = Art.portrait_rect(Art.portrait_head(cid), Vector2(80, 106))
+		cover.size_flags_vertical = Control.SIZE_FILL  # на всю высоту внутри рамки, не съезжает
 		if not open:
 			cover.modulate = Color(0.35, 0.35, 0.4)  # закрытый класс — в тени
 	else:
