@@ -15,9 +15,9 @@ dest_files=["res://.godot/imported/war_pig.png-c2ff4c4d653c5b9a8c14c5952199b186.
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

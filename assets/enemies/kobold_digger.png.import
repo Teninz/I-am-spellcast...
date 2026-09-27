@@ -15,9 +15,9 @@ dest_files=["res://.godot/imported/kobold_digger.png-de2e8c308ec67daa0b50d639f7c
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
