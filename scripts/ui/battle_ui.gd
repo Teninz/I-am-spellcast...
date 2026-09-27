@@ -198,6 +198,9 @@ func _make_token(u: Unit) -> Button:
 	b.add_child(col)
 	var tex := Art.enemy_face(u.name)
 	var av: Control = Art.avatar(tex, "enemy_summon", 56) if tex else _label(u.name.left(1), 24)
+	if tex and _faces_left(u):
+		var face: TextureRect = av.get_meta("face")
+		face.flip_h = true  # портрет врага смотрит влево — на стороне отряда смотрит вправо, на врагов
 	av.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(av)
@@ -863,6 +866,15 @@ func _set_state(s: State) -> void:
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD
 			l.add_theme_font_size_override("font_size", 11)
 			col.add_child(l)
+			# Растрёпанные книги: сколько боёв книга ещё выдержит.
+			if actor.wizard and b != "sheep" and not actor.wizard.stats().no_wear:
+				var left := actor.wizard.life_of(b)
+				var lf := Label.new()
+				lf.text = "выдержит ещё %d %s" % [left, "бой" if left == 1 else "боя"]
+				lf.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				lf.add_theme_font_size_override("font_size", 11)
+				lf.add_theme_color_override("font_color", Color("ff8a6a") if left <= 1 else Color("ffd35a"))
+				col.add_child(lf)
 			btn.add_child(col)
 			var holder := VBoxContainer.new()
 			holder.add_theme_constant_override("separation", 4)
@@ -1001,6 +1013,8 @@ func _queue_face(u: Unit, now: bool) -> Control:
 	holder.mouse_exited.connect(_refresh)
 	if face != null and Art.ring(kind) != null:
 		var av := Art.avatar(face, kind, size)
+		if _faces_left(u) and av.has_meta("face"):
+			(av.get_meta("face") as TextureRect).flip_h = true
 		av.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		holder.add_child(av)
 	else:
@@ -1021,6 +1035,12 @@ func _queue_face(u: Unit, now: bool) -> Control:
 		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(letter)
 	return holder
+
+
+## Призванный на сторону отряда враг из Бестиария: его портрет нарисован лицом влево.
+func _faces_left(u: Unit) -> bool:
+	return u.side == Unit.PARTY and not u.is_wizard() \
+		and not Art.enemy_portrait_id(u.name).begins_with("creature_")
 
 
 ## Кольцо аватарки по состоянию участника.
@@ -1690,6 +1710,8 @@ func _on_log(text: String, kind: String = "info", icon: String = "") -> void:
 			var tex := Art.enemy_face(actor.name)
 			if tex:
 				face = Art.avatar(tex, _ring_kind(actor), 52)
+				if _faces_left(actor) and face.has_meta("face"):
+					(face.get_meta("face") as TextureRect).flip_h = true
 		_announce(text.trim_suffix("."), face, Color("e0413a") if kind != "enemy_heal" else Color("6cf07a"))
 	if not fast:
 		var sound: String = {"kill": "down", "special": "enemy_special", "summon": "summon", "luck": "luck"}.get(kind, "")

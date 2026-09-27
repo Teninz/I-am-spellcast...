@@ -41,6 +41,13 @@ static func make(id: String, counter_text: String = "", stack_count: int = 0, ic
 static func texture_for(id: String) -> Texture2D:
 	if not _textures.has(id):
 		var path := ICON_DIR + id + ".png"
+		if not ResourceLoader.exists(path):
+			# Своей иконки ещё нет — берём указанную в справочнике картинку (например, портрет слизня).
+			path = String(GameData.statuses().get(id, {}).get("icon", path))
+			if ResourceLoader.exists(path):
+				# Портрет вертикальный — берём квадратный кадр лица, чтобы не сплющить.
+				_textures[id] = Art.face_crop(load(path), path.get_file().get_basename())
+				return _textures[id]
 		_textures[id] = load(path) if ResourceLoader.exists(path) else null
 	return _textures[id]
 

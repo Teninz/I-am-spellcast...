@@ -1,10 +1,11 @@
 class_name Wizard
 extends RefCounted
-## Волшебник между боями: здоровье, книги, предмет, шляпа, ботинки, износ книг.
+## Волшебник между боями: здоровье, книги, предмет, шляпа, ботинки, сколько боёв выдержат книги.
 ## В бою из него собирается Unit (Combat), после боя состояние записывается обратно.
 
 const MAX_BOOKS := 3
-const WEAR_LIMIT := 10
+## «Растрёпанные книги»: сколько боёв выдерживает любая книга (используй её или нет).
+const BOOK_LIFE := 3
 
 var class_id: String
 var name: String
@@ -28,8 +29,8 @@ var item := ""
 var hat := ""
 var boots := ""
 ## Износ: книга, которой пользовались в одиночку, и сколько боёв подряд.
-var wear_book := ""
-var wear_streak := 0
+## Сколько боёв ещё выдержит каждая книга: id -> число. Нет записи — книга новая (BOOK_LIFE).
+var book_life: Dictionary = {}
 ## Трофеи боссов ("rat_king:trophy", "rat_king:cursed") и шрамы (id босса).
 var trophies: Array[String] = []
 var scars: Array[String] = []
@@ -224,27 +225,36 @@ func _after_max_hp_change(old_max: float) -> void:
 	hp = clampf(hp + (new_max - old_max), 1.0, new_max)
 
 
-## Учёт износа после боя. Возвращает id порванной книги или "".
-func record_books_used(used: Array) -> String:
-	if used.is_empty():
-		return ""  # не кастовал (например, выбыл сразу) — счётчик не трогаем
-	if stats().no_wear or used.size() != 1:
-		wear_book = ""
-		wear_streak = 0
-		return ""
-	var b: String = used[0]
-	if b == wear_book:
-		wear_streak += 1
-	else:
-		wear_book = b
-		wear_streak = 1
-	if wear_streak >= WEAR_LIMIT and books.has(b):
-		books.erase(b)
-		wear_book = ""
-		wear_streak = 0
-		return b
-	return ""
+## «Растрёпанные книги»: после каждого боя все книги стареют на один бой.
+## Возвращает id порвавшихся книг. Последняя книга волшебника держится «на честном слове» (1 бой),
+## механическая овца — не бумага и не рвётся, как и книги владельца «нервущейся» шляпы.
+func age_books() -> Array[String]:
+	var torn: Array[String] = []
+	if stats().no_wear:
+		return torn
+	for b in books.duplicate():
+		if b == "sheep":
+			continue
+		var left := life_of(b) - 1
+		if left <= 0 and books.size() > 1:
+			books.erase(b)
+			book_life.erase(b)
+			torn.append(b)
+		else:
+			book_life[b] = maxi(1, left)
+	return torn
 
 
-func wear_of(book_id: String) -> int:
-	return wear_streak if book_id == wear_book else 0
+## Сколько боёв ещё выдержит книга.
+func life_of(book_id: String) -> int:
+	return int(book_life.get(book_id, BOOK_LIFE))
+
+
+## Новая книга в руках — свежая.
+func fresh_book(book_id: String) -> void:
+	book_life[book_id] = BOOK_LIFE
+
+
+## Клей для переплёта: все книги снова как новые.
+func glue_books() -> void:
+	book_life.clear()

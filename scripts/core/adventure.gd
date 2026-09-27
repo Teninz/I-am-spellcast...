@@ -309,8 +309,7 @@ func finish_combat(c: Combat) -> Array:
 		w.carry_statuses.clear()
 		if u.has("aching"):
 			w.carry_statuses["aching"] = u.statuses.aching.turns
-		var b := w.record_books_used(u.books_used.keys())
-		if b != "":
+		for b in w.age_books():
 			torn.append({"wizard": w, "book": b})
 		# Победа: выбывший поднимается с 50 % ЗД и Разбитостью на 10 ходов.
 		if c.outcome == "victory" and not w.alive():
@@ -676,11 +675,11 @@ func take_book(o: Dictionary, replace: String = "") -> bool:
 		if not w.books.has(replace):
 			return false
 		w.books[w.books.find(replace)] = o.id
-		if w.wear_book == replace:
-			w.wear_book = ""
-			w.wear_streak = 0
+		w.book_life.erase(replace)
+		w.fresh_book(o.id)
 	elif w.free_book_slots() > 0:
 		w.books.append(o.id)
+		w.fresh_book(o.id)
 	else:
 		return false
 	o.resolved = true
@@ -695,6 +694,7 @@ func give_offer_book(o: Dictionary, to: Wizard) -> bool:
 	if not can_give_book(to, o.id):
 		return false
 	to.books.append(o.id)
+	to.fresh_book(o.id)
 	o.resolved = true
 	return true
 
@@ -748,8 +748,11 @@ func discard_offer(o: Dictionary) -> void:
 func give_book(from: Wizard, book_id: String, to: Wizard) -> bool:
 	if from.books.size() <= 1 or not can_give_book(to, book_id):
 		return false
+	var life := from.life_of(book_id)
 	from.books.erase(book_id)
+	from.book_life.erase(book_id)
 	to.books.append(book_id)
+	to.book_life[book_id] = life  # книга переходит такой, какая есть
 	return true
 
 
@@ -757,6 +760,7 @@ func discard_book(w: Wizard, book_id: String) -> bool:
 	if w.books.size() <= 1:
 		return false
 	w.books.erase(book_id)
+	w.book_life.erase(book_id)
 	return true
 
 
@@ -805,6 +809,5 @@ func use_item_camp(owner: Wizard, target: Wizard) -> String:
 		target.hp = Unit.q(minf(target.max_hp(), target.hp + float(e.heal)))
 		target.carry_statuses.erase("aching")  # положительный эффект снимает Разбитость
 	if e.get("reset_wear", false):
-		target.wear_book = ""
-		target.wear_streak = 0
+		target.glue_books()
 	return "%s использует «%s» → %s." % [owner.name, it.name, target.name]

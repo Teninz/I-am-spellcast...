@@ -112,7 +112,7 @@ func _play(ui: Node) -> void:
 					ui.combat.summon("skeleton", ui.actor, Unit.PARTY)
 					var first: Unit = ui.combat.party_wizards()[0]
 					ui.combat.summon("wolf", first, Unit.PARTY)
-					ui.combat.summon("owl", first, Unit.PARTY)
+					ui.combat.summon("mad_goose", first, Unit.PARTY)
 					ui._refresh()
 					ui._build_tutorial()
 					ui._tutorial_step()

@@ -329,7 +329,7 @@ Square game item icon 256x256, one object centered, readable at 32 px: a scroll 
 
 ### `glue.png` — Клей для переплёта
 
-*Сбрасывает износ всех книг владельца. Только на привале.*
+*Подклеивает все книги владельца: они снова выдержат 3 боя. Только на привале.*
 
 ```
 Square game item icon 256x256, one object centered, readable at 32 px: a glue pot with a brush and a bandaged book spine. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books), same style as a matching set of game icons, chips and spell-book covers. Simple dark background #1b1a24 with a soft radial glow. No frame, no text.

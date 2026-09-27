@@ -63,7 +63,7 @@ static func dump(adv: Adventure) -> Dictionary:
 			"class_id": w.class_id, "hp": w.hp, "fortify": w.fortify,
 			"carry_statuses": w.carry_statuses, "just_revived": w.just_revived,
 			"books": w.books, "item": w.item, "hat": w.hat, "boots": w.boots,
-			"wear_book": w.wear_book, "wear_streak": w.wear_streak,
+			"book_life": w.book_life,
 			"trophies": w.trophies, "scars": w.scars, "no_item_battle": w.no_item_battle,
 			"zombie": w.zombie, "sheep_broken": w.sheep_broken, "item2": w.item2,
 			"max_books": w.max_books, "base_hp": w.base_hp,
@@ -139,8 +139,10 @@ static func restore(d: Dictionary) -> Adventure:
 		for k in s.carry_statuses:
 			w.carry_statuses[k] = int(s.carry_statuses[k])
 		w.just_revived = bool(s.just_revived)
-		w.wear_book = String(s.wear_book)
-		w.wear_streak = int(s.wear_streak)
+		w.book_life.clear()
+		var life: Dictionary = s.get("book_life", {})
+		for k in life:
+			w.book_life[String(k)] = int(life[k])
 		w.no_item_battle = bool(s.get("no_item_battle", false))
 		w.zombie = bool(s.get("zombie", false))
 		w.sheep_broken = bool(s.get("sheep_broken", false))

@@ -54,7 +54,7 @@ func _ready() -> void:
 	for n in notices:
 		_say("[color=#ffd35a]%s[/color]" % n)
 	for t in torn:
-		_say("[color=#ff8a8a]%s: книга «%s» порвалась от износа![/color]" % [t.wizard.name, adventure.books[t.book].name])
+		_say("[color=#ff8a8a]%s: книга «%s» развалилась — растрёпанные книги выдерживают %d боя.[/color]" % [t.wizard.name, adventure.books[t.book].name, Wizard.BOOK_LIFE])
 	for r in rest_report:
 		if r.get("revived", false):
 			_say("[color=#e0b04a]%s выбыл в бою, но поднялся: %s ЗД (50 %%) и Разбитость — скорость −25 %% на %d ходов. Снимается лечением, щитом, баффом или Очищением.[/color]"
@@ -408,16 +408,17 @@ func _wizard_column(i: int) -> Control:
 			tile.pressed.connect(_press.bind(key))
 		elif b != "":
 			tile.pressed.connect(_select.bind(i, {"type": "book", "id": b}))
-		if b != "" and w.wear_of(b) > 0:
-			var wear := _label("%d/%d" % [w.wear_of(b), Wizard.WEAR_LIMIT], 11)
+		if b != "" and b != "sheep" and not w.stats().no_wear:
+			var left := w.life_of(b)
+			var wear := _label("%d %s" % [left, _battles_word(left)], 11)
+			wear.add_theme_color_override("font_color", Color("ff8a6a") if left <= 1 else (Color("ffd35a") if left == 2 else Color.WHITE))
 			wear.add_theme_color_override("font_outline_color", Color.BLACK)
 			wear.add_theme_constant_override("outline_size", 4)
 			wear.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-			wear.offset_left = -30
+			wear.offset_left = -44
 			wear.offset_top = -18
 			wear.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tile.add_child(wear)
-			pass
 		books_row.add_child(tile)
 	col.add_child(books_row)
 
@@ -487,9 +488,19 @@ func _set_tip(tile: LootTile, title: String, rarity: String, lines: Array) -> vo
 
 func _book_lines(b: String, w: Wizard = null) -> Array:
 	var lines: Array = Array(_offer_text({"kind": "book", "id": b}).split("\n", false))
-	if w != null and w.wear_of(b) > 0:
-		lines.append("Износ %d/%d — на пределе книга порвётся." % [w.wear_of(b), Wizard.WEAR_LIMIT])
+	if w != null and b != "sheep" and not w.stats().no_wear:
+		var left := w.life_of(b)
+		lines.append("Растрёпанная книга: выдержит ещё %d %s%s." % [left, _battles_word(left),
+			" — последняя, держится на честном слове" if left == 1 and w.books.size() == 1 else ""])
 	return lines
+
+
+static func _battles_word(n: int) -> String:
+	if n % 10 == 1 and n % 100 != 11:
+		return "бой"
+	if n % 10 in [2, 3, 4] and not (n % 100 in [12, 13, 14]):
+		return "боя"
+	return "боёв"
 
 
 ## Куда ляжет выбранная добыча: book / item / hat / boots или "".

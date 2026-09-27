@@ -584,3 +584,25 @@ Wide 16:9 game background, 1920x1080. A top-down old parchment map of the villag
 ```
 Wide 16:9 game background, 1920x1080. The cozy common room of a retirement home for wizards: armchairs, bookshelves, a cold fireplace with a sleeping cat, moonlight through a round window, calm muted colours. Calm, low-detail middle for UI panels. Muted palette, no orange cast, no haze. Soft dark vignette. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books), same style as a matching set of game icons, chips and spell-book covers. No characters, no text.
 ```
+
+## Иконки пассивок боссов
+
+Пока их нет, игра показывает портрет слизня или боевой свиньи. PNG 256×256, `assets/icons/status/<id>.png`.
+
+### Деление (Матушка-Слизь) — `assets/icons/status/split.png`
+
+```
+Square game status effect icon, 256x256, a single bold symbol centered on a plain dark background #1b1a24 with a soft glow, readable at 32 px. Symbol: a green slime blob splitting into two smaller blobs with a stretchy goo bridge. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books), same style as a matching set of game icons, chips and spell-book covers. No text, no frame.
+```
+
+### Скакун (боевая свинья) — `assets/icons/status/mount.png`
+
+```
+Square game status effect icon, 256x256, a single bold symbol centered on a plain dark background #1b1a24 with a soft glow, readable at 32 px. Symbol: a saddle with a goblin banner on the back of a war pig, seen from the side. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books), same style as a matching set of game icons, chips and spell-book covers. No text, no frame.
+```
+
+### Верхом (Гоблинский Вождь) — `assets/icons/status/mounted.png`
+
+```
+Square game status effect icon, 256x256, a single bold symbol centered on a plain dark background #1b1a24 with a soft glow, readable at 32 px. Symbol: a small horned goblin helmet riding on top of a pig's head, with speed lines. Cozy hand-painted storybook illustration style, bold dark ink outlines, slightly humorous tone (theme: grumpy old wizards who cast random spells from books), same style as a matching set of game icons, chips and spell-book covers. No text, no frame.
+```

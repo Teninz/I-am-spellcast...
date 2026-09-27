@@ -91,7 +91,8 @@ func test_art_assets(books: Dictionary) -> void:
 			encs.append("res://assets/ui/bg_battle_%s.png" % f.get_basename())
 	groups["фоны локаций"] = encs + ["res://assets/ui/bg_map.png"]
 	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
-	var pending := []
+	# Пассивки боссов пока показывают портрет (слизень, свинья) — своя иконка по docs/art_prompts_battle.md.
+	var pending := ["split.png", "mount.png", "mounted.png"]
 	for g in groups:
 		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
 		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))
@@ -981,10 +982,19 @@ func test_loot_rules() -> void:
 	pyro.equip(boots)
 	check(is_equal_approx(pyro.max_hp(), 12.0) and is_equal_approx(pyro.hp, 7.0), "Тапочки: +2 к максимуму и к текущему ЗД")
 	pyro.books.assign(["fire", "storm"])
-	var torn := ""
-	for i in 10:
-		torn = pyro.record_books_used(["fire"])
-	check(torn == "fire" and not pyro.books.has("fire"), "10 боёв подряд одной книгой — книга рвётся")
+	pyro.book_life.clear()
+	pyro.book_life["storm"] = 2
+	check(pyro.life_of("fire") == 3, "новая книга выдержит 3 боя")
+	var torn: Array[String] = []
+	for i in 2:
+		torn.append_array(pyro.age_books())
+	check(torn == ["storm"] and pyro.life_of("fire") == 1, "растрёпанные книги: стареют все, даже неиспользованные; «Буря» порвалась")
+	torn = pyro.age_books()
+	check(torn.is_empty() and pyro.books == ["fire"] and pyro.life_of("fire") == 1, "последняя книга держится на честном слове")
+	var back := SaveGame.restore(JSON.parse_string(JSON.stringify(SaveGame.dump(adv))))
+	check(back != null and back.wizards[0].life_of("fire") == 1, "сколько боёв осталось — сохраняется")
+	pyro.glue_books()
+	check(pyro.life_of("fire") == 3, "клей для переплёта: книги снова как новые")
 
 
 ## Целый акт I с автоигроком: сколько приключений доходит до конца.
