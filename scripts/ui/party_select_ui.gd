@@ -100,12 +100,38 @@ func _ready() -> void:
 		saved.clip_text = true
 		saved.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		bottom.add_child(saved)
+		var reset := Button.new()
+		reset.text = "Удалить сохранение"
+		reset.tooltip_text = "Стереть сохранённое приключение. Достижения и открытые классы останутся."
+		reset.custom_minimum_size = Vector2(0, 52)
+		reset.add_theme_color_override("font_color", Color("ff9a8a"))
+		reset.pressed.connect(func() -> void: _ask_reset([cont, saved, reset]))
+		bottom.add_child(reset)
+		bottom.move_child(reset, 0)
 	_start = Button.new()
 	_start.custom_minimum_size = Vector2(260, 52)
 	_start.add_theme_font_size_override("font_size", 19)
 	_start.pressed.connect(func() -> void: start_pressed.emit(selected.duplicate()))
 	bottom.add_child(_start)
 	_rebuild()
+
+
+## Подтверждение сброса: сохранение стирается только после «Удалить».
+func _ask_reset(controls: Array) -> void:
+	var dlg := ConfirmationDialog.new()
+	dlg.title = "Удалить сохранение?"
+	dlg.dialog_text = "Сохранённое приключение (%s) будет стёрто без возврата.\nДостижения и открытые классы останутся." % SaveGame.summary()
+	dlg.ok_button_text = "Удалить"
+	dlg.cancel_button_text = "Отмена"
+	dlg.confirmed.connect(func() -> void:
+		SaveGame.clear()
+		for c: Control in controls:
+			c.queue_free())
+	dlg.visibility_changed.connect(func() -> void:
+		if not dlg.visible:
+			dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered()
 
 
 func _rebuild() -> void:

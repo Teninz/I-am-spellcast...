@@ -263,6 +263,21 @@ func test_chain_lightning() -> void:
 		if u != foes[0] and (u.hp < before[u] or not u.alive()):
 			hit_others += 1
 	check(foes[0].hp < before[foes[0]] and hit_others == mini(2, foes.size() - 1), "урон перескочил на %d соседей цели" % hit_others)
+	# Путь для анимации: перескоки ветвятся от цели, перенаправление и отражение отмечены.
+	var jumps: Array = c.trace.filter(func(e: Dictionary) -> bool: return e.kind == "jump")
+	check(jumps.size() == hit_others and jumps.all(func(e: Dictionary) -> bool: return e.from == foes[0].id),
+		"молния ветвится от цели (%d веток)" % jumps.size())
+	c.trace.clear()
+	caster.add_status("misdirect", 2)
+	c._apply_spell(caster, foes[0], c.spell_for("storm", "WLL"), chips, "storm")
+	var first: Dictionary = c.trace[0]
+	check(first.aimed == foes[0].id and (first.to == foes[0].id) == (first.turn == ""), "Дурной знак: снаряд сворачивает к новой цели")
+	var mirror_foe: Unit = c.living(c.opposite(caster.side))[0]
+	mirror_foe.add_status("reflect", 2)
+	c.trace.clear()
+	c._apply_spell(caster, mirror_foe, c.spell_for("storm", "WLL"), chips, "storm")
+	var back: Dictionary = c.trace[0]
+	check(back.turn == "bounce" and back.to == caster.id and back.aimed == mirror_foe.id, "отражение: снаряд отскакивает от цели к магу")
 
 
 func test_summons(books: Dictionary) -> void:

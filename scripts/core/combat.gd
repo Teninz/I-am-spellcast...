@@ -50,6 +50,10 @@ var visions: Array = []
 var _snapshot: Dictionary = {}
 ## Каст, который можно отмотать: кто кастовал и был ли он «неудачным».
 var last_cast := {}
+## Путь последнего заклинания для анимации: кто куда на самом деле попал.
+## {"kind": "hit", "caster", "to", "aimed", "turn": "" | "mid" | "bounce"} — удар (turn: перенаправлено
+## посреди полёта или отражено от цели); {"kind": "jump"/"splash", "from", "to"} — перескок, брызги.
+var trace: Array = []
 var _next_id: int = 0
 var _splitting := false  # урон уже делится (Кровная связь, Преломление) — не делить снова
 var _spell_depth := 0    # вложенные случайные заклинания (Дикий всплеск)
@@ -412,6 +416,7 @@ func cast(caster: Unit, target: Unit, book_id: String, bag: ChipBag, finish: boo
 		chaos_moments.append({"name": spell.name, "caster": caster.name, "rank": int(bag.combo_key().substr(1))})
 	_stat(caster).casts += 1
 	caster.books_used[book_id] = true
+	trace.clear()
 	var aim := "" if target == null or target == caster else " → %s" % target.name
 	_log("%s: «Я кастую!» — %s%s." % [caster.name, spell.name, aim], "chaos" if bag.chips.has(ChipBag.CHAOS) else "cast")
 	if not bag.forced.is_empty():
@@ -986,6 +991,7 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 	var alive_before := living()
 	var prev_healer := _healer
 	_healer = caster
+	var aimed := target
 	if target and harmful and caster.has("misdirect"):
 		caster.statuses.erase("misdirect")
 		var any := living()
@@ -1001,10 +1007,18 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 		_log("«Я это предвидел…» — Хаос задевает и %s." % caster.name, "misfire")
 	for r in recipients:
 		var who := r
+		var step := {"kind": "hit", "caster": caster.id, "to": r.id, "aimed": r.id, "turn": ""}
+		if r == target and aimed != null and aimed != target:
+			step.aimed = aimed.id
+			step.turn = "mid"
 		if harmful and who != caster and who.has("reflect"):
 			who.statuses.erase("reflect")
 			_log("%s отражает заклинание обратно!" % who.name, "reflect", "reflect")
 			who = caster
+			step.aimed = r.id
+			step.to = caster.id
+			step.turn = "bounce"
+		trace.append(step)
 		if spec.area == "target" and _fizzles(caster, who, spec):
 			_log("Удача! Заклинание по %s рассеялось." % who.name, "luck")
 			continue
@@ -1064,11 +1078,14 @@ func _apply_spell(caster: Unit, target: Unit, spell: Dictionary, chips: Array[St
 	if spec.splash > 0 and target:
 		for u in living(target.side):
 			if u != target:
+				trace.append({"kind": "splash", "from": target.id, "to": u.id})
 				_hit(u, float(spec.splash), caster, element)
 				if u != caster and u.side == caster.side:
 					hurt_ally = true
 	for j in spec.jumps:
+		var origin := target if target else caster
 		for u in _jump_targets(j, caster, target):
+			trace.append({"kind": "jump", "from": origin.id, "to": u.id})
 			_log("Молния перескакивает на %s!" % u.name, "damage")
 			_hit(u, float(j.damage), caster, element)
 			if u != caster and u.side == caster.side:

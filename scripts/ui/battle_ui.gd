@@ -92,13 +92,14 @@ func _ready() -> void:
 
 func start_battle() -> void:
 	combat = adventure.start_combat()
-	combat.logged.connect(_on_log)
-	combat.turn_started.connect(func(u: Unit) -> void: _log.start_turn(u))
-	combat.hp_changed.connect(_float_number)
-	combat.unit_added.connect(_add_card)
-	combat.spell_triggered.connect(_announce_spell)
-	combat.passive_triggered.connect(_on_passive)
-	combat.status_applied.connect(_stamp)
+	# Пока летит снаряд, отклики боя (числа, плашки, лог) придерживаются до попадания — см. _gate.
+	combat.logged.connect(func(t: String, k: String, i: String) -> void: _gate(_on_log.bind(t, k, i)))
+	combat.turn_started.connect(func(u: Unit) -> void: _gate(func() -> void: _log.start_turn(u)))
+	combat.hp_changed.connect(func(u: Unit, a: float, k: String) -> void: _gate(_float_number.bind(u, a, k)))
+	combat.unit_added.connect(func(u: Unit) -> void: _gate(_add_card.bind(u)))
+	combat.spell_triggered.connect(func(c: Unit, sp: Dictionary, b: String, h: String) -> void: _gate(_announce_spell.bind(c, sp, b, h)))
+	combat.passive_triggered.connect(func(u: Unit, id: String) -> void: _gate(_on_passive.bind(u, id)))
+	combat.status_applied.connect(func(u: Unit, id: String) -> void: _gate(_stamp.bind(u, id)))
 	var enc := adventure.encounter()
 	_title_label.text = "Уровень %d из %d — %s" % [adventure.level, adventure.level_count(), enc.name]
 	_log.clear()
@@ -540,35 +541,28 @@ func _card_of(u: Unit) -> Control:
 func _do_cast() -> void:
 	if state != State.READY:
 		return
-	var pre_spell := combat.spell_for(book_id, bag.combo_key())
 	_set_state(State.ENEMY_TURN)  # блокируем ввод на время анимации
-	# Снаряд заклинания цветом стихии летит к тем, кого заденет; хаос — радужный и трясёт экран.
-	if _anim() and _cards.has(actor.id):
-		var chaos := bag.chips.has(ChipBag.CHAOS)
-		var color := _spell_color(bag.chips)
-		var sets := _aim_sets(EffectParser.parse(pre_spell))
-		var hits: Array[Unit] = sets[0]
-		if hits.is_empty() and target:
-			hits = [target]
-		var from := Fx.center(_cards[actor.id])
-		var fly := 0.0
-		for u in hits.slice(0, 6):
-			if _cards.has(u.id) and u != actor:
-				fly = Fx.bolt(self, from, Fx.center(_cards[u.id]), color, chaos)
-			elif u == actor:
-				Fx.sparkle_up(self, _cards[u.id].get_global_rect(), color)
-		if bag.combo_key() in ["X2", "X3"]:
-			Fx.screen_shake(self, 9.0 if bag.combo_key() == "X3" else 6.0)
-		if fly > 0.0:
-			await get_tree().create_timer(fly, false).timeout
-			if state == State.OVER or not is_inside_tree():
-				return
+	var chips_now: Array = bag.chips.duplicate()
+	var combo := bag.combo_key()
 	var again := actor.extra_casts > 0
 	if again:
 		actor.extra_casts -= 1
 	_summary.clear()
 	_collecting = true
+	# Сначала считаем заклинание (так известно, куда оно на самом деле ушло: Дурной знак,
+	# отражение, перескоки молнии), а отклики показываем, когда снаряд долетит.
+	var animate := _anim() and _cards.has(actor.id)
+	_hold = animate
 	var spell := combat.cast(actor, target, book_id, bag, not again)
+	if animate:
+		var fly := _fly_spell(combat.trace, chips_now, combo)
+		if fly > 0.0:
+			await get_tree().create_timer(fly, false).timeout
+		if not is_inside_tree():
+			return
+		_release()
+		if state == State.OVER:
+			return
 	_show_summary()
 	_update_chips()
 	_spell_label.text = "%s\n%s" % [spell.name, spell.effect]
@@ -585,6 +579,111 @@ func _do_cast() -> void:
 		_prompt_label.text = "Каст вышел неудачным. Хрономант может отмотать время (1 раз за бой)."
 		return
 	_after_cast(again)
+
+
+var _hold := false
+var _held: Array[Callable] = []
+
+
+## Отклик боя: сразу или (пока летит снаряд) в очередь до попадания.
+func _gate(c: Callable) -> void:
+	if _hold:
+		_held.append(c)
+	else:
+		c.call()
+
+
+func _release() -> void:
+	_hold = false
+	var queue := _held.duplicate()
+	_held.clear()
+	for c in queue:
+		c.call()
+
+
+## Полёт заклинания по настоящему пути (combat.trace): шар к каждой цели; перенаправленный —
+## до середины экрана и оттуда к новой цели; отражённый — от цели обратно к магу; массовое —
+## одним шаром до развилки и врассыпную; молния — ломаными разрядами, перескоки ветвятся от цели.
+## Возвращает, сколько ждать до последнего попадания.
+func _fly_spell(trace: Array, chips: Array, combo: String) -> float:
+	var chaos := chips.has(ChipBag.CHAOS)
+	var color := _spell_color(chips)
+	var zap := not chaos and _main_element(chips) == "L"
+	var hits: Array = []
+	var extra: Array = []
+	for step in trace:
+		if step.kind == "hit":
+			hits.append(step)
+		else:
+			extra.append(step)
+	if hits.is_empty() and extra.is_empty() and target and target != actor:
+		hits.append({"caster": actor.id, "to": target.id, "aimed": target.id, "turn": ""})
+	# Развилка массового заклинания: на полпути к середине целей.
+	var straight: Array = hits.filter(func(h: Dictionary) -> bool:
+		return h.turn == "" and h.to != h.caster and _cards.has(h.to) and _cards.has(h.caster))
+	var fork := Vector2.INF
+	if straight.size() >= 2:
+		var sum := Vector2.ZERO
+		for h in straight:
+			sum += Fx.center(_cards[h.to])
+		fork = Fx.center(_cards[straight[0].caster]).lerp(sum / straight.size(), 0.5)
+	var land := 0.0
+	var shown := 0
+	for h in hits:
+		if not _cards.has(h.caster) or not _cards.has(h.to) or shown >= 8:
+			continue
+		var from := Fx.center(_cards[h.caster])
+		var to := Fx.center(_cards[h.to])
+		if h.to == h.caster and h.turn == "":
+			Fx.sparkle_up(self, _cards[h.to].get_global_rect(), color)
+			continue
+		shown += 1
+		var via := Vector2.INF
+		match String(h.turn):
+			"mid":
+				via = get_viewport_rect().size / 2.0
+			"bounce":
+				if _cards.has(h.aimed):
+					via = Fx.center(_cards[h.aimed])
+			_:
+				via = fork
+		if zap and h.turn == "":
+			if via.is_finite():
+				Fx.lightning(self, from, via, color)
+				land = maxf(land, Fx.lightning(self, via, to, color, Fx.t(0.05)))
+			else:
+				land = maxf(land, Fx.lightning(self, from, to, color))
+		else:
+			land = maxf(land, Fx.bolt(self, from, to, color, chaos, via))
+	# Перескоки и брызги расходятся от первой цели, когда в неё попали.
+	var after := land
+	for e in extra.slice(0, 8):
+		if not _cards.has(e.from) or not _cards.has(e.to):
+			continue
+		var a := Fx.center(_cards[e.from])
+		var b := Fx.center(_cards[e.to])
+		if e.kind == "jump":
+			# Ветка выгибается в сторону поля, чтобы не прятаться за соседними карточками.
+			var normal := (b - a).normalized().orthogonal()
+			var toward := signf(normal.dot(get_viewport_rect().size / 2.0 - (a + b) / 2.0))
+			after = maxf(after, Fx.lightning(self, a, b, Color("f0e04a") if not zap else color, land + 0.08,
+				toward * a.distance_to(b) * 0.3))
+		else:
+			get_tree().create_timer(land, false).timeout.connect(func() -> void: Fx.burst(self, b, color, 14))
+			after = maxf(after, land + 0.1)
+	if combo in ["X2", "X3"]:
+		Fx.screen_shake(self, 9.0 if combo == "X3" else 6.0)
+	return after
+
+
+func _main_element(chips: Array) -> String:
+	var best := ""
+	var n := 0
+	for c in chips:
+		if c != ChipBag.CHAOS and chips.count(c) > n:
+			best = c
+			n = chips.count(c)
+	return best
 
 
 func _after_cast(again: bool) -> void:
@@ -1277,12 +1376,7 @@ func _mark_aim(spell: Dictionary) -> void:
 
 ## Цвет заклинания — самой частой стихии тройки (хаос — фиолетовый).
 func _spell_color(chips: Array) -> Color:
-	var best := ""
-	var n := 0
-	for c in chips:
-		if c != ChipBag.CHAOS and chips.count(c) > n:
-			best = c
-			n = chips.count(c)
+	var best := _main_element(chips)
 	return Color("b070ff") if best == "" else ELEMENT_COLORS.get(best, Color("ffd35a"))
 
 

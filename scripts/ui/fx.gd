@@ -128,9 +128,15 @@ static func stand_up(c: Control) -> void:
 
 
 ## Снаряд заклинания: светящийся шар со шлейфом летит по дуге, в конце — вспышка искр.
+## via — точка поворота: шар долетает до неё, вспыхивает и сворачивает к настоящей цели
+## (перенаправление, отражение, раздвоение массового заклинания).
 ## Возвращает время полёта (чтобы дождаться удара).
-static func bolt(host: Control, from: Vector2, to: Vector2, color: Color, chaos: bool = false) -> float:
-	var dur := t(0.38)
+static func bolt(host: Control, from: Vector2, to: Vector2, color: Color, chaos: bool = false,
+		via: Vector2 = Vector2.INF) -> float:
+	var turn := via.is_finite()
+	var leg1 := t(0.34) if turn else t(0.38)
+	var leg2 := t(0.3)
+	var dur := leg1 + leg2 + t(0.08) if turn else leg1
 	var orb := Node2D.new()
 	orb.top_level = true
 	orb.z_index = 20
@@ -171,14 +177,16 @@ static func bolt(host: Control, from: Vector2, to: Vector2, color: Color, chaos:
 		trail.hue_variation_min = -0.5
 		trail.hue_variation_max = 0.5
 	orb.add_child(trail)
-	# Дуга: середина пути приподнята.
-	var mid := (from + to) / 2.0 + Vector2(0, -minf(140.0, from.distance_to(to) * 0.25))
 	var tw := orb.create_tween()
-	tw.tween_method(func(k: float) -> void:
-		var a := from.lerp(mid, k)
-		var b := mid.lerp(to, k)
-		orb.global_position = a.lerp(b, k)
-		orb.rotation += 0.3, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if turn:
+		# Долетает до точки поворота, на миг зависает со вспышкой и сворачивает.
+		tw.tween_method(_arc_step.bind(orb, from, via), 0.0, 1.0, leg1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(func() -> void: burst(host, via, color, 10, chaos))
+		tw.tween_property(halo, "scale", Vector2(4.4, 4.4), t(0.04))
+		tw.tween_property(halo, "scale", Vector2(3.2, 3.2), t(0.04))
+		tw.tween_method(_arc_step.bind(orb, via, to), 0.0, 1.0, leg2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	else:
+		tw.tween_method(_arc_step.bind(orb, from, to), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
 		burst(host, to, color, 26, chaos)
 		core.visible = false
@@ -187,6 +195,77 @@ static func bolt(host: Control, from: Vector2, to: Vector2, color: Color, chaos:
 	tw.tween_interval(0.4)
 	tw.tween_callback(orb.queue_free)
 	return dur
+
+
+## Шаг полёта по дуге: середина пути приподнята.
+static func _arc_step(k: float, orb: Node2D, a0: Vector2, b0: Vector2) -> void:
+	var mid := (a0 + b0) / 2.0 + Vector2(0, -minf(140.0, a0.distance_to(b0) * 0.25))
+	orb.global_position = a0.lerp(mid, k).lerp(mid.lerp(b0, k), k)
+	orb.rotation += 0.3
+
+
+## Молния: ломаная светящаяся линия, мерцает (перерисовывается) и гаснет, в конце — искры.
+## delay — через сколько секунд ударить (уже с учётом скорости боя). Возвращает, когда удар дойдёт.
+## bow — насколько выгнуть разряд дугой (со знаком: в какую сторону), чтобы ветки расходились веером.
+static func lightning(host: Control, from: Vector2, to: Vector2, color: Color, delay: float = 0.0, bow: float = 0.0) -> float:
+	var glow := CanvasItemMaterial.new()
+	glow.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var node := Node2D.new()
+	node.top_level = true
+	node.z_index = 20
+	node.visible = false
+	host.add_child(node)
+	var outer := Line2D.new()
+	outer.width = 11.0
+	outer.default_color = Color(color, 0.45)
+	outer.material = glow
+	outer.joint_mode = Line2D.LINE_JOINT_ROUND
+	node.add_child(outer)
+	var inner := Line2D.new()
+	inner.width = 3.0
+	inner.default_color = color.lightened(0.7)
+	inner.material = glow
+	node.add_child(inner)
+	var twig := Line2D.new()
+	twig.width = 2.0
+	twig.default_color = Color(color.lightened(0.4), 0.8)
+	twig.material = glow
+	node.add_child(twig)
+	var redraw := func() -> void:
+		var pts := _zigzag(from, to, bow)
+		outer.points = pts
+		inner.points = pts
+		# Короткий отросток от случайного излома — чтобы разряд ветвился.
+		var at := pts[randi_range(1, maxi(1, pts.size() - 2))]
+		var dir := (to - from).normalized().rotated(randf_range(-1.0, 1.0))
+		twig.points = _zigzag(at, at + dir * from.distance_to(to) * 0.22)
+	var tw := node.create_tween()
+	var d := delay
+	if d > 0.0:
+		tw.tween_interval(d)
+	tw.tween_callback(func() -> void:
+		redraw.call()
+		node.visible = true
+		burst(host, to, color, 18))
+	for i in 3:
+		tw.tween_interval(t(0.06))
+		tw.tween_callback(redraw)
+	tw.tween_property(node, "modulate:a", 0.0, t(0.22))
+	tw.tween_callback(node.queue_free)
+	return d + t(0.05)
+
+
+static func _zigzag(a: Vector2, b: Vector2, bow: float = 0.0) -> PackedVector2Array:
+	var dist := a.distance_to(b)
+	var n := clampi(int(dist / 26.0), 3, 24)
+	var normal := (b - a).normalized().orthogonal()
+	var amp := clampf(dist * 0.05, 5.0, 20.0)
+	var pts := PackedVector2Array([a])
+	for i in range(1, n):
+		var k := float(i) / n
+		pts.append(a.lerp(b, k) + normal * (randf_range(-amp, amp) + bow * sin(PI * k)))
+	pts.append(b)
+	return pts
 
 
 ## Разлёт искр из точки.
