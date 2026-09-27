@@ -77,10 +77,21 @@ func test_art_assets(books: Dictionary) -> void:
 	for r in ["common", "rare", "epic", "legendary", "cursed"]:
 		ui.append("loot_frame_" + r)
 	groups["интерфейс"] = ui.map(func(n): return "res://assets/ui/%s.png" % n)
+	var skill_files := []
+	var skill_db: Dictionary = GameData.load_json("res://data/class_skills.json")
+	for cid in skill_db:
+		if skill_db[cid] is Array:
+			for sk in skill_db[cid]:
+				skill_files.append("res://assets/icons/skills/%s.png" % sk.id)
+	groups["навыки"] = skill_files
+	groups["призванные существа"] = GameData.creatures().values().map(func(c): return "res://assets/enemies/%s.png" % c.portrait)
+	var encs := []
+	for f in DirAccess.get_files_at("res://data/encounters"):
+		if f.get_extension() == "json":
+			encs.append("res://assets/ui/bg_battle_%s.png" % f.get_basename())
+	groups["фоны локаций"] = encs + ["res://assets/ui/bg_map.png"]
 	# Картинки, которые ещё только ждут генерации (игра рисует заглушку).
-	# Иконки новых эффектов — промты в docs/art_prompts_battle.md.
-	var pending := ["creature.png", "bond.png", "shared_pain.png", "doom.png", "misdirect.png",
-		"self_trap.png", "miss.png", "echo_next.png"]
+	var pending := []
 	for g in groups:
 		var missing: Array = groups[g].filter(func(p): return not ResourceLoader.exists(p) or load(p) == null)
 		var waiting: Array = missing.filter(func(p): return pending.has(p.get_file()))

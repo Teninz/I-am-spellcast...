@@ -55,6 +55,18 @@ func _ready() -> void:
 	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_panel.add_theme_stylebox_override("panel", _framed("panel_dialog", 80, 0.45, 40, Color(0.07, 0.06, 0.1, 0.72), Color("5a586e")))
 	row.add_child(map_panel)
+	# Пергамент карты внутри рамки — затемнён, чтобы дороги и кружки читались.
+	var parchment := Art.texture("res://assets/ui/bg_map.png")
+	if parchment:
+		var pr := TextureRect.new()
+		pr.texture = parchment
+		pr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		pr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		pr.modulate = Color(0.5, 0.47, 0.44)
+		pr.clip_contents = true
+		pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map_panel.add_child(pr)
 	var map_col := VBoxContainer.new()
 	map_panel.add_child(map_col)
 	_view = MapView.new()

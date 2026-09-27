@@ -231,9 +231,8 @@ shader_type canvas_item;
 void fragment() {
 	vec4 c = texture(TEXTURE, UV);
 	float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-	vec3 g = mix(vec3(l), c.rgb, 0.6);
-	g *= vec3(0.94, 0.97, 1.04);
-	COLOR = vec4(g * 0.85, c.a) * COLOR;
+	vec3 g = mix(vec3(l), c.rgb, 0.8);
+	COLOR = vec4(g * 0.92, c.a) * COLOR;
 }
 """
 		_backdrop = ShaderMaterial.new()

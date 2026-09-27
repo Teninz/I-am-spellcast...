@@ -1627,10 +1627,18 @@ func _build_ui() -> void:
 	middle.add_theme_constant_override("separation", 16)
 	root.add_child(middle)
 
+	# Отряд с призванными существами может не влезть — колонка прокручивается, как у противников.
+	var party_col := VBoxContainer.new()
+	party_col.custom_minimum_size = Vector2(270, 0)
+	party_col.add_child(_label("Отряд", 18))
+	middle.add_child(party_col)
+	var party_scroll := ScrollContainer.new()
+	party_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	party_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	party_col.add_child(party_scroll)
 	_party_box = VBoxContainer.new()
-	_party_box.custom_minimum_size = Vector2(260, 0)
-	_party_box.add_child(_label("Отряд", 18))
-	middle.add_child(_party_box)
+	_party_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	party_scroll.add_child(_party_box)
 
 	var center := VBoxContainer.new()
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1836,8 +1844,10 @@ func _build_ui() -> void:
 func _make_card(u: Unit) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(260, 98)  # пропорции рамки 512×192
+	if u.creature:
+		b.custom_minimum_size = Vector2(260, 82)  # существа — чуть ниже, чтобы отряд влезал
 	b.pressed.connect(_on_card_pressed.bind(u))
-	var frame_name := "card_party" if u.is_wizard() else ("card_boss" if u.is_boss else ("card_leader" if u.is_leader else "card_enemy"))
+	var frame_name := "card_party" if u.side == Unit.PARTY else ("card_boss" if u.is_boss else ("card_leader" if u.is_leader else "card_enemy"))
 	var box: StyleBox = Art.frame(frame_name, 40, 0.42)
 	if box == null:
 		var flat := StyleBoxFlat.new()
@@ -1908,7 +1918,7 @@ func _make_card(u: Unit) -> Button:
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0, 0, 0, 0.45)
 	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color("4cc46a") if u.is_wizard() else Color("e0413a")
+	fill.bg_color = Color("4cc46a") if u.side == Unit.PARTY else Color("e0413a")
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
 	bar_row.add_child(bar)

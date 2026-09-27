@@ -100,6 +100,10 @@ func _play(ui: Node) -> void:
 				if casts_in_second == 5:
 					busy = true
 					ui.fast = false
+					# Призванные существа на поле — посмотреть их портреты в кольцах.
+					ui.combat.summon("bear", ui.actor, Unit.PARTY)
+					ui.combat.summon("skeleton", ui.actor, Unit.PARTY)
+					ui._refresh()
 					ui._build_tutorial()
 					ui._tutorial_step()
 					_shot("battle.png", func() -> void:
